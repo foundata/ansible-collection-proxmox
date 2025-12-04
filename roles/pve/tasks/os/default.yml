@@ -1,4 +1,5 @@
-# OS: Manage basic operating system setup regarding Proxmox Virtual Environment
+# OS: Manage basic operating system configuration influencing
+# Proxmox Virtual Environment (PVE)
 
 ---
 
@@ -23,10 +24,6 @@
         else ['amd64-microcode'] if __pve_cpu_vendor == 'amd'
         else [] }}
     state: "present"
-    # FIXME: cache update is problematic because on a fresh default installation,
-    #        update will not work without a license or removal of enterprise
-    #        repository.
-    # update_cache: true
 
 
 - name: "OS | Default | IOMMU | Check for IOMMU support in dmesg"
@@ -35,7 +32,7 @@
   # - No built-in Ansible module to read kernel ring buffer.
   # - The dmesg output is easy te evaluate via Jinja2 search filter.
   ansible.builtin.command:
-    cmd: "dmesg"
+    argv: ["dmesg"]
   changed_when: false
   register: __pve_dmesg_output
 
@@ -92,3 +89,4 @@
         | regex_replace(' +', ' ')
         | trim
       }}
+  notify: "pve_proxmox: update grub"

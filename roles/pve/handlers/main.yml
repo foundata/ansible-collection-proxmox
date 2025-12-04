@@ -1,0 +1,12 @@
+# Handlers: Tasks that are triggered and run only when notified.
+
+---
+
+- name: "Handlers | Update grub"
+  ansible.builtin.command:
+    argv: ["update-grub"]
+  changed_when:
+    - __pve_grub_update is success
+    - __pve_grub_update['stdout'] is search('(?i)Generating')
+  register: __pve_grub_update
+  listen: "pve_proxmox: update grub"
