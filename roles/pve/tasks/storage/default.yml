@@ -510,7 +510,7 @@
               wipefs -a {{ conflict['device'] }}
           {% endfor %}
 
-          DO NOT set storage_force_cleanup=true to bypass this check!
+          DO NOT set pve_proxmox_storage_force_cleanup=true to bypass this check!
           This requires manual verification to prevent data loss.
       loop: "{{ __pve_storage_wrong_pool_devices | default({}) | dict2items }}"
       when:
@@ -555,7 +555,7 @@
           {% endfor %}
           3. Re-run this playbook
 
-          ALTERNATIVE: Set 'storage_force_cleanup: true' to automatically wipe disks.
+          ALTERNATIVE: Set 'pve_proxmox_storage_force_cleanup: true' to automatically wipe disks.
           WARNING: This will DESTROY ALL DATA on these disks!
           Only use this if you are CERTAIN the data is not needed.
       loop: "{{ pve_proxmox_storage | default([], true) | selectattr('type', 'equalto', 'zpool') | list }}"
@@ -564,7 +564,7 @@
         - pve_proxmox_storage | length > 0
         - __pve_storage_pool_data_status[item['name']]['has_data'] | default(false) | bool
         - not __pve_storage_pool_data_status[item['name']]['exists'] | default(false) | bool
-        - not (storage_force_cleanup | default(false) | bool)
+        - not (pve_proxmox_storage_force_cleanup | default(false) | bool)
         - item['name'] not in (__pve_storage_wrong_pool_devices | default({}) | list)
 
 
@@ -579,7 +579,7 @@
         - __pve_disk_check_list | length > 0
         - __pve_storage_pool_data_status[item['pool']]['has_data'] | default(false) | bool
         - not __pve_storage_pool_data_status[item['pool']]['exists'] | default(false) | bool
-        - storage_force_cleanup | default(false) | bool
+        - pve_proxmox_storage_force_cleanup | default(false) | bool
       changed_when: true
 
 
@@ -594,7 +594,7 @@
         - __pve_disk_check_list | length > 0
         - __pve_storage_pool_data_status[item['pool']]['has_data'] | default(false) | bool
         - not __pve_storage_pool_data_status[item['pool']]['exists'] | default(false) | bool
-        - storage_force_cleanup | default(false) | bool
+        - pve_proxmox_storage_force_cleanup | default(false) | bool
       changed_when: true
       failed_when: false
 

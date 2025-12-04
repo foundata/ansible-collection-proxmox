@@ -1846,3 +1846,266 @@ argument_specs:
           ```
         type: "bool"
         default: false
+
+      pve_proxmox_sm:
+        description: |
+          Proxmox VE Storage Manager (pvesm) configuration.
+
+          This variable defines storage resources visible in the PVE web UI and
+          available for VM/container disk allocation, backups, ISO storage, and
+          container templates.
+
+          These entries configure PVE's storage layer (`/etc/pve/storage.cfg`),
+          which is separate from the underlying filesystem/pool creation handled
+          by `pve_proxmox_storage`. Typically, you first create the storage
+          backend (ZFS pool, NFS mount, etc.) via `pve_proxmox_storage`, then
+          register it with PVE via `pve_proxmox_sm`.
+
+          Supported storage types:
+
+          - `dir`: Directory-based storage (any mounted filesystem)
+          - `zfspool`: ZFS pool/dataset storage (for zvols and datasets)
+
+          Where:
+          - `nodename|shared`: Node-local or cluster-shared storage
+          - `guest`: VM/container disk storage (usually encrypted)
+          - `assets`: ISOs, templates, snippets (usually not encrypted)
+          - `backup`: Backup target for vzdump (usually encrypted)
+          - `N`: Priority index (lower = preferred for workload type)
+
+          Example:
+          ```yaml
+          pve_proxmox_sm:
+            # ZFS storage for VMs/containers
+            - name: "pve1-guest1"
+              type: "zfspool"
+              storage_properties:
+                pool: "pool123/vms"
+                content:
+                  - "images"
+                  - "rootdir"
+                sparse: true
+                nodes:
+                  - "pve1"
+
+            # Directory storage for ISOs and templates
+            - name: "pve1-assets1"
+              type: "dir"
+              storage_properties:
+                path: "/mnt/assets"
+                is_mountpoint: true
+                content:
+                  - "iso"
+                  - "vztmpl"
+                  - "snippets"
+                nodes:
+                  - "pve1"
+
+            # Directory storage for backups
+            - name: "pve1-backup1"
+              type: "dir"
+              storage_properties:
+                path: "/mnt/backup"
+                is_mountpoint: true
+                content:
+                  - "backup"
+                nodes:
+                  - "pve1"
+          ```
+        type: "list"
+        elements: "dict"
+        default: []
+        options:
+
+          name:
+            description: |
+              Storage identifier as shown in the PVE web UI.
+
+              Must be unique across the cluster. This name is used to reference
+              the storage in VM/container configurations and backup jobs.
+
+              Naming convention: `<node|shared>-<purpose><index>`
+
+              Examples:
+                - `pve1-guest1`: Primary guest storage on node pve1
+                - `pve1-backup1`: Backup storage on node pve1
+                - `shared-assets1`: Shared asset storage (cluster-wide)
+            type: "str"
+            required: true
+
+          type:
+            description: |
+              PVE storage type.
+
+              Determines how PVE interacts with the underlying storage backend.
+
+              - `dir`: Directory-based storage. Uses a filesystem path for
+                storing disk images as files (qcow2, raw, vmdk). Suitable for
+                any mounted filesystem (local, NFS, CIFS, etc.).
+
+              - `zfspool`: Native ZFS storage. Uses ZFS zvols for VM disks and
+                ZFS datasets for container storage. Provides better performance
+                and snapshot capabilities than directory storage on ZFS.
+
+              Note: The underlying storage (ZFS pool, NFS mount, etc.) must
+              already exist. Use `pve_proxmox_storage` to create it first.
+            type: "str"
+            required: true
+            choices:
+              - "dir"
+              - "zfspool"
+
+          storage_properties:
+            description: |
+              Type-specific storage configuration properties.
+
+              The available options depend on the `type` value.
+            type: "dict"
+            required: true
+            options:
+
+              # Common properties
+              content:
+                description: |
+                  List of content types this storage can hold.
+
+                  Determines what PVE allows to be stored here. A storage can
+                  support multiple content types.
+
+                  Available content types:
+
+                  - `images`: Virtual machine disk images (qcow2, raw, vmdk)
+                  - `rootdir`: Container root directories (for LXC containers)
+                  - `backup`: Backup archives from vzdump
+                  - `iso`: ISO images for VM installation
+                  - `vztmpl`: Container templates (.tar.gz, .tar.xz)
+                  - `snippets`: Configuration snippets (hookscripts, cloud-init)
+
+                  Typical combinations:
+                    - Guest storage: `[images, rootdir]`
+                    - Asset storage: `[iso, vztmpl, snippets]`
+                    - Backup storage: `[backup]`
+
+                  Example:
+                  ```yaml
+                  content:
+                    - "images"
+                    - "rootdir"
+                  ```
+                type: "list"
+                elements: "str"
+                required: false
+                choices:
+                  - "images"
+                  - "rootdir"
+                  - "backup"
+                  - "iso"
+                  - "vztmpl"
+                  - "snippets"
+
+              nodes:
+                description: |
+                  List of cluster nodes where this storage is available.
+
+                  Limits storage visibility to specific nodes. Useful for
+                  node-local storage that shouldn't appear on other nodes.
+
+                  If omitted, the storage is available on all cluster nodes
+                  (appropriate for shared/network storage).
+
+                  Example:
+                  ```yaml
+                  nodes:
+                    - "pve1"
+                    - "pve2"
+                  ```
+                type: "list"
+                elements: "str"
+                required: false
+
+              is_mountpoint:
+                description: |
+                  Indicates the storage path is an external mountpoint.
+
+                  When `true`, PVE will:
+                    - Check that the path is actually mounted before use
+                    - Prevent operations if the mountpoint is not available
+                    - Display appropriate warnings in the UI
+
+                  Set to `true` for:
+                    - NFS/CIFS mounts
+                    - ZFS datasets with dedicated mountpoints
+                    - Any storage on a separately mounted filesystem
+
+                  Set to `false` (or omit) for:
+                    - Subdirectories on the root filesystem
+                    - Paths that are always available
+                type: "bool"
+                default: false
+
+              # Directory-specific properties
+              path:
+                description: |
+                  Filesystem path for directory storage (for `type: dir`).
+
+                  The directory must exist and be writable. For ZFS datasets,
+                  this is typically the dataset's mountpoint.
+
+                  The role will create the directory if it doesn't exist.
+
+                  Example: `/mnt/pool123/assets`
+                type: "str"
+                required: false
+
+              # ZFS pool-specific properties
+              pool:
+                description: |
+                  ZFS pool or dataset name (for `type: zfspool`).
+
+                  This is the ZFS dataset path, not a filesystem path. PVE will
+                  create zvols and child datasets under this location.
+
+                  The pool/dataset must already exist. Use `pve_proxmox_storage`
+                  with `type: zpool` or `type: zfs_dataset` to create it.
+
+                  Example: `pool123/vms` or `tank/proxmox/guests`
+                type: "str"
+                required: false
+
+              sparse:
+                description: |
+                  Enable thin provisioning for ZFS zvols (for `type: zfspool`).
+
+                  When `true`:
+                    - Zvols only consume space for written data
+                    - VM disks appear full-sized but use less actual space
+                    - Risk of overcommitment if total allocated exceeds pool
+
+                  When `false`:
+                    - Zvols pre-allocate their full size immediately
+                    - Guaranteed space availability
+                    - No overcommitment risk
+
+                  Thin provisioning is generally recommended for efficiency but
+                  requires monitoring pool usage to avoid space exhaustion.
+                type: "bool"
+                default: false
+
+              blocksize:
+                description: |
+                  ZFS block size (volblocksize) for new zvols
+                  (for `type: zfspool`).
+
+                  Determines the minimum allocation unit for VM disk writes.
+                  Optimal value depends on workload:
+
+                  - `4k`/`8k`: Database workloads, random I/O
+                  - `16k`: General purpose (good default)
+                  - `32k`/`64k`: Sequential workloads, large files
+                  - `128k`: Maximum, for mostly sequential large-file access
+
+                  If omitted, uses the pool's default recordsize.
+
+                  Example: `16k`
+                type: "str"
+                required: false
