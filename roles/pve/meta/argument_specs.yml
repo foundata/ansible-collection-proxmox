@@ -1,0 +1,55 @@
+# Role argument validation.
+#
+# See defaults/main.yml for details on each variable. For more information on
+# the argument_specs.yml format, refer to the official Ansible documentation:
+# https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html#role-argument-validation
+
+---
+
+argument_specs:
+
+  # foundata.proxmox/roles/pve/tasks/main.yml entry point
+  main:
+    short_description: "Main entry point for the foundata.proxmox.run role"
+    description:
+      - "Configures Proxmox Virtual Environment (PVE) hosts."
+      - "Manages network interfaces, IOMMU settings, and other OS-level configurations."
+    options:
+
+      pve_proxmox_tmpbackupfiles:
+        description: |
+          Switch to control whether temporary disaster-safeguard backups of
+          important configuration files should be created before re-writing them
+          via Ansible.
+
+          When set to `true` (which is the default), the role will:
+
+          1. Create a temporary directory with the `ansible_pve_backup_` prefix.
+          2. Copy important configuration files there before editing them.
+
+          This is only a disaster safeguard. If the automatic configuration
+          causes an error, you can log in to the machine and restore the
+          original configuration files from that backup. The role outputs where
+          the backups are copied to.
+
+          There is no role-based cleanup of these backup files, but the
+          temporary directory is usually cleaned up by the operating system
+          during boot. The backup files are typically just a few kilobytes in
+          size, so keeping them around until the next reboot should not be an
+          issue.
+        type: "bool"
+        default: true
+
+      pve_proxmox_iommu_manage:
+        description: |
+          Switch to control if the role should manage input–output memory
+          management unit (IOMMU) related operating system configuration.
+          IOMMU support is needed for PCI and/or GPU passthrough.
+
+          When set to `true` (which is the default), the role will:
+
+          1. Check for CPU vendor based IOMMU support.
+          2. Add or remove needed GRUB parameters based on CPU vendor and IOMMU
+             support.
+        type: "bool"
+        default: true

@@ -1,0 +1,94 @@
+# OS: Manage basic operating system setup regarding Proxmox Virtual Environment
+
+---
+
+- name: "OS | Default | Gather CPU vendor information"
+  ansible.builtin.setup:
+    gather_subset:
+      - "hardware"
+
+
+- name: "OS | Default | Set CPU vendor fact"
+  ansible.builtin.set_fact:
+    __pve_cpu_vendor: >-
+      {{      'intel' if 'GenuineIntel' in ansible_processor | join(' ')
+        else ('amd' if 'AuthenticAMD' in ansible_processor | join(' ')
+        else  'unknown') }}
+
+
+- name: "OS | Default | Install microcode package based on CPU vendor"
+  ansible.builtin.apt:
+    name: >-
+      {{     ['intel-microcode'] if __pve_cpu_vendor == 'intel'
+        else ['amd64-microcode'] if __pve_cpu_vendor == 'amd'
+        else [] }}
+    state: "present"
+    # FIXME: cache update is problematic because on a fresh default installation,
+    #        update will not work without a license or removal of enterprise
+    #        repository.
+    # update_cache: true
+
+
+- name: "OS | Default | IOMMU | Check for IOMMU support in dmesg"
+  # The command or shell module is used here. This approach is justified:
+  #
+  # - No built-in Ansible module to read kernel ring buffer.
+  # - The dmesg output is easy te evaluate via Jinja2 search filter.
+  ansible.builtin.command:
+    cmd: "dmesg"
+  changed_when: false
+  register: __pve_dmesg_output
+
+
+- name: "OS | Default | IOMMU | Set IOMMU support fact"
+  ansible.builtin.set_fact:
+    __pve_iommu_supported: "{{ __pve_dmesg_output['stdout'] is search('DMAR|IOMMU|AMD-Vi') }}"
+
+
+- name: "OS | Default | IOMMU | Read current GRUB configuration"
+  ansible.builtin.slurp:
+    src: "/etc/default/grub"
+  register: __pve_grub_config
+
+
+- name: "OS | Default | IOMMU | Set GRUB parameters based on CPU vendor and IOMMU support"
+  ansible.builtin.lineinfile:
+    path: "/etc/default/grub"
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="{{ __pve_grub_cmdline_final }}"'
+    backrefs: false
+  vars:
+    # Extract current GRUB_CMDLINE_LINUX_DEFAULT value and strip all IOMMU-related
+    # parameters to build a clean baseline.
+    __pve_grub_cmdline_extracted: >-
+      {{
+        __pve_grub_config['content']
+        | b64decode
+        | regex_search('GRUB_CMDLINE_LINUX_DEFAULT="([^"]*)"', '\1')
+        | first
+        | default('quiet')
+      }}
+    __pve_grub_cmdline_clean: >-
+      {{
+        __pve_grub_cmdline_extracted
+        | regex_replace(' *(intel_iommu|amd_iommu|iommu)=[^ ]*', '')
+        | regex_replace(' +', ' ')
+        | trim
+      }}
+    # Build IOMMU parameters only when hardware support is detected.
+    __pve_iommu_vendor_param: >-
+      {{
+        (__pve_iommu_supported and __pve_cpu_vendor == 'intel') | ternary('intel_iommu=on', '') +
+        (__pve_iommu_supported and __pve_cpu_vendor == 'amd') | ternary('amd_iommu=on', '')
+      }}
+    __pve_iommu_pt_param: "{{ __pve_iommu_supported | ternary('iommu=pt', '') }}"
+    # Combine clean baseline with IOMMU parameters (empty strings when unsupported,
+    # effectively removing them).
+    __pve_grub_cmdline_final: >-
+      {{
+        ([__pve_grub_cmdline_clean, __pve_iommu_vendor_param, __pve_iommu_pt_param]
+        | select('ne', '')
+        | join(' '))
+        | regex_replace(' +', ' ')
+        | trim
+      }}

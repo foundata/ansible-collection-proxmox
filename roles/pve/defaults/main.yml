@@ -1,0 +1,12 @@
+# Default variables and values for this role.
+#
+# These variables are designed to be easily overridden (as they have a low
+# precedence) and typically allow users to customize the role's behavior.
+# Each variable should have a clear comment above it, describing its purpose
+# and how it fits into the role's functionality.
+
+---
+
+pve_proxmox_tmpbackupfiles: true
+
+pve_proxmox_iommu_manage: true
