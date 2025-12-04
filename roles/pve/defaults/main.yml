@@ -28,3 +28,5 @@ pve_proxmox_fw_cluster_ipsets: []
 pve_proxmox_fw_node_options: {}
 
 pve_proxmox_fw_node_rules: []
+
+pve_proxmox_datacentercfg: {}

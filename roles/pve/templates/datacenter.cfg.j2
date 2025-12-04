@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Proxmox VE datacenter configuration
+# Reference: https://pve.proxmox.com/wiki/Manual:_datacenter.cfg
+
+{# Normalize and/or validate input #}
+{%- set pve_datacentercfg = tpl_pve_datacentercfg | default({}, true) -%}
+{%- from 'pve/_render_cfg_value.j2' import render_cfg_value -%}
+
+{% if pve_datacentercfg | length > 0 %}
+{%   for item in pve_datacentercfg | dict2items | sort(attribute='key') %}
+{{ item['key'] }}: {{ render_cfg_value(item['value']) }}
+{%   endfor %}
+{% else %}
+# No datacenter options defined
+{% endif %}

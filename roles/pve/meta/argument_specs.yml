@@ -900,7 +900,6 @@ argument_specs:
                 - `2001:db8::/32` (IPv6 network)
             type: "str"
             required: true
-
           comment:
             description: |
               Optional human-readable description of the alias.
@@ -1411,3 +1410,38 @@ argument_specs:
               Human-readable description of the rule.
             type: "str"
             required: false
+
+
+      pve_proxmox_datacentercfg:
+        description: |
+          Proxmox VE datacenter-wide configuration settings.
+
+          This variable defines cluster-wide defaults rendered to
+          `/etc/pve/datacenter.cfg`. Since this file resides on pmxcfs (the
+          FUSE-backed cluster filesystem synchronized via Corosync), settings
+          apply to all nodes in the cluster.
+
+          This is a passthrough of original Proxmox VE datacenter options. Keys
+          and values are rendered directly as `key: value` lines into
+          /etc/pve/datacenter.cfg. Nested dictionaries are automatically converted to the PVE
+          `key=value,key2=value2` format.
+
+          Reference:
+            https://pve.proxmox.com/wiki/Manual:_datacenter.cfg
+            https://pve.proxmox.com/pve-docs/datacenter.cfg.5.html
+
+          Example:
+          ```yaml
+          pve_proxmox_datacentercfg:
+            language: "en"
+            keyboard: "en-us"
+            console: "html5"
+            next-id:
+              lower: 100
+              upper: 1000000
+            migration:
+              type: "secure"
+              network: "10.1.2.0/24"
+          ```
+        type: "dict"
+        default: {}

@@ -1,0 +1,49 @@
+# Datacenter: Manage the datacenter configuration of Proxmox Virtual Environment (PVE)
+
+---
+
+- name: "Datacenter | Ensure /etc/pve/datacenter.cfg exists"
+  ansible.builtin.file:
+    path: "/etc/pve/datacenter.cfg"
+    state: "touch"
+    owner: "root"
+    group: "www-data"
+    # noqa risky-file-permissions
+    #   /etc/pve is using pmxcfs (a FUSE-backed cluster filesystem with
+    #   Corosync). Setting the permissions will lead to a module failure:
+    #   "[Errno 1] Operation not permitted".
+    # mode: "u=rw,g=r,o=r" # 0640
+    modification_time: "preserve"
+    access_time: "preserve"
+
+
+- name: "Datacenter | Backup existing /etc/pve/datacenter.cfg (best effort)"
+  ansible.builtin.copy:
+    src: "/etc/pve/datacenter.cfg"
+    dest: "{{ __pve_tmpdir_backup['path'] }}/datacenter.cfg"
+    remote_src: true
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=" # 0640
+  when:
+    - pve_proxmox_tmpbackupfiles
+  failed_when:
+    - false
+  changed_when:
+    - false
+
+
+- name: "Datacenter | Render /etc/pve/datacenter.cfg"
+  ansible.builtin.template:
+    src: "datacenter.cfg.j2"
+    dest: "/etc/pve/datacenter.cfg"
+    owner: "root"
+    group: "www-data"
+    # noqa risky-file-permissions
+    #   /etc/pve is using pmxcfs (a FUSE-backed cluster filesystem with
+    #   Corosync). Setting the permissions will lead to a module failure:
+    #   "[Errno 1] Operation not permitted".
+    # mode: "u=rw,g=r,o=r" # 0640
+  vars:
+    # Pass (and/or adjust) Ansible inventory group_vars / host_vars
+    tpl_pve_datacentercfg: "{{ pve_proxmox_datacentercfg | default({}, true) }}"
