@@ -1445,3 +1445,404 @@ argument_specs:
           ```
         type: "dict"
         default: {}
+
+
+      pve_proxmox_storage:
+        description: |
+          List of storage definitions for the PVE host.
+
+          This variable manages operating system-level storage configuration
+          including ZFS pools, ZFS datasets, and NFS mounts. Each entry defines
+          a storage resource with its type-specific attributes.
+
+          Supported storage types:
+
+          - `zpool`: ZFS storage pool (creates new pools from raw disks)
+          - `zfs_dataset`: ZFS dataset/filesystem (creates datasets within
+            existing pools, supports encryption)
+          - `nfs`: NFS network mount
+
+          The role performs extensive validation before creating storage:
+          - Verifies disk existence and accessibility
+          - Checks for existing data on disks (safety check)
+          - Validates vdev disk counts match RAID requirements
+          - Detects disks belonging to different pools
+
+          For ZFS pools, the role will NOT automatically destroy existing data.
+          Set `storage_force_cleanup: true` to allow automatic disk wiping
+          (DESTRUCTIVE - use with extreme caution).
+
+          Example:
+          ```yaml
+          pve_proxmox_storage:
+            # ZFS mirror pool on SSDs
+            - name: "pool1"
+              type: "zpool"
+              attributes:
+                mountpoint: "none"
+                vdevs:
+                  - type: "mirror"
+                    disks:
+                      - "/dev/disk/by-id/scsi-SATA_SSD1"
+                      - "/dev/disk/by-id/scsi-SATA_SSD2"
+                pool_properties:
+                  ashift: "12"
+
+            # Encrypted dataset for VM storage
+            - name: "pool1/vms-encrypted"
+              type: "zfs_dataset"
+              attributes:
+                zfs_properties:
+                  mountpoint: "/mnt/pool1/vms"
+                  compression: "on"
+                  encryption: "aes-256-gcm"
+                  keyformat: "passphrase"
+                  keylocation: "prompt"
+                  passphrase: "{{ vault_zfs_passphrase }}"
+
+            # NFS backup storage
+            - name: "nfs-backup"
+              type: "nfs"
+              attributes:
+                storage_properties:
+                  src: "nas.example.com:/exports/backup"
+                  path: "/mnt/nfs-backup"
+                  opts: "defaults,noatime"
+          ```
+        type: "list"
+        elements: "dict"
+        default: []
+        options:
+
+          name:
+            description: |
+              Storage resource name.
+
+              For ZFS pools: The pool name (e.g., `pool1`)
+              For ZFS datasets: The full dataset path (e.g., `pool1/vms`)
+              For NFS: A descriptive identifier (e.g., `nfs-backup`)
+
+              ZFS naming rules:
+                - Must start with a letter
+                - Can contain alphanumeric characters, underscores, hyphens
+                - Dataset names use `/` to denote hierarchy
+            type: "str"
+            required: true
+
+          type:
+            description: |
+              Storage type identifier.
+
+              - `zpool`: Create a new ZFS storage pool from raw disks
+              - `zfs_dataset`: Create a ZFS dataset within an existing pool
+              - `nfs`: Mount an NFS export from a network server
+            type: "str"
+            required: true
+            choices:
+              - "zpool"
+              - "zfs_dataset"
+              - "nfs"
+
+          attributes:
+            description: |
+              Type-specific storage attributes.
+
+              The structure varies based on the `type` value. See the nested
+              options documentation for each storage type.
+            type: "dict"
+            required: true
+            options:
+
+              # ZFS Pool attributes
+              mountpoint:
+                description: |
+                  ZFS pool mountpoint (for `zpool` type).
+
+                  Use `none` to prevent automatic mounting of the pool root.
+                  Child datasets can still have their own mountpoints.
+
+                  Example: `none`, `/mnt/mypool`
+                type: "str"
+                required: false
+
+              vdevs:
+                description: |
+                  List of virtual devices (vdevs) for the ZFS pool.
+
+                  Only applicable for `type: zpool`.
+
+                  Each vdev defines a RAID configuration with its member disks.
+                  Multiple vdevs can be combined for additional capacity (striped
+                  across vdevs).
+
+                  Example:
+                  ```yaml
+                  vdevs:
+                    - type: "mirror"
+                      disks:
+                        - "/dev/disk/by-id/scsi-SATA_SSD1"
+                        - "/dev/disk/by-id/scsi-SATA_SSD2"
+                  ```
+                type: "list"
+                elements: "dict"
+                required: false
+                options:
+                  type:
+                    description: |
+                      Vdev RAID type.
+
+                      - `stripe`: Single disk, no redundancy (NOT recommended for
+                        important data)
+                      - `mirror`: Two or more disks mirrored (can lose n-1 disks)
+                      - `raidz1`: RAID-Z with single parity (can lose 1 disk,
+                        requires 2+ disks)
+                      - `raidz2`: RAID-Z with double parity (can lose 2 disks,
+                        requires 3+ disks)
+                      - `raidz3`: RAID-Z with triple parity (can lose 3 disks,
+                        requires 4+ disks)
+
+                      Disk count requirements:
+                        - `stripe`: exactly 1 disk
+                        - `mirror`: at least 2 disks
+                        - `raidz1`: at least 2 disks
+                        - `raidz2`: at least 3 disks
+                        - `raidz3`: at least 4 disks
+                    type: "str"
+                    required: true
+                    choices:
+                      - "stripe"
+                      - "mirror"
+                      - "raidz1"
+                      - "raidz2"
+                      - "raidz3"
+                  disks:
+                    description: |
+                      List of disk device paths for this vdev.
+
+                      Always use persistent device paths from `/dev/disk/by-id/`
+                      to ensure consistent identification across reboots.
+
+                      The role validates that:
+                        - All disks exist on the system
+                        - Disks don't contain existing data (unless
+                          `storage_force_cleanup: true`)
+                        - Disks aren't already part of a different pool
+
+                      Example:
+                      ```yaml
+                      disks:
+                        - "/dev/disk/by-id/scsi-SATA_Samsung_SSD_123"
+                        - "/dev/disk/by-id/scsi-SATA_Samsung_SSD_456"
+                      ```
+                    type: "list"
+                    elements: "str"
+                    required: true
+              pool_properties:
+                description: |
+                  ZFS pool properties (for `zpool` type).
+
+                  These are pool-level properties set at creation time. This is
+                  a passthrough of original ZFS pool properties.
+
+                  Common properties:
+                    - `ashift`: Sector size exponent (9=512B, 12=4K, 13=8K).
+                      Use `12` for modern drives with 4K sectors.
+                    - `autoexpand`: Auto-expand pool when larger disks added
+                      (`on`/`off`)
+                    - `autoreplace`: Auto-replace failed disks (`on`/`off`)
+                    - `failmode`: Behavior on write failure
+                      (`wait`/`continue`/`panic`)
+
+                  Example:
+                  ```yaml
+                  pool_properties:
+                    ashift: "12"
+                    autoexpand: "on"
+                  ```
+                type: "dict"
+                required: false
+
+              filesystem_properties:
+                description: |
+                  ZFS filesystem properties for the pool root (for `zpool` type).
+
+                  These properties are inherited by child datasets unless
+                  overridden. This is a passthrough of original ZFS filesystem
+                  properties.
+
+                  Common properties: `compression`, `atime`, `xattr`, `acltype`,
+                  `recordsize`
+
+                  See `zfs_properties` under `zfs_dataset` for detailed property
+                  descriptions.
+                type: "dict"
+                required: false
+
+
+              # ZFS Dataset attributes
+              zfs_properties:
+                description: |
+                  ZFS dataset properties (for `zfs_dataset` type).
+
+                  These properties configure the dataset's behavior, performance
+                  characteristics, and optional encryption. This is a passthrough
+                  of original ZFS dataset properties.
+
+                  Common properties:
+
+                  Storage behavior:
+                    - `mountpoint`: Where to mount the dataset (e.g., `/mnt/data`)
+                      Use `none` for unmounted datasets (e.g., zvol parents)
+                    - `compression`: Compression algorithm (`on`, `off`, `lz4`,
+                      `zstd`, `gzip-N`)
+                    - `atime`: Update access time on read (`on`/`off`). Disable
+                      for performance.
+                    - `recordsize`: Maximum block size (`128K` default, `1M` for
+                      large files)
+                    - `quota`: Maximum size limit (e.g., `100G`)
+                    - `reservation`: Guaranteed minimum space (e.g., `50G`)
+
+                  Metadata handling:
+                    - `xattr`: Extended attribute handling (`on`, `off`, `sa`).
+                      Use `sa` (system attribute) for performance.
+                    - `acltype`: ACL type (`off`, `posix`, `nfsv4`)
+                    - `dnodesize`: Dnode size (`legacy`, `auto`, `1k`-`16k`)
+
+                  Encryption (native ZFS encryption):
+                    - `encryption`: Encryption algorithm (`aes-256-gcm`
+                      recommended)
+                    - `keyformat`: Key format (`passphrase`, `raw`, `hex`)
+                    - `keylocation`: Key source (`prompt`, `file:///path/to/key`)
+                    - `passphrase`: The encryption passphrase (for
+                      `keylocation: prompt`)
+                    - `passphrase_old`: Previous passphrase(s) for key rotation
+                      (string or list)
+
+                  Note: `passphrase` and `passphrase_old` are special keys
+                  handled by the role and not passed directly to ZFS.
+
+                  Example (encrypted dataset):
+                  ```yaml
+                  zfs_properties:
+                    mountpoint: "/mnt/secure-data"
+                    compression: "on"
+                    atime: "off"
+                    xattr: "sa"
+                    encryption: "aes-256-gcm"
+                    keyformat: "passphrase"
+                    keylocation: "prompt"
+                    passphrase: "{{ vault_passphrase }}"
+                    passphrase_old:
+                      - "12345aaaaarrrrRR"
+                      - "456789bbbbbbbTTT"
+                  ```
+
+                  Example (high-performance dataset):
+                  ```yaml
+                  zfs_properties:
+                    mountpoint: "/mnt/vms"
+                    compression: "lz4"
+                    atime: "off"
+                    recordsize: "64K"
+                    xattr: "sa"
+                    acltype: "off"
+                  ```
+                type: "dict"
+                required: false
+
+              # NFS attributes
+              storage_properties:
+                description: |
+                  NFS mount properties (for `nfs` type).
+
+                  Configures NFS client mounts. The role validates server
+                  reachability before attempting to mount.
+                type: "dict"
+                required: false
+                options:
+
+                  src:
+                    description: |
+                      NFS server and export path.
+
+                      Format: `<server>:<export_path>`
+
+                      Example: `nas.example.com:/exports/backup`
+                    type: "str"
+                    required: true
+
+                  path:
+                    description: |
+                      Local mountpoint directory.
+
+                      The directory will be created if it doesn't exist.
+
+                      Example: `/mnt/nfs-backup`
+                    type: "str"
+                    required: true
+
+                  opts:
+                    description: |
+                      NFS mount options. This is a passthrough of the original
+                      mount options.
+
+                      Common options:
+                        - `defaults`: Standard mount options
+                        - `noatime`: Don't update access times (performance)
+                        - `nfsvers=4`: Force NFSv4
+                        - `soft`: Return errors on timeout (vs. `hard`)
+                        - `timeo=N`: Timeout in deciseconds
+                        - `retrans=N`: Number of retries
+
+                      Example: `defaults,noatime,nfsvers=4`
+                    type: "str"
+                    default: "defaults"
+
+                  state:
+                    description: |
+                      Desired mount state.
+
+                      - `mounted`: Mount and add to fstab
+                      - `present`: Add to fstab but don't mount
+                      - `unmounted`: Unmount but keep in fstab
+                      - `absent`: Unmount and remove from fstab
+                    type: "str"
+                    default: "mounted"
+                    choices:
+                      - "mounted"
+                      - "present"
+                      - "unmounted"
+                      - "absent"
+
+
+      pve_proxmox_storage_force_cleanup:
+        description: |
+          Allow automatic cleanup of existing data on disks for ZFS pool
+          creation.
+
+          DESTRUCTIVE OPERATION WARNING: When set to `true`, the role will
+          automatically wipe filesystem signatures and ZFS labels from disks
+          that have existing data but whose target pool does not exist.
+
+          This is a safety mechanism. By default (`false`), the role will fail
+          with detailed instructions if it encounters disks with existing data,
+          allowing you to manually verify and clean the disks.
+
+          Use cases for enabling:
+            - Fresh installations where disks are known to be empty or
+              recyclable
+            - Automated provisioning where disk contents are irrelevant
+            - Rebuilding pools after intentional destruction
+
+          The role will NEVER automatically clean disks that:
+            - Belong to a different existing ZFS pool (requires manual
+              intervention)
+            - Are part of an existing pool that matches the configuration
+
+          Example:
+          ```yaml
+          # Enable automatic disk cleanup (DANGEROUS)
+          pve_proxmox_storage_force_cleanup: true
+          ```
+        type: "bool"
+        default: false

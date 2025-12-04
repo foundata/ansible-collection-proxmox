@@ -30,3 +30,7 @@ pve_proxmox_fw_node_options: {}
 pve_proxmox_fw_node_rules: []
 
 pve_proxmox_datacentercfg: {}
+
+pve_proxmox_storage: []
+
+pve_proxmox_storage_force_cleanup: false
