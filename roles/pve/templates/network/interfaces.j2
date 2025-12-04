@@ -1,0 +1,104 @@
+# {{ ansible_managed }}
+# Reference: https://manpages.debian.org/trixie/ifupdown/interfaces.5.en.html
+
+{#
+  Normalize and/or validate input
+
+  tpl_interface_dataset:
+    options_before: "..." # Optional lines (interfaces(5) syntax) placed before
+                          # all other options in the generated file.
+    sections:
+        # Generates a highlighted comment above interface definitions.
+        # A section is a logical unit used to group related interfaces with a
+        # descriptive headline and optional comments for human readability.
+      - title: "..."
+        comment: "..." # Optional comment block below title, above interfaces.
+        interfaces:    # List of interfaces to include in this section.
+
+        - name: "bond_main.0001"
+          method: "manual"
+          auto: true
+          iface_properties: # Key-value pairs, compatible with 'interfaces(5)' syntax.
+            mtu: 1500
+            comment: "0001_net" # special key, will be added with proper syntax.
+       [...]
+    options_after: "..." # Optional lines (interfaces(5) syntax) placed after
+                         # all other options in the generated file.
+#}
+
+{#- accept plural list or singular dict -#}
+{%- set datasets =
+      (tpl_interface_datasets if tpl_interface_datasets is defined else
+       [tpl_interface_dataset] if tpl_interface_dataset is defined else
+       []) -%}
+
+{%- set ns = namespace(before_lines=[]) %}
+{%- for dataset in datasets %}
+{%-   if dataset.get('options_before') %}
+{%-     for line in dataset['options_before'].strip().split('\n') %}
+{%-       if line not in ns.before_lines %}
+{%-         set ns.before_lines = ns.before_lines + [line] %}
+{%-       endif %}
+{%-     endfor %}
+{%-   endif %}
+{%- endfor %}
+{%- for line in ns.before_lines %}
+{{ line }}
+{%    if loop['last'] %}
+
+{%    endif %}
+{% endfor %}
+
+
+{% for dataset in datasets %}
+{%   for section in dataset['sections'] %}
+### {{ section['title'] }}
+
+{%     if section.get('comment') %}
+{%       for line in section['comment'].strip().split('\n') %}
+# {{ line }}
+{%       endfor %}
+
+{%     endif %}
+{%     for interface in section['interfaces'] %}
+{%       if interface.get('comment') %}
+{%         for line in interface['comment'].strip().split('\n') %}
+# {{ line }}
+{%         endfor %}
+{%       endif %}
+auto {{ interface['name'] }}
+iface {{ interface['name'] }} inet {{ interface['method'] }}
+{%       if interface.get('iface_properties') %}
+{%         for key, value in interface['iface_properties'].items() %}
+{%           if key == 'comment' %}
+    # {{ value }}
+{%           else %}
+    {{ key }} {{ value }}
+{%           endif %}
+{%         endfor %}
+
+{%       endif %}
+{%     endfor %}
+{%     if not (loop['last'] and (loop['index'] == (dataset['sections'] | length)) and (loop['index0'] == (datasets | length - 1))) %}
+
+
+{%     endif %}
+{%   endfor %}
+{% endfor %}
+
+{%- set ns = namespace(after_lines=[]) %}
+{%- for dataset in datasets %}
+{%-   if dataset.get('options_after') %}
+{%-     for line in dataset['options_after'].strip().split('\n') %}
+{%-       if line not in ns.after_lines %}
+{%-         set ns.after_lines = ns.after_lines + [line] %}
+{%-       endif %}
+{%-     endfor %}
+{%-   endif %}
+{%- endfor %}
+{%- if ns.after_lines %}
+{%-   for line in ns.after_lines %}
+{{ line }}
+{%-   endfor %}
+{{ '\n' -}}
+{%- endif %}
