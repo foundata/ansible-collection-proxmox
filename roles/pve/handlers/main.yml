@@ -10,3 +10,10 @@
     - __pve_grub_update['stdout'] is search('(?i)Generating')
   register: __pve_grub_update
   listen: "pve_proxmox: update grub"
+
+
+- name: "Handlers | Restart network service"
+  ansible.builtin.service:
+    name: "{{ network_service_name | default('networking') }}"
+    state: "restarted"
+  listen: "pve_proxmox: restart network"

@@ -1,0 +1,64 @@
+# Network: Manage interface configuration of Proxmox Virtual Environment (PVE)
+
+---
+
+- name: "Network | Render /etc/network/interfaces.d/10-host"
+  ansible.builtin.template:
+    src: "network/interfaces.j2"
+    dest: "/etc/network/interfaces.d/10-host"
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=r" # 0644
+  vars:
+    tpl_interface_datasets:
+      # Pass (and/or adjust) Ansible inventory group_vars / host_vars
+      - "{{ pve_proxmox_net_ifaces_host_specific }}"
+      - "{{ pve_proxmox_net_ifaces_host_shared }}"
+  notify:
+    - "pve_proxmox: restart network"
+
+
+- name: "Network | Ensure /etc/network/interfaces exists"
+  ansible.builtin.file:
+    path: "/etc/network/interfaces"
+    state: "touch"
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=r" # 0644
+    modification_time: "preserve"
+    access_time: "preserve"
+  notify:
+    - "pve_proxmox: restart network"
+
+
+- name: "Network | Backup existing /etc/network/interfaces (best effort)"
+  ansible.builtin.copy:
+    src: "/etc/network/interfaces"
+    dest: "{{ __pve_tmpdir_backup['path'] }}/interfaces"
+    remote_src: true
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=" # 0640
+  when:
+    - pve_proxmox_tmpbackupfiles
+  failed_when:
+    - false
+  changed_when:
+    - false
+
+
+- name: "Network | Render /etc/network/interfaces"
+  ansible.builtin.template:
+    src: "network/interfaces.j2"
+    dest: "/etc/network/interfaces"
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=r" # 0644
+  vars:
+    # Pass (and/or adjust) Ansible inventory group_vars / host_vars
+    tpl_interface_datasets:
+      - "{{ pve_proxmox_net_ifaces_workload_shared }}"
+      - "{{ pve_proxmox_net_ifaces_workload_specific }}"
+  notify:
+    - "pve_proxmox: restart network"
+

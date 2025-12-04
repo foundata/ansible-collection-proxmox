@@ -53,3 +53,619 @@ argument_specs:
              support.
         type: "bool"
         default: true
+
+      pve_proxmox_net_ifaces_host_shared:
+        description: |
+          Network interface definitions for `/etc/network/interfaces.d/10-host`
+          shared across all hosts in the inventory group.
+
+          These interfaces are NOT visible in the PVE web UI and are intended
+          for backend networking configurations. Use this variable for VLAN
+          devices, bond members, or configurations that should remain hidden
+          from VMs and administrators.
+
+          Typically defined in `group_vars/` and merged with
+          `pve_proxmox_net_ifaces_host_specific` during template rendering. The
+          shared definitions are processed after host-specific ones.
+
+          See `pve_proxmox_net_ifaces_host_specific` for the data structure
+          documentation.
+        type: "dict"
+        default: {}
+        options:
+          options_before:
+            description: |
+              Optional lines placed before all sections in the generated file.
+              Uses interfaces(5) syntax.
+
+              Duplicate lines across merged datasets are automatically
+              deduplicated during rendering.
+            type: "str"
+            required: false
+          sections:
+            description: |
+              List of logical sections grouping related interfaces.
+
+              Each section generates a highlighted comment header (using the
+              `title` value) for improved human readability when inspecting the
+              generated configuration file.
+            type: "list"
+            elements: "dict"
+            required: false
+            options:
+              title:
+                description: |
+                  Section title rendered as a highlighted comment header above
+                  the interface definitions.
+
+                  Example output: `### Proxmox VE (PVE) VLAN interfaces`
+                type: "str"
+                required: true
+              comment:
+                description: |
+                  Optional comment block rendered below the title and above the
+                  interface definitions.
+
+                  Each line is automatically prefixed with `# ` in the output.
+                  Use this for explanatory text about the section's purpose.
+                type: "str"
+                required: false
+              interfaces:
+                description: |
+                  List of network interface definitions within this section.
+
+                  Each interface generates an `auto` directive (if enabled) and
+                  an `iface` stanza with the specified method and properties.
+                type: "list"
+                elements: "dict"
+                required: true
+                options:
+                  name:
+                    description: |
+                      Interface name as recognized by the kernel.
+
+                      Examples: `bond_main.0001`, `br0020`, `main1`
+                    type: "str"
+                    required: true
+                  method:
+                    description: |
+                      Address assignment method for the interface as defined in
+                      interfaces(5).
+
+                      Common values:
+
+                      - `manual`: No automatic IP configuration. Used for bridge
+                        members, bond slaves, or interfaces managed elsewhere.
+                      - `static`: Fixed IP address specified via `iface_properties`.
+                      - `dhcp`: Obtain address via DHCP client.
+                      - `loopback`: Loopback interface (typically only for `lo`).
+                    type: "str"
+                    required: true
+                    choices:
+                      - "manual"
+                      - "static"
+                      - "dhcp"
+                      - "loopback"
+                  auto:
+                    description: |
+                      Whether to automatically bring up the interface at boot.
+
+                      When `true`, renders an `auto <name>` directive before the
+                      `iface` stanza.
+                    type: "bool"
+                    default: true
+                  comment:
+                    description: |
+                      Optional multi-line comment rendered above the interface
+                      definition (before the `auto` directive).
+
+                      Use this for lengthy explanations about the interface's
+                      purpose or configuration rationale. Each line is prefixed
+                      with `# `.
+
+                      For short inline comments within the `iface` block, use
+                      `iface_properties.comment` instead.
+                    type: "str"
+                    required: false
+                  iface_properties:
+                    description: |
+                      Key-value pairs for interfaces(5) options rendered within
+                      the `iface` stanza.
+
+                      All keys are rendered as `    <key> <value>` lines with
+                      proper indentation, except for the special `comment` key
+                      which renders as `    # <value>`.
+
+                      Common properties by interface type:
+
+                      Static addressing:
+                        - `address`: IP address with CIDR notation (e.g., `10.0.0.1/24`)
+                        - `gateway`: Default gateway IP address
+
+                      Bonding:
+                        - `bond-slaves`: Space-separated list of member interfaces
+                        - `bond-mode`: Bonding mode (e.g., `802.3ad` for LACP)
+                        - `bond-miimon`: Link monitoring interval in milliseconds
+                        - `bond-lacp-rate`: LACP rate (`slow` or `fast`)
+                        - `bond-xmit-hash-policy`: Transmit hash policy
+
+                      Bridging:
+                        - `bridge-ports`: Space-separated list of member interfaces
+                        - `bridge-stp`: Spanning tree protocol (`on` or `off`)
+                        - `bridge-fd`: Forwarding delay in seconds
+
+                      General:
+                        - `mtu`: Maximum transmission unit size
+                        - `comment`: Inline comment within the interface block
+                    type: "dict"
+                    required: false
+          options_after:
+            description: |
+              Optional lines placed after all sections in the generated file.
+              Uses interfaces(5) syntax.
+
+              Duplicate lines across merged datasets are automatically
+              deduplicated during rendering.
+            type: "str"
+            required: false
+
+      pve_proxmox_net_ifaces_host_specific:
+        description: |
+          Network interface definitions for `/etc/network/interfaces.d/10-host`
+          specific to individual hosts.
+
+          These interfaces are NOT visible in the PVE web UI and are intended
+          for backend networking configurations. Use this variable for
+          host-specific physical interfaces, bonds, management bridges, or VLAN
+          subinterfaces that should remain hidden from VMs.
+
+          Typically defined in `host_vars/` and merged with
+          `pve_proxmox_net_ifaces_host_shared` during template rendering. The
+          host-specific definitions are processed before shared ones.
+
+          Data structure (identical for all `pve_proxmox_net_ifaces_*` variables):
+
+          ```yaml
+          pve_proxmox_net_ifaces_host_specific:
+            options_before: |
+              # Optional header lines using interfaces(5) syntax
+              source /etc/network/interfaces.d/*
+
+            sections:
+              - title: "Section title for human readability"
+                comment: |
+                  Optional multi-line comment explaining this section.
+                  Rendered with '# ' prefix on each line.
+
+                interfaces:
+                  - name: "bond_main"
+                    method: "manual"
+                    auto: true
+                    comment: |
+                      Optional multi-line comment above the interface.
+                    iface_properties:
+                      bond-slaves: "eth0 eth1"
+                      bond-mode: "802.3ad"
+                      mtu: 1500
+                      comment: "Inline comment within iface block"
+
+                  - name: "bond_main.0020"
+                    method: "static"
+                    auto: true
+                    iface_properties:
+                      address: "10.0.20.1/24"
+                      gateway: "10.0.20.254"
+                      comment: "0020_management"
+
+            options_after: |
+              # Optional footer lines using interfaces(5) syntax
+          ```
+        type: "dict"
+        default: {}
+        options:
+          options_before:
+            description: |
+              Optional lines placed before all sections in the generated file.
+              Uses interfaces(5) syntax.
+
+              Duplicate lines across merged datasets are automatically
+              deduplicated during rendering.
+            type: "str"
+            required: false
+          sections:
+            description: |
+              List of logical sections grouping related interfaces.
+
+              Each section generates a highlighted comment header (using the
+              `title` value) for improved human readability when inspecting the
+              generated configuration file.
+            type: "list"
+            elements: "dict"
+            required: false
+            options:
+              title:
+                description: |
+                  Section title rendered as a highlighted comment header above
+                  the interface definitions.
+
+                  Example output: `### Proxmox VE (PVE) main connection (LACP, trunk)`
+                type: "str"
+                required: true
+              comment:
+                description: |
+                  Optional comment block rendered below the title and above the
+                  interface definitions.
+
+                  Each line is automatically prefixed with `# ` in the output.
+                  Use this for explanatory text about the section's purpose.
+                type: "str"
+                required: false
+              interfaces:
+                description: |
+                  List of network interface definitions within this section.
+
+                  Each interface generates an `auto` directive (if enabled) and
+                  an `iface` stanza with the specified method and properties.
+                type: "list"
+                elements: "dict"
+                required: true
+                options:
+                  name:
+                    description: |
+                      Interface name as recognized by the kernel.
+
+                      Examples: `main1`, `main2`, `bond_main`, `bond_main.0020`,
+                      `br0020`, `admfb`
+                    type: "str"
+                    required: true
+                  method:
+                    description: |
+                      Address assignment method for the interface as defined in
+                      interfaces(5).
+
+                      Common values:
+
+                      - `manual`: No automatic IP configuration. Used for bridge
+                        members, bond slaves, or interfaces managed elsewhere.
+                      - `static`: Fixed IP address specified via `iface_properties`.
+                      - `dhcp`: Obtain address via DHCP client.
+                      - `loopback`: Loopback interface (typically only for `lo`).
+                    type: "str"
+                    required: true
+                    choices:
+                      - "manual"
+                      - "static"
+                      - "dhcp"
+                      - "loopback"
+                  auto:
+                    description: |
+                      Whether to automatically bring up the interface at boot.
+
+                      When `true`, renders an `auto <name>` directive before the
+                      `iface` stanza.
+                    type: "bool"
+                    default: true
+                  comment:
+                    description: |
+                      Optional multi-line comment rendered above the interface
+                      definition (before the `auto` directive).
+
+                      Use this for lengthy explanations about the interface's
+                      purpose or configuration rationale. Each line is prefixed
+                      with `# `.
+
+                      For short inline comments within the `iface` block, use
+                      `iface_properties.comment` instead.
+                    type: "str"
+                    required: false
+                  iface_properties:
+                    description: |
+                      Key-value pairs for interfaces(5) options rendered within
+                      the `iface` stanza.
+
+                      All keys are rendered as `    <key> <value>` lines with
+                      proper indentation, except for the special `comment` key
+                      which renders as `    # <value>`.
+
+                      See `pve_proxmox_net_ifaces_host_shared` for common properties.
+                    type: "dict"
+                    required: false
+          options_after:
+            description: |
+              Optional lines placed after all sections in the generated file.
+              Uses interfaces(5) syntax.
+
+              Duplicate lines across merged datasets are automatically
+              deduplicated during rendering.
+            type: "str"
+            required: false
+
+      pve_proxmox_net_ifaces_workload_shared:
+        description: |
+          Network interface definitions for `/etc/network/interfaces` shared
+          across all hosts in the inventory group.
+
+          These interfaces ARE visible in the PVE web UI and available for
+          assignment to virtual machines and containers. Use this variable for
+          workload bridge interfaces (typically named `vmbr<VLAN_ID>`) that VMs
+          and containers attach to.
+
+          Typically defined in `group_vars/` and merged with
+          `pve_proxmox_net_ifaces_workload_specific` during template rendering. The
+          shared definitions are processed after host-specific ones.
+
+          The `options_before` value typically includes
+          `source /etc/network/interfaces.d/*` to include host-specific
+          configurations.
+
+          See `pve_proxmox_net_ifaces_host_specific` for the data structure
+          documentation.
+        type: "dict"
+        default: {}
+        options:
+          options_before:
+            description: |
+              Optional lines placed before all sections in the generated file.
+              Uses interfaces(5) syntax.
+
+              For workload interfaces, this typically includes:
+              ```
+              source /etc/network/interfaces.d/*
+              ```
+
+              Duplicate lines across merged datasets are automatically
+              deduplicated during rendering.
+            type: "str"
+            required: false
+          sections:
+            description: |
+              List of logical sections grouping related interfaces.
+
+              Each section generates a highlighted comment header (using the
+              `title` value) for improved human readability when inspecting the
+              generated configuration file.
+            type: "list"
+            elements: "dict"
+            required: false
+            options:
+              title:
+                description: |
+                  Section title rendered as a highlighted comment header above
+                  the interface definitions.
+
+                  Example output: `### Proxmox VE (PVE) workload bridge interfaces`
+                type: "str"
+                required: true
+              comment:
+                description: |
+                  Optional comment block rendered below the title and above the
+                  interface definitions.
+
+                  Each line is automatically prefixed with `# ` in the output.
+                  Use this for explanatory text about the section's purpose.
+                type: "str"
+                required: false
+              interfaces:
+                description: |
+                  List of network interface definitions within this section.
+
+                  Each interface generates an `auto` directive (if enabled) and
+                  an `iface` stanza with the specified method and properties.
+                type: "list"
+                elements: "dict"
+                required: true
+                options:
+                  name:
+                    description: |
+                      Interface name as recognized by the kernel.
+
+                      PVE convention uses `vmbr<VLAN_ID>` for workload bridges.
+
+                      Examples: `vmbr0001`, `vmbr0020`, `vmbr0254`
+                    type: "str"
+                    required: true
+                  method:
+                    description: |
+                      Address assignment method for the interface as defined in
+                      interfaces(5).
+
+                      Common values:
+
+                      - `manual`: No automatic IP configuration. Used for bridge
+                        members, bond slaves, or interfaces managed elsewhere.
+                      - `static`: Fixed IP address specified via `iface_properties`.
+                      - `dhcp`: Obtain address via DHCP client.
+                      - `loopback`: Loopback interface (typically only for `lo`).
+                    type: "str"
+                    required: true
+                    choices:
+                      - "manual"
+                      - "static"
+                      - "dhcp"
+                      - "loopback"
+                  auto:
+                    description: |
+                      Whether to automatically bring up the interface at boot.
+
+                      When `true`, renders an `auto <name>` directive before the
+                      `iface` stanza.
+                    type: "bool"
+                    default: true
+                  comment:
+                    description: |
+                      Optional multi-line comment rendered above the interface
+                      definition (before the `auto` directive).
+
+                      Use this for lengthy explanations about the interface's
+                      purpose or configuration rationale. Each line is prefixed
+                      with `# `.
+
+                      For short inline comments within the `iface` block, use
+                      `iface_properties.comment` instead.
+                    type: "str"
+                    required: false
+                  iface_properties:
+                    description: |
+                      Key-value pairs for interfaces(5) options rendered within
+                      the `iface` stanza.
+
+                      All keys are rendered as `    <key> <value>` lines with
+                      proper indentation, except for the special `comment` key
+                      which renders as `    # <value>`.
+
+                      Common properties for workload bridges:
+
+                      - `bridge-ports`: Member interface (e.g., `bond_main.0001`)
+                      - `bridge-stp`: Spanning tree protocol (`on` or `off`)
+                      - `bridge-fd`: Forwarding delay (typically `0`)
+                      - `comment`: VLAN name or description
+
+                      See `pve_proxmox_net_ifaces_host_shared` for additional common
+                      properties.
+                    type: "dict"
+                    required: false
+          options_after:
+            description: |
+              Optional lines placed after all sections in the generated file.
+              Uses interfaces(5) syntax.
+
+              Duplicate lines across merged datasets are automatically
+              deduplicated during rendering.
+            type: "str"
+            required: false
+
+      pve_proxmox_net_ifaces_workload_specific:
+        description: |
+          Network interface definitions for `/etc/network/interfaces` specific
+          to individual hosts.
+
+          These interfaces ARE visible in the PVE web UI and available for
+          assignment to virtual machines and containers. Use this variable for
+          host-specific workload interfaces such as Corosync cluster links,
+          special-purpose bridges, or interfaces unique to a particular node.
+
+          Typically defined in `host_vars/` and merged with
+          `pve_proxmox_net_ifaces_workload_shared` during template rendering. The
+          host-specific definitions are processed before shared ones.
+
+          See `pve_proxmox_net_ifaces_host_specific` for the data structure
+          documentation.
+        type: "dict"
+        default: {}
+        options:
+          options_before:
+            description: |
+              Optional lines placed before all sections in the generated file.
+              Uses interfaces(5) syntax.
+
+              Duplicate lines across merged datasets are automatically
+              deduplicated during rendering.
+            type: "str"
+            required: false
+          sections:
+            description: |
+              List of logical sections grouping related interfaces.
+
+              Each section generates a highlighted comment header (using the
+              `title` value) for improved human readability when inspecting the
+              generated configuration file.
+            type: "list"
+            elements: "dict"
+            required: false
+            options:
+              title:
+                description: |
+                  Section title rendered as a highlighted comment header above
+                  the interface definitions.
+
+                  Example output: `### Corosync links`
+                type: "str"
+                required: true
+              comment:
+                description: |
+                  Optional comment block rendered below the title and above the
+                  interface definitions.
+
+                  Each line is automatically prefixed with `# ` in the output.
+                  Use this for explanatory text about the section's purpose.
+                type: "str"
+                required: false
+              interfaces:
+                description: |
+                  List of network interface definitions within this section.
+
+                  Each interface generates an `auto` directive (if enabled) and
+                  an `iface` stanza with the specified method and properties.
+                type: "list"
+                elements: "dict"
+                required: true
+                options:
+                  name:
+                    description: |
+                      Interface name as recognized by the kernel.
+
+                      Examples: `sync1`, `sync2` (for Corosync links)
+                    type: "str"
+                    required: true
+                  method:
+                    description: |
+                      Address assignment method for the interface as defined in
+                      interfaces(5).
+
+                      Common values:
+
+                      - `manual`: No automatic IP configuration. Used for bridge
+                        members, bond slaves, or interfaces managed elsewhere.
+                      - `static`: Fixed IP address specified via `iface_properties`.
+                      - `dhcp`: Obtain address via DHCP client.
+                      - `loopback`: Loopback interface (typically only for `lo`).
+                    type: "str"
+                    required: true
+                    choices:
+                      - "manual"
+                      - "static"
+                      - "dhcp"
+                      - "loopback"
+                  auto:
+                    description: |
+                      Whether to automatically bring up the interface at boot.
+
+                      When `true`, renders an `auto <name>` directive before the
+                      `iface` stanza.
+                    type: "bool"
+                    default: true
+                  comment:
+                    description: |
+                      Optional multi-line comment rendered above the interface
+                      definition (before the `auto` directive).
+
+                      Use this for lengthy explanations about the interface's
+                      purpose or configuration rationale. Each line is prefixed
+                      with `# `.
+
+                      For short inline comments within the `iface` block, use
+                      `iface_properties.comment` instead.
+                    type: "str"
+                    required: false
+
+                  iface_properties:
+                    description: |
+                      Key-value pairs for interfaces(5) options rendered within
+                      the `iface` stanza.
+
+                      All keys are rendered as `    <key> <value>` lines with
+                      proper indentation, except for the special `comment` key
+                      which renders as `    # <value>`.
+
+                      See `pve_proxmox_net_ifaces_host_shared` for common properties.
+                    type: "dict"
+                    required: false
+          options_after:
+            description: |
+              Optional lines placed after all sections in the generated file.
+              Uses interfaces(5) syntax.
+
+              Duplicate lines across merged datasets are automatically
+              deduplicated during rendering.
+            type: "str"
+            required: false

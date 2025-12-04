@@ -10,3 +10,11 @@
 pve_proxmox_tmpbackupfiles: true
 
 pve_proxmox_iommu_manage: true
+
+pve_proxmox_net_ifaces_host_specific: {}
+
+pve_proxmox_net_ifaces_host_shared: {}
+
+pve_proxmox_net_ifaces_workload_shared: {}
+
+pve_proxmox_net_ifaces_workload_specific: {}
