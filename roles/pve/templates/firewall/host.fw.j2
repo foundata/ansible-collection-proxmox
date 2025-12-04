@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+# PVE node specific firewall configuration for {{ ansible_hostname }}
+# Includes: options, rules
+# Reference: https://pve.proxmox.com/wiki/Firewall
+
+{# Normalize and/or validate input #}
+{%- set fw_options = tpl_fw_options | default({}, true) -%}
+{%- set fw_rules = tpl_fw_rules | default([], true) -%}
+
+{# Node-specific firewall options #}
+{% include 'pve/firewall/_options_block.j2' %}
+
+{# Node-specific firewall rules #}
+{% include 'pve/firewall/_rules_block.j2' %}

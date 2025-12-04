@@ -14,8 +14,8 @@ argument_specs:
     description: |
       Configures Proxmox Virtual Environment (PVE) hosts:
 
-      Manages network interfaces, IOMMU settings, and other OS-level configurations
-      as well as the storage, firewall and datacenter settings.
+      Manages network interfaces, IOMMU settings, and other OS-level
+      configurations as well as the storage, firewall and datacenter settings.
     options:
 
       pve_proxmox_tmpbackupfiles:
@@ -80,6 +80,7 @@ argument_specs:
             - https://pve.proxmox.com/wiki/Network_Configuration#_manual_method
 
           Example:
+
           ```yaml
           pve_proxmox_net_altnames:
             - type: "en"
@@ -793,5 +794,620 @@ argument_specs:
 
               Duplicate lines across merged datasets are automatically
               deduplicated during rendering.
+            type: "str"
+            required: false
+
+      pve_proxmox_fw_cluster_options:
+        description: |
+          Cluster-wide (datacenter) firewall options applied to all PVE hosts.
+
+          This is a passthrough of original Proxmox VE firewall options. Keys
+          and values are rendered directly into the `[OPTIONS]` section of
+          `/etc/pve/firewall/cluster.fw`.
+
+          Nested dictionaries are automatically converted to the PVE
+          `key=value,key2=value2` format (e.g., for `log_ratelimit`).
+
+          Common options:
+
+          - `enable`: Enable/disable the cluster firewall (`0` or `1`,
+            default: `0`)
+          - `ebtables`: Enable ebtables rules cluster-wide (`0` or `1`,
+            default: `1`)
+          - `policy_in`: Default policy for incoming traffic (`ACCEPT`,
+            `DROP`, `REJECT`, default: `DROP`)
+          - `policy_out`: Default policy for outgoing traffic (`ACCEPT`,
+            `DROP`, `REJECT`, default: `ACCEPT`)
+          - `policy_forward`: Default policy for forwarded traffic (`ACCEPT`,
+            `DROP`, `REJECT`, default: `ACCEPT`, PVE 8.3+)
+          - `log_ratelimit`: Rate limiting for firewall log messages (dict with
+            `enable`, `rate`, `burst` keys)
+
+          Reference:
+            https://pve.proxmox.com/wiki/Firewall#pve_firewall_cluster_wide_setup
+
+          Example:
+          ```yaml
+          pve_proxmox_fw_cluster_options:
+            enable: 1
+            ebtables: 1
+            log_ratelimit:
+              burst: 5
+              enable: 1
+              rate: "1/second"
+            policy_in: "DROP"
+            policy_out: "ACCEPT"
+            policy_forward: "ACCEPT"
+          ```
+        type: "dict"
+        default: {}
+
+      pve_proxmox_fw_cluster_aliases:
+        description: |
+          Cluster-wide IP aliases for use in firewall rules.
+
+          Aliases provide speakable, stable names for IP addresses and networks.
+          Once defined, aliases can be referenced in rules, IP sets, and other
+          aliases using the `dc/<alias_name>` syntax.
+
+          Each alias generates a line in the `[ALIASES]` section of
+          `/etc/pve/firewall/cluster.fw`.
+
+          Reference:
+            https://pve.proxmox.com/wiki/Firewall#pve_firewall_ip_aliases
+
+          Example:
+          ```yaml
+          pve_proxmox_fw_cluster_aliases:
+            - name: "gateway-main"
+              ip: "10.1.1.254"
+              comment: "Main gateway router"
+
+            - name: "pve-node1"
+              ip: "10.1.1.10"
+              comment: "PVE node 1 management IP"
+
+            - name: "admin-network"
+              ip: "10.123.0.0/24"
+              comment: "Admin VLAN"
+          ```
+        type: "list"
+        elements: "dict"
+        default: []
+        options:
+          name:
+            description: |
+              Alias name used to reference this IP address or network.
+
+              Must start with a letter and contain only alphanumeric characters,
+              underscores, or hyphens (`^[A-Za-z][A-Za-z0-9_-]*$`).
+
+              Reference in rules and IP sets using `dc/<name>` prefix.
+
+              Example: `gateway-main` (referenced as `dc/gateway-main`)
+            type: "str"
+            required: true
+          ip:
+            description: |
+              IP address or network in IPv4 or IPv6 format.
+
+              Supports CIDR notation for networks (e.g., `10.0.0.0/24`).
+
+              Examples:
+                - `10.1.1.2` (single host)
+                - `10.1.2.0/24` (network)
+                - `2001:db8::1` (IPv6 host)
+                - `2001:db8::/32` (IPv6 network)
+            type: "str"
+            required: true
+
+          comment:
+            description: |
+              Optional human-readable description of the alias.
+
+              Rendered as a comment after the alias definition.
+            type: "str"
+            required: false
+
+
+      pve_proxmox_fw_cluster_ipsets:
+        description: |
+          Cluster-wide IP sets for use in firewall rules.
+
+          IP sets are reusable collections of IP addresses, networks, and
+          aliases. They simplify rule management by allowing a single rule to
+          match multiple addresses.
+
+          Each IP set generates an `[IPSET <name>]` section in
+          `/etc/pve/firewall/cluster.fw`.
+
+          Reference IP sets in rules using the `+dc/<ipset_name>` syntax
+          (note the `+` prefix).
+
+          Reference:
+            https://pve.proxmox.com/wiki/Firewall#pve_firewall_ip_sets
+
+          Example:
+          ```yaml
+          pve_proxmox_fw_cluster_ipsets:
+            - name: "trusted_networks"
+              comment: "Networks allowed to access management"
+              entries:
+                - ip: "10.1.20.0/24"
+                  comment: "Management VLAN"
+                - ip: "10.1.2.0/24"
+                  comment: "Admin VLAN"
+
+            - name: "pve_nodes"
+              comment: "All PVE cluster nodes"
+              entries:
+                - ip: "dc/pve-node1"
+                  comment: "Node 1"
+                - ip: "dc/pve-node2"
+                  comment: "Node 2"
+          ```
+        type: "list"
+        elements: "dict"
+        default: []
+        options:
+          name:
+            description: |
+              IP set name used to reference this collection.
+
+              Must start with a letter and contain only alphanumeric characters,
+              underscores, or hyphens (`^[A-Za-z][A-Za-z0-9_-]*$`).
+
+              Reference in rules using `+dc/<name>` prefix (note the `+`).
+
+              Example: `trusted_networks` (referenced as `+dc/trusted_networks`)
+            type: "str"
+            required: true
+          comment:
+            description: |
+              Optional human-readable description of the IP set.
+
+              Rendered as a comment after the `[IPSET <name>]` header.
+            type: "str"
+            required: false
+          entries:
+            description: |
+              List of IP addresses, networks, or alias references in this set.
+            type: "list"
+            elements: "dict"
+            required: true
+            options:
+              ip:
+                description: |
+                  IP address, network (CIDR), or alias reference.
+
+                  Supported formats:
+                    - IPv4 address: `10.1.20.110`
+                    - IPv4 network: `10.1.20.0/24`
+                    - IPv6 address: `2001:db8::1`
+                    - IPv6 network: `2001:db8::/32`
+                    - Cluster alias: `dc/<alias_name>`
+                    - Guest alias: `guest/<alias_name>`
+                type: "str"
+                required: true
+              comment:
+                description: |
+                  Optional human-readable description of this entry.
+
+                  Rendered as a comment after the entry.
+                type: "str"
+                required: false
+              nomatch:
+                description: |
+                  Exclude this entry from the IP set (negation).
+
+                  When `true`, the entry is prefixed with `!` in the output,
+                  meaning traffic matching this entry will NOT match the IP set.
+                  Useful for creating exceptions within a broader network range.
+
+                  Example: Allow `10.0.0.0/24` except `10.0.0.1`:
+                  ```yaml
+                  entries:
+                    - ip: "10.0.0.0/24"
+                    - ip: "10.0.0.1"
+                      nomatch: true
+                  ```
+                type: "bool"
+                default: false
+
+      pve_proxmox_fw_cluster_securitygroups:
+        description: |
+          Cluster-wide security groups (reusable rule collections).
+
+          Security groups bundle multiple firewall rules under a single name,
+          allowing them to be applied as a unit to hosts, VMs, or containers.
+          This promotes rule reuse and simplifies management.
+
+          Each security group generates a `[group <name>]` section in
+          `/etc/pve/firewall/cluster.fw`.
+
+          Reference security groups in the `[RULES]` section using:
+          `GROUP <group_name>`
+
+          Reference:
+            https://pve.proxmox.com/wiki/Firewall#pve_firewall_security_groups
+
+          Example:
+          ```yaml
+          pve_proxmox_fw_cluster_securitygroups:
+            - name: "allow_web_out"
+              comment: "Allow HTTP/HTTPS outbound"
+              rules:
+                - direction: "OUT"
+                  action: "ACCEPT"
+                  proto: "tcp"
+                  dport: "80,443"
+                  comment: "HTTP(S) outbound"
+
+            - name: "allow_ssh_in"
+              comment: "Allow SSH from trusted networks"
+              rules:
+                - direction: "IN"
+                  action: "SSH(ACCEPT)"
+                  source: "+dc/trusted_networks"
+                  comment: "SSH inbound"
+          ```
+        type: "list"
+        elements: "dict"
+        default: []
+        options:
+          name:
+            description: |
+              Security group name.
+
+              Must start with a letter and contain only alphanumeric characters,
+              underscores, or hyphens (`^[A-Za-z][A-Za-z0-9_-]*$`).
+
+              Reference in rules using `GROUP <name>`.
+            type: "str"
+            required: true
+          comment:
+            description: |
+              Optional human-readable description of the security group.
+
+              Rendered as a comment after the `[group <name>]` header.
+            type: "str"
+            required: false
+          rules:
+            description: |
+              List of firewall rules within this security group.
+
+              See `pve_proxmox_fw_cluster_rules` for the rule data structure.
+            type: "list"
+            elements: "dict"
+            required: true
+
+      pve_proxmox_fw_cluster_rules:
+        description: |
+          Cluster-wide firewall rules applied to all PVE hosts.
+
+          Rules define traffic filtering policies. Each rule generates a line
+          in the `[RULES]` section of `/etc/pve/firewall/cluster.fw`.
+
+          Rules can reference aliases (`dc/<name>`), IP sets (`+dc/<name>`),
+          security groups (`GROUP <name>`), and PVE macros (`MACRO(ACTION)`).
+
+          Reference:
+            https://pve.proxmox.com/wiki/Firewall#_firewall_rules
+
+          Example:
+          ```yaml
+          pve_proxmox_fw_cluster_rules:
+            # Apply a security group
+            - action: "GROUP"
+              security_group: "allow_pve_mgmt_in"
+
+            # Direct rule with macro
+            - direction: "IN"
+              action: "SSH(ACCEPT)"
+              source: "+dc/trusted_networks"
+              comment: "SSH from trusted networks"
+
+            # Direct rule with protocol and port
+            - direction: "IN"
+              action: "ACCEPT"
+              proto: "tcp"
+              dport: 8006
+              source: "+dc/trusted_networks"
+              comment: "PVE Web UI"
+          ```
+        type: "list"
+        elements: "dict"
+        default: []
+        options:
+          direction:
+            description: |
+              Traffic direction for the rule.
+
+              Required for all rules except `GROUP` actions.
+
+              - `IN`: Incoming traffic (towards the host/VM)
+              - `OUT`: Outgoing traffic (from the host/VM)
+            type: "str"
+            required: false
+            choices:
+              - "IN"
+              - "OUT"
+          action:
+            description: |
+              Action to take when the rule matches.
+
+              Supported values:
+
+              - `ACCEPT`: Allow the traffic
+              - `DROP`: Silently discard the traffic
+              - `REJECT`: Discard and send ICMP error response
+              - `MACRO(ACTION)`: Use a predefined PVE macro (e.g., `SSH(ACCEPT)`,
+                `Ping(ACCEPT)`, `DNS(ACCEPT)`, `HTTP(ACCEPT)`, `HTTPS(ACCEPT)`)
+              - `GROUP`: Reference a security group (requires `security_group`)
+
+              PVE provides many predefined macros for common services. Macros
+              automatically set the appropriate protocol and port.
+
+              Reference:
+                https://pve.proxmox.com/wiki/Firewall#_standard_macros
+            type: "str"
+            required: true
+          security_group:
+            description: |
+              Security group name to apply.
+
+              Required when `action` is `GROUP`. References a security group
+              defined in `pve_proxmox_fw_cluster_securitygroups`.
+
+              Example: `allow_pve_mgmt_in`
+            type: "str"
+            required: false
+          proto:
+            description: |
+              Network protocol to match.
+
+              Not needed when using macros (they define their own protocol).
+
+              Common values: `tcp`, `udp`, `icmp`, `icmpv6`, `sctp`
+            type: "str"
+            required: false
+          iface:
+            description: |
+              Network interface to match.
+
+              Limits the rule to traffic on a specific interface.
+
+              Example: `vmbr0`, `eth0`
+            type: "str"
+            required: false
+          source:
+            description: |
+              Source address filter.
+
+              Supported formats:
+                - IPv4/IPv6 address: `10.0.0.1`, `2001:db8::1`
+                - Network (CIDR): `10.0.0.0/24`
+                - Alias reference: `dc/<alias_name>`
+                - IP set reference: `+dc/<ipset_name>` (note the `+` prefix)
+            type: "str"
+            required: false
+          sport:
+            description: |
+              Source port filter.
+
+              Supports single port, comma-separated list, or range.
+
+              Examples: `22`, `80,443`, `1024:65535`
+            type: "str"
+            required: false
+          dest:
+            description: |
+              Destination address filter.
+
+              Supported formats (same as `source`):
+                - IPv4/IPv6 address: `10.0.0.1`, `2001:db8::1`
+                - Network (CIDR): `10.0.0.0/24`
+                - Alias reference: `dc/<alias_name>`
+                - IP set reference: `+dc/<ipset_name>` (note the `+` prefix)
+            type: "str"
+            required: false
+          dport:
+            description: |
+              Destination port filter.
+
+              Not needed when using macros (they define their own port).
+
+              Supports single port, comma-separated list, or range.
+
+              Examples: `22`, `80,443`, `1024:65535`
+            type: "str"
+            required: false
+          log:
+            description: |
+              Log level for matched traffic.
+
+              Logs matching packets to syslog at the specified level.
+
+              Values: `emerg`, `alert`, `crit`, `err`, `warning`, `notice`,
+              `info`, `debug`, `nolog`
+            type: "str"
+            required: false
+          comment:
+            description: |
+              Human-readable description of the rule.
+
+              Rendered as a comment after the rule definition.
+            type: "str"
+            required: false
+
+      pve_proxmox_fw_node_options:
+        description: |
+          Node-specific firewall options for this PVE host.
+
+          This is a passthrough of original Proxmox VE firewall options. Keys
+          and values are rendered directly into the `[OPTIONS]` section of
+          `/etc/pve/nodes/<hostname>/host.fw`.
+
+          These options only affect the specific node, not the entire cluster.
+
+          Common options:
+
+          - `enable`: Enable/disable the host firewall (`0` or `1`)
+          - `log_level_in`: Log level for incoming traffic
+          - `log_level_out`: Log level for outgoing traffic
+          - `log_nf_conntrack`: Log nf_conntrack messages (`0` or `1`)
+          - `ndp`: Allow NDP (Neighbor Discovery Protocol) for IPv6 (`0` or `1`,
+            default: `0`)
+          - `nf_conntrack_allow_invalid`: Allow invalid conntrack states
+            (`0` or `1`, default: `0`)
+          - `nf_conntrack_helpers`: Enable conntrack helpers (`0` or `1`)
+          - `nf_conntrack_max`: Maximum conntrack table entries
+          - `nf_conntrack_tcp_timeout_established`: TCP established timeout
+          - `nf_conntrack_tcp_timeout_syn_recv`: TCP SYN received timeout
+          - `nftables`: Use nftables instead of iptables (`0` or `1`,
+            default: `0`)
+          - `nosmurfs`: Enable smurf attack protection (`0` or `1`)
+          - `protection_synflood`: Enable SYN flood protection (`0` or `1`)
+          - `protection_synflood_burst`: SYN flood burst limit
+          - `protection_synflood_rate`: SYN flood rate limit
+          - `smurf_log_level`: Log level for smurf attack attempts
+          - `tcp_flags_log_level`: Log level for TCP flag violations
+          - `tcpflags`: Enable TCP flag checks (`0` or `1`)
+
+          Reference:
+            https://pve.proxmox.com/wiki/Firewall#pve_firewall_host_specific_configuration
+
+          Example:
+          ```yaml
+          pve_proxmox_fw_node_options:
+            nftables: 1
+            ndp: 1
+            log_level_in: "warning"
+            log_level_out: "warning"
+          ```
+        type: "dict"
+        default: {}
+
+      pve_proxmox_fw_node_rules:
+        description: |
+          Node-specific firewall rules for this PVE host.
+
+          Rules defined here only apply to this specific node, not the entire
+          cluster. Each rule generates a line in the `[RULES]` section of
+          `/etc/pve/nodes/<hostname>/host.fw`.
+
+          The data structure is identical to `pve_proxmox_fw_cluster_rules`.
+          Rules can reference cluster-wide aliases (`dc/<name>`) and IP sets
+          (`+dc/<name>`), as well as security groups.
+
+          Reference:
+            https://pve.proxmox.com/wiki/Firewall#_firewall_rules
+
+          Example:
+          ```yaml
+          pve_proxmox_fw_node_rules:
+            # Allow ICMP from monitoring server
+            - direction: "IN"
+              action: "Ping(ACCEPT)"
+              source: "dc/monitoring-server"
+              comment: "Monitoring health checks"
+
+            # Allow backup traffic from specific network
+            - direction: "IN"
+              action: "ACCEPT"
+              proto: "tcp"
+              dport: "8007"
+              source: "+dc/backup_networks"
+              comment: "PBS backup traffic"
+          ```
+        type: "list"
+        elements: "dict"
+        default: []
+        options:
+          direction:
+            description: |
+              Traffic direction for the rule.
+
+              Required for all rules except `GROUP` actions.
+
+              - `IN`: Incoming traffic (towards the host)
+              - `OUT`: Outgoing traffic (from the host)
+            type: "str"
+            required: false
+            choices:
+              - "IN"
+              - "OUT"
+          action:
+            description: |
+              Action to take when the rule matches.
+
+              See `pve_proxmox_fw_cluster_rules` for detailed documentation.
+
+              Supported values: `ACCEPT`, `DROP`, `REJECT`, `MACRO(ACTION)`,
+              `GROUP`
+            type: "str"
+            required: true
+          security_group:
+            description: |
+              Security group name to apply.
+
+              Required when `action` is `GROUP`.
+            type: "str"
+            required: false
+          proto:
+            description: |
+              Network protocol to match.
+
+              Common values: `tcp`, `udp`, `icmp`, `icmpv6`, `sctp`
+            type: "str"
+            required: false
+          iface:
+            description: |
+              Network interface to match.
+
+              Example: `vmbr0`, `eth0`
+            type: "str"
+            required: false
+          source:
+            description: |
+              Source address filter.
+
+              Supports IPv4/IPv6, CIDR, aliases (`dc/<name>`), and IP sets
+              (`+dc/<name>`).
+            type: "str"
+            required: false
+          sport:
+            description: |
+              Source port filter.
+
+              Examples: `22`, `80,443`, `1024:65535`
+            type: "str"
+            required: false
+          dest:
+            description: |
+              Destination address filter.
+
+              Supports IPv4/IPv6, CIDR, aliases (`dc/<name>`), and IP sets
+              (`+dc/<name>`).
+            type: "str"
+            required: false
+          dport:
+            description: |
+              Destination port filter.
+
+              Examples: `22`, `80,443`, `1024:65535`
+            type: "str"
+            required: false
+          log:
+            description: |
+              Log level for matched traffic.
+
+              Values: `emerg`, `alert`, `crit`, `err`, `warning`, `notice`,
+              `info`, `debug`, `nolog`
+            type: "str"
+            required: false
+          comment:
+            description: |
+              Human-readable description of the rule.
             type: "str"
             required: false

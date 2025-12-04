@@ -9,11 +9,22 @@
     - __pve_grub_update is success
     - __pve_grub_update['stdout'] is search('(?i)Generating')
   register: __pve_grub_update
-  listen: "pve_proxmox: update grub"
+  listen:
+    - "pve_proxmox: update grub"
 
 
 - name: "Handlers | Restart network service"
   ansible.builtin.service:
     name: "{{ network_service_name | default('networking') }}"
     state: "restarted"
-  listen: "pve_proxmox: restart network"
+  listen:
+    - "pve_proxmox: restart network"
+
+
+- name: "Handlers | Restart PVE firewall (nftables)"
+  ansible.builtin.service:
+    name: "proxmox-firewall"
+    state: "restarted"
+  listen:
+    - "pve_proxmox: restart pve-firewall"
+    - "pve_proxmox: reload pve-firewall" # reload is currently not applicable for unit proxmox-firewall.service

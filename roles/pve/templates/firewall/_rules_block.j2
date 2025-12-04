@@ -1,0 +1,14 @@
+{#-
+  Template to generate a Proxmox VE firewall [RULES] block. To be called
+  from other templates files: {% include 'pve/firewall/_rules_block.j2' %}
+
+  Expects an 'fw_rules' variable.
+-#}
+{% if fw_rules is defined and fw_rules | length > 0 %}
+[RULES]
+{%   for rule in fw_rules %}
+{%     include 'pve/firewall/_rule_line.j2' %}
+{%   endfor %}
+{% else %}
+# No [RULES] defined
+{% endif %}

@@ -1,0 +1,199 @@
+# Firewall: Manage the firewall configuration of Proxmox Virtual Environment (PVE)
+
+---
+
+- name: "Firewall | Install basic packages"
+  ansible.builtin.package:
+    name:
+      - "proxmox-firewall" # nftables based firewall
+    state: "present"
+
+
+- name: "Firewall | Get firewall service"
+  ansible.builtin.systemd:
+    name: "proxmox-firewall"
+  changed_when:
+    - false
+  failed_when:
+    - false
+  register: __pve_fw_service
+
+
+- name: "Firewall | Show firewall status"
+  ansible.builtin.debug:
+    var: __pve_fw_service['status']
+
+
+- name: "Firewall | Cluster/Datacenter | Ensure needed directories exist"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "directory"
+    owner: "root"
+    group: "www-data"
+    mode: "u=rwx,g=rx,o=rx" # 0755
+  loop:
+    - "/etc/pve/firewall"
+
+
+- name: "Firewall | Node | Ensure /etc/pve/firewall/cluster.fw exists"
+  ansible.builtin.file:
+    path: "/etc/pve/firewall/cluster.fw"
+    state: "touch"
+    owner: "root"
+    group: "www-data"
+    # noqa risky-file-permissions
+    #   /etc/pve is using pmxcfs (a FUSE-backed cluster filesystem with
+    #   Corosync). Setting the permissions will lead to a module failure:
+    #   "[Errno 1] Operation not permitted".
+    # mode: "u=rw,g=r,o=r" # 0640
+    modification_time: "preserve"
+    access_time: "preserve"
+
+
+- name: "Firewall | Cluster/Datacenter | Backup existing /etc/pve/firewall/cluster.fw (best effort)"
+  ansible.builtin.copy:
+    src: "/etc/pve/firewall/cluster.fw"
+    dest: "{{ __pve_tmpdir_backup['path'] }}/cluster.fw"
+    remote_src: true
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=" # 0640
+  when:
+    - pve_proxmox_tmpbackupfiles
+  failed_when:
+    - false
+  changed_when:
+    - false
+
+
+- name: "Firewall | Cluster/Datacenter | Render /etc/pve/firewall/cluster.fw"
+  ansible.builtin.template:
+    src: "firewall/cluster.fw.j2"
+    dest: "/etc/pve/firewall/cluster.fw"
+    owner: "root"
+    group: "www-data"
+    # noqa risky-file-permissions
+    #   /etc/pve is using pmxcfs (a FUSE-backed cluster filesystem with
+    #   Corosync). Setting the permissions will lead to a module failure:
+    #   "[Errno 1] Operation not permitted".
+    # mode: "u=rw,g=r,o=r" # 0640
+  vars:
+    # Pass (and/or adjust) Ansible inventory group_vars / host_vars
+    tpl_fw_options: "{{ pve_proxmox_fw_cluster_options | default({}, true) }}"
+    tpl_fw_aliases: "{{ pve_proxmox_fw_cluster_aliases | default([], true) }}"
+    tpl_fw_ipsets: "{{ pve_proxmox_fw_cluster_ipsets | default([], true) }}"
+    tpl_fw_securitygroups: "{{ pve_proxmox_fw_cluster_securitygroups | default([], true) }}"
+    tpl_fw_rules: "{{ pve_fw_cluster_rules | default([], true) }}"
+  notify:
+    - "pve_proxmox: reload pve-firewall"
+
+
+- name: "Firewall | Node | Ensure needed directories exist"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "directory"
+    owner: "root"
+    group: "www-data"
+    mode: "u=rwx,g=rx,o=rx" # 0755
+  loop:
+    - "/etc/pve/firewall"
+    - "/etc/pve/nodes/{{ ansible_hostname }}"
+
+
+- name: "Firewall | Node | Backup existing /etc/pve/nodes/<hostname>/host.fw (best effort)"
+  ansible.builtin.copy:
+    src: "/etc/pve/nodes/{{ ansible_hostname }}/host.fw"
+    dest: "/etc/pve/firewall/backup/{{ ansible_hostname }}.host.fw.{{ ansible_date_time.epoch }}"
+    remote_src: true
+    owner: "root"
+    group: "www-data"
+    mode: "u=rw,g=r,o=" # 0640
+  when:
+    - pve_proxmox_tmpbackupfiles
+  failed_when:
+    - false
+  changed_when:
+    - false
+
+
+- name: "Firewall | Node | Ensure /etc/pve/nodes/<hostname>/host.fw exists"
+  ansible.builtin.file:
+    path: "/etc/pve/nodes/{{ ansible_hostname }}/host.fw"
+    state: "touch"
+    owner: "root"
+    group: "www-data"
+    # noqa risky-file-permissions
+    #   /etc/pve is using pmxcfs (a FUSE-backed cluster filesystem with
+    #   Corosync). Setting the permissions will lead to a module failure:
+    #   "[Errno 1] Operation not permitted".
+    # mode: "u=rw,g=r,o=r" # 0640
+    modification_time: "preserve"
+    access_time: "preserve"
+
+
+- name: "Firewall | Node | Render firewall configuration"
+  ansible.builtin.template:
+    src: "firewall/host.fw.j2"
+    dest: "/etc/pve/nodes/{{ ansible_hostname }}/host.fw"
+    owner: "root"
+    group: "www-data"
+    # noqa risky-file-permissions
+    #   /etc/pve is using pmxcfs (a FUSE-backed cluster filesystem with
+    #   Corosync). Setting the permissions will lead to a module failure:
+    #   "[Errno 1] Operation not permitted".
+    # mode: "u=rw,g=r,o=r" # 0640
+  vars:
+    # Pass (and/or adjust) Ansible inventory group_vars / host_vars
+    tpl_fw_options: "{{ pve_proxmox_fw_node_options | default({}, true) }}"
+    tpl_fw_rules: "{{ pve_proxmox_fw_node_rules | default([], true) }}"
+  notify:
+    - "pve_proxmox: reload pve-firewall"
+
+
+- name: "Firewall | VM/Container | Ensure needed directories exist"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "directory"
+    owner: "root"
+    group: "www-data"
+    mode: "u=rwx,g=rx,o=rx" # 0755
+  loop:
+    - "/etc/pve/firewall"
+
+
+- name: "Firewall | VM/Container | Backup existing /etc/pve/firewall/<vmid>.fw files (best effort)"
+  ansible.builtin.copy:
+    src: "/etc/pve/firewall/{{ item['vmid'] }}.fw"
+    dest: "{{ __pve_tmpdir_backup['path'] }}/{{ item['vmid'] }}.fw"
+    remote_src: true
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=" # 0640
+  when:
+    - pve_proxmox_tmpbackupfiles
+    - pve_proxmox_managed_vms is defined
+  loop: "{{ pve_proxmox_managed_vms | default([], true) }}"
+  failed_when:
+    - false
+  changed_when:
+    - false
+
+
+- name: "Firewall | VM/Container | Generate firewall configuration"
+  ansible.builtin.template:
+    src: "firewall/vm.fw.j2"
+    dest: "/etc/pve/firewall/{{ item['vmid'] }}.fw"
+    owner: "root"
+    group: "www-data"
+    mode: "u=rw,g=r,o=" # 0640
+  vars:
+    # Pass (and/or adjust) Ansible inventory group_vars / host_vars
+    vmid: "{{ item['vmid'] }}"
+    vm_options: "{{ item['options'] | default({}, true) }}"
+    vm_rules: "{{ item['rules'] | default([], true) }}"
+    vm_ipsets: "{{ item['ipsets'] | default([], true) }}"
+  when:
+    - pve_proxmox_managed_vms is defined
+  loop: "{{ pve_proxmox_managed_vms | default([], true) }}"
+  notify:
+    - "pve_proxmox: reload pve-firewall"

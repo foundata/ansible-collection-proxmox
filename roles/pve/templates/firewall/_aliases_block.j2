@@ -1,0 +1,38 @@
+{#-
+  Template to generate a Proxmox VE firewall [ALIASES] block. To be called
+  from other templates files: {% include 'pve/firewall/_aliases_block.j2' %}
+
+  Expects an 'fw_aliases' variable.
+-#}
+{% if fw_aliases is defined and fw_aliases | length > 0 %}
+[ALIASES]
+{%   for alias in fw_aliases %}
+{#     Check if required keys are provided #}
+{%     set required_keys = ['name', 'ip'] %}
+{%     for key in required_keys %}
+{%       set value = alias[key] | default(none, true) %}
+{%       set is_nonempty =
+           (value is string and (value | string | trim) != '') or
+           (value is mapping and (value | length > 0)) or
+           ((value is sequence and not (value is string)) and (value | length > 0)) %}
+{%       if value is none or not is_nonempty %}
+{{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for alias ' ~ alias) }}
+{%       endif %}
+{%   endfor %}
+{#   Validate name format (must start with letter, alphanumeric + underscore/hyphen) #}
+{%   if not (alias['name'] | regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
+{{      undefined | mandatory('ERROR: Invalid alias name `' ~ alias['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
+{%   endif %}
+{#   Validate IP address format (IPv4 or IPv6, with optional CIDR) #}
+{%-   set is_valid_ip =
+        ((alias['ip'] is ansible.utils.ipv4) or
+         (alias['ip'] is ansible.utils.ipv6)) -%}
+{%-   if not is_valid_ip -%}
+{{     undefined | mandatory('ERROR: Invalid IP address `' ~ alias['ip'] ~ '` for alias `' ~ alias['name'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation)') }}
+{%-   endif -%}
+{{ alias['name'] }} {{ alias['ip'] }}{% if alias['comment'] is defined %} # {{ alias['comment'] }}{% endif %}
+
+{%   endfor %}
+{% else %}
+# No [ALIASES] defined
+{% endif %}

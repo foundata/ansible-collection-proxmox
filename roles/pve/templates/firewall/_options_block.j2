@@ -1,0 +1,15 @@
+{#-
+  Template to generate a Proxmox VE firewall [OPTIONS] block. To be called
+  from other templates files: {% include 'pve/firewall/_options_block.j2' %}
+
+  Expects an 'fw_options' variable.
+-#}
+{%- from 'pve/_render_cfg_value.j2' import render_cfg_value -%}
+{% if fw_options is defined and fw_options | length > 0 %}
+[OPTIONS]
+{%   for key, value in fw_options.items() %}
+{{ key }}: {{ render_cfg_value(value) }}
+{%   endfor %}
+{% else %}
+# No [OPTIONS] defined
+{% endif %}

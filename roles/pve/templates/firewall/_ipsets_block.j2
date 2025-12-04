@@ -1,0 +1,56 @@
+{#-
+  Template to generate Proxmox VE firewall [IPSET ...] blocks. To be called
+  from other templates files: {% include 'pve/firewall/_ipsets_block.j2' %}
+
+  Expects an 'fw_ipsets' variable.
+-#}
+{% if fw_ipsets is defined and fw_ipsets | length > 0 %}
+{%   for ipset in fw_ipsets %}
+{#     Check if required keys are provided #}
+{%     set required_keys = ['name', 'entries'] %}
+{%     for key in required_keys %}
+{%       set value = ipset[key] | default(none, true) %}
+{%       set is_nonempty =
+           (value is string and (value | string | trim) != '') or
+           (value is mapping and (value | length > 0)) or
+           ((value is sequence and not (value is string)) and (value | length > 0)) %}
+{%       if value is none or not is_nonempty %}
+{{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for ipset ' ~ ipset) }}
+{%       endif %}
+{%   endfor %}
+{#   Validate name format (must start with letter, alphanumeric + underscore/hyphen) #}
+{%   if not (ipset['name'] | regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
+{{      undefined | mandatory('ERROR: Invalid ipset name `' ~ ipset['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
+{%   endif %}
+[IPSET {{ ipset['name'] }}]{% if ipset['comment'] is defined %} # {{ ipset['comment'] }}{% endif %}
+
+{%     for entry in ipset['entries'] %}
+{#       Check if required keys are provided #}
+{%       set required_keys = ['ip'] %}
+{%       for key in required_keys %}
+{%         set value = entry[key] | default(none, true) %}
+{%         set is_nonempty =
+             (value is string and (value | string | trim) != '') or
+             (value is mapping and (value | length > 0)) or
+             ((value is sequence and not (value is string)) and (value | length > 0)) %}
+{%         if value is none or not is_nonempty %}
+{{           undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for ipset ' ~ ipset) }}
+{%         endif %}
+{%       endfor %}
+{#       Validate address format: IPv4/6 (with optional CIDR) or alias #}
+{%       set alias_pattern = '^((dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' %}
+{%       set is_valid_ip =
+           ((entry['ip'] is ansible.utils.ipv4) or
+            (entry['ip'] is ansible.utils.ipv6) or
+            (entry['ip'] | regex_search(alias_pattern))) %}
+{%       if not is_valid_ip %}
+{{         undefined | mandatory('ERROR: Invalid IP address `' ~ entry['ip'] ~ '` in ipset ' ~ ipset['name'] ~ ' - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') }}
+{%       endif %}
+{{ '!' if entry.get('nomatch') else '' }}{{ entry['ip'] }}{% if entry['comment'] is defined %} # {{ entry['comment'] }}{% endif %}
+
+{%     endfor %}
+
+{%   endfor %}
+{% else %}
+# No [IPSET ...] defined
+{% endif %}

@@ -1,0 +1,15 @@
+{#-
+  Render helper: dict -> "k=v,k2=v2", only-mapping value as-is
+  Import once from other templates files: {% from 'pve/_render_cfg_value.j2' import render_cfg_value %}
+-#}
+{%- macro render_cfg_value(value) -%}
+{%-   if value is mapping -%}
+{%-     set pairs = [] -%}
+{%-     for kv in value | dict2items -%}
+{%-       set _ = pairs.append(kv['key'] ~ '=' ~ kv['value']) -%}
+{%-     endfor -%}
+{{ pairs | join(',') }}
+{%-   else -%}
+{{ value }}
+{%-   endif -%}
+{%- endmacro -%}

@@ -1,0 +1,34 @@
+{#-
+  Template to generate Proxmox VE firewall [group ...] blocks. To be called
+  from other templates files: {% include 'pve/firewall/_groups_block.j2' %}
+
+  Expects an 'fw_securitygroups' variable.
+-#}
+{% if fw_securitygroups is defined and fw_securitygroups | length > 0 %}
+{%   for group in fw_securitygroups %}
+{#     Check if required keys are provided #}
+{%     set required_keys = ['name', 'rules'] %}
+{%     for key in required_keys %}
+{%       set value = group[key] | default(none, true) %}
+{%       set is_nonempty =
+           (value is string and (value | string | trim) != '') or
+           (value is mapping and (value | length > 0)) or
+           ((value is sequence and not (value is string)) and (value | length > 0)) %}
+{%       if value is none or not is_nonempty %}
+{{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for security group ' ~ group) }}
+{%       endif %}
+{%     endfor %}
+{#   Validate name format (must start with letter, alphanumeric + underscore/hyphen) #}
+{%   if not (group['name'] | regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
+{{      undefined | mandatory('ERROR: Invalid group name `' ~ group['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
+{%   endif %}
+[group {{ group['name'] }}]{% if group['comment'] is defined %} # {{ group['comment'] }}{% endif %}
+
+{%     for rule in group['rules'] %}
+{%       include 'pve/firewall/_rule_line.j2' %}
+{%     endfor %}
+
+{%   endfor %}
+{% else %}
+# No [group ...] defined
+{% endif %}

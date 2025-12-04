@@ -1,0 +1,101 @@
+{#-
+  Template to generate a Proxmox VE firewall rule line. To be called
+  from other templates files: {% include 'pve/firewall/_rule_line.j2' %}
+
+  Expects a 'rule' variable:
+
+  - direction: IN/OUT (required if action is not GROUP)
+  - action: ACCEPT/DROP/REJECT or MACRO(ACTION) or GROUP (required)
+  - security_group: security group name (required if action is GROUP)
+  - proto: tcp/udp/icmp/etc (optional, not needed for macros)
+  - iface: interface name (optional)
+  - source: source IP/CIDR/+ipset/alias (optional)
+  - sport: source port, port CSV or range (optional)
+  - dest: destination IP/CIDR/+ipset/alias (optional)
+  - dport: destination port, port CSV or range (optional)
+  - log: log level (optional)
+  - comment: rule comment (optional)
+-#}
+{%- set rule_parts = [] -%}
+
+{#- Handle different action types -#}
+{%- if rule['action'] | upper == 'GROUP' -%}
+{#-   Security group reference -#}
+{%-   if rule['security_group'] is defined -%}
+{%-     set _ = rule_parts.append('GROUP ' ~ rule['security_group']) -%}
+{%-   else -%}
+{%-     set _ = rule_parts.append('GROUP undefined_group') -%}
+{%-   endif -%}
+{%- else -%}
+{#-   Direction is always first -#}
+{%-   set _ = rule_parts.append(rule['direction'] | upper) -%}
+
+{#-   Regular action (ACCEPT/DROP/REJECT) or Macro -#}
+{%-   set _ = rule_parts.append(rule['action']) -%}
+{%- endif -%}
+
+{#- Optional: Interface -#}
+{%- if rule['iface'] is defined -%}
+{%-   set _ = rule_parts.append('-i ' ~ rule['iface']) -%}
+{%- endif -%}
+
+{#- Only add other additional parameters if not using GROUP action -#}
+{%- if rule['action'] | upper != 'GROUP' -%}
+
+{#-   Optional: Source -#}
+{%-   if rule['source'] is defined -%}
+{#-     Validate address format: IPv4/6 (with optional CIDR), alias or ipset #}
+{%-     set alias_pattern = '^((dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' -%}
+{%-     set ipset_pattern = '^(\+(dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' -%}
+{%-     set is_valid_ip =
+          ((rule['source'] is ansible.utils.ipv4) or
+           (rule['source'] is ansible.utils.ipv6) or
+           (rule['source'] | regex_search(alias_pattern)) or
+           (rule['source'] | regex_search(ipset_pattern))) -%}
+{%-     if not is_valid_ip %}
+      {{- undefined | mandatory('ERROR: Invalid source IP address `' ~ rule['source'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') -}}
+{%-     endif %}
+{%-     set _ = rule_parts.append('-source ' ~ rule['source']) -%}
+{%-   endif -%}
+
+{#-   Optional: Destination -#}
+{%-   if rule['dest'] is defined -%}
+{#-     Validate address format: IPv4/6 (with optional CIDR), alias or ipset #}
+{%-     set alias_pattern = '^((dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' -%}
+{%-     set ipset_pattern = '^(\+(dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' -%}
+{%-     set is_valid_ip =
+          ((rule['dest'] is ansible.utils.ipv4) or
+           (rule['dest'] is ansible.utils.ipv6) or
+           (rule['dest'] | regex_search(alias_pattern)) or
+           (rule['dest'] | regex_search(ipset_pattern))) -%}
+{%-     if not is_valid_ip %}
+      {{- undefined | mandatory('ERROR: Invalid dest IP address `' ~ rule['dest'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') -}}
+{%-     endif %}
+{%-     set _ = rule_parts.append('-dest ' ~ rule['dest']) -%}
+{%-   endif -%}
+
+{#-   Protocol (only if not using a macro) -#}
+{%-   if rule['proto'] is defined and not '(' in (rule['action'] | string) -%}
+{%-     set _ = rule_parts.append('-p ' ~ rule['proto']) -%}
+{%-   endif -%}
+
+{#-   Optional: Source Port -#}
+{%-   if rule['sport'] is defined -%}
+{%-     set _ = rule_parts.append('-sport ' ~ rule['sport']) -%}
+{%-   endif -%}
+
+{#-   Optional: Destination Port (only if not using a macro) -#}
+{%-   if rule['dport'] is defined and not '(' in (rule['action'] | string) -%}
+{%-     set _ = rule_parts.append('-dport ' ~ rule['dport']) -%}
+{%-   endif -%}
+
+{#-   Optional: Log level -#}
+{%-   if rule['log'] is defined -%}
+{%-     set _ = rule_parts.append('-log ' ~ rule['log']) -%}
+{%-   endif -%}
+
+{%- endif -%}
+
+{#- Join all parts with space -#}
+{{ rule_parts | join(' ') }}{% if rule['comment'] is defined %} # {{ rule['comment'] }}{% endif %}
+{{ '\n' -}}
