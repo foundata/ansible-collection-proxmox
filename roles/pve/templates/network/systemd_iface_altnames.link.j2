@@ -1,0 +1,59 @@
+# {{ ansible_managed }}
+# Reference: https://www.freedesktop.org/software/systemd/man/latest/systemd.link.html
+
+{# Normalize and/or validate input
+
+   tpl_iface_item:
+     type: "[...]"
+     mac_address: "[...]"
+     desc: "[...]"
+     altnames:
+       - "[...]"
+#}
+{%- set iface_item = tpl_iface_item | default({}, true) -%}
+
+{%- set required_keys = ['type', 'mac_address', 'altnames'] -%}
+{%- for key in required_keys -%}
+{%-   set value = iface_item[key] | default(none, true) -%}
+{%-   set is_nonempty =
+        (value is string and (value | string | trim) != '') or
+        (value is mapping and (value | length > 0)) or
+        ((value is sequence and not (value is string)) and (value | length > 0)) -%}
+{%-   if value is none or not is_nonempty -%}
+{{-     undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for interface ' ~ iface_item['name']) -}}
+{%-   endif -%}
+{%- endfor -%}
+
+{%- if not (iface_item['mac_address'] | regex_search('^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')) -%}
+{{-   undefined | mandatory('ERROR: Invalid MAC address `' ~ iface_item['mac_address'] ~ '` for interface ' ~ iface_name) -}}
+{%- endif -%}
+
+{#- Mapping of interface(5) types to systemd link types -#}
+{%- set type_mapping = {
+  'en': 'ether',
+  'lo': 'loopback',
+  'wl': 'wlan',
+  'ww': 'wwan',
+  'ib': 'infiniband'
+} -%}
+{%- if iface_item['type'] not in type_mapping -%}
+{{-   undefined | mandatory(("ERROR: Unknown interface type '" ~ iface_item['type'] ~ "' for " ~ iface_item['name'] ~ ". Valid types are: " ~ type_mapping.keys() | list | join(', '))) -}}
+{%- endif -%}
+
+{#- Prepare optional fields -#}
+{%- set iface_item = iface_item | combine({
+    'desc': iface_item['desc'] | default('', true) | string | trim
+  }, recursive=true)
+-%}
+
+[Match]
+MACAddress={{ iface_item['mac_address'] }}
+Type={{ type_mapping[iface_item['type']] }}
+
+[Link]
+{% if iface_item['desc'] | length > 0 %}
+Description={{ iface_item['desc'] }}
+{% endif %}
+{% for altname in iface_item['altnames'] %}
+AlternativeName={{ altname }}
+{% endfor %}

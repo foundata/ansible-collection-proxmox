@@ -11,9 +11,11 @@ argument_specs:
   # foundata.proxmox/roles/pve/tasks/main.yml entry point
   main:
     short_description: "Main entry point for the foundata.proxmox.run role"
-    description:
-      - "Configures Proxmox Virtual Environment (PVE) hosts."
-      - "Manages network interfaces, IOMMU settings, and other OS-level configurations."
+    description: |
+      Configures Proxmox Virtual Environment (PVE) hosts:
+
+      Manages network interfaces, IOMMU settings, and other OS-level configurations
+      as well as the storage, firewall and datacenter settings.
     options:
 
       pve_proxmox_tmpbackupfiles:
@@ -53,6 +55,130 @@ argument_specs:
              support.
         type: "bool"
         default: true
+
+      pve_proxmox_net_altnames:
+        description: |
+          List of network interface alternative name definitions for systemd
+          link files (`/etc/systemd/network/10-*.link`).
+
+          Instead of renaming kernel network devices, this approach assigns
+          alternative names (altnames). This preserves the original device name
+          assigned by the kernel and avoids potential kernel/udev conflicts
+          during boot or device hotplug.
+
+          Each entry generates a separate `.link` file named after the first
+          altname (e.g., `10-main1.link`). The systemd-networkd service uses
+          these files to match interfaces by MAC address and type, then applies
+          the specified alternative names.
+
+          Use `ip -br link show` to display current interface names and their
+          altnames after configuration.
+
+          References:
+            - https://www.freedesktop.org/software/systemd/man/latest/systemd.link.html
+            - https://manpages.debian.org/trixie/udev/systemd.link.5.en.html
+            - https://pve.proxmox.com/wiki/Network_Configuration#_manual_method
+
+          Example:
+          ```yaml
+          pve_proxmox_net_altnames:
+            - type: "en"
+              desc: "enp134s0f0np0 (dual-port NIC, upper port)"
+              mac_address: "aa:bb:11:44:77:38"
+              altnames:
+                - "main1"
+
+            - type: "en"
+              desc: "enp134s0f1np1 (dual-port NIC, lower port)"
+              mac_address: "aa:bb:22:55:88:39"
+              altnames:
+                - "main2"
+
+            - type: "en"
+              desc: "eno3np0 (quad-port NIC, first port)"
+              mac_address: "aa:bb:33:66:99:b1"
+              altnames:
+                - "admfb"
+          ```
+        type: "list"
+        elements: "dict"
+        default: []
+        options:
+          type:
+            description: |
+              Interface type identifier used for matching in the `[Match]`
+              section of the generated systemd link file.
+
+              This value is mapped to the corresponding systemd `Type=` value:
+
+              - `en`: Ethernet (`ether`)
+              - `lo`: Loopback (`loopback`)
+              - `wl`: Wireless LAN (`wlan`)
+              - `ww`: Wireless WAN (`wwan`)
+              - `ib`: InfiniBand (`infiniband`)
+
+              The type ensures the link file only matches interfaces of the
+              correct hardware type, preventing accidental mismatches when
+              MAC addresses are reused or spoofed.
+            type: "str"
+            required: true
+            choices:
+              - "en"
+              - "lo"
+              - "wl"
+              - "ww"
+              - "ib"
+          mac_address:
+            description: |
+              MAC address of the network interface in colon-separated format.
+
+              Used in the `[Match]` section to uniquely identify the physical
+              interface. The MAC address must match exactly for the link file
+              to apply.
+
+              Format: `XX:XX:XX:XX:XX:XX` (case-insensitive)
+
+              Example: `3c:fd:fe:de:97:38`
+
+              Use `ip link show` or `cat /sys/class/net/*/address` to find
+              the MAC addresses of installed interfaces.
+            type: "str"
+            required: true
+          desc:
+            description: |
+              Optional human-readable description of the interface.
+
+              Rendered as the `Description=` directive in the `[Link]` section.
+              Use this to document the physical location, purpose, or original
+              kernel name of the interface for easier identification.
+
+              Example: `enp134s0f0np0 (dual-port NIC, upper port farther from
+              the mainboard)`
+            type: "str"
+            required: false
+          altnames:
+            description: |
+              List of alternative names to assign to the interface.
+
+              Each name is rendered as a separate `AlternativeName=` directive
+              in the `[Link]` section. The first entry is also used as the
+              filename for the generated link file (e.g., `10-main1.link`).
+
+              Alternative names allow referencing the interface by a
+              human-friendly, predictable name while preserving the original
+              kernel-assigned name. Multiple altnames can be specified if the
+              interface should be reachable under different names.
+
+              Naming conventions:
+                - `main1`, `main2`: Primary workload interfaces (bond members)
+                - `admfb`: Admin fallback interface (emergency access)
+                - `sync1`, `sync2`: Corosync cluster communication links
+
+              The altnames defined here should match the interface names used
+              in `network_interfaces_host_specific` and related variables.
+            type: "list"
+            elements: "str"
+            required: true
 
       pve_proxmox_net_ifaces_host_shared:
         description: |

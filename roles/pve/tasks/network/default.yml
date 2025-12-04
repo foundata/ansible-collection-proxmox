@@ -2,6 +2,36 @@
 
 ---
 
+# Instead of renaming kernel network devices, one can assign alternative names
+# (altnames). This preserves the original device name and avoids potential
+# kernel/udev conflicts. More information:
+# - https://www.freedesktop.org/software/systemd/man/latest/systemd.link.html
+# - https://manpages.debian.org/trixie/udev/systemd.link.5.en.html
+# - https://pve.proxmox.com/wiki/Network_Configuration#_manual_method
+- name: "Network | Create systemd link files: altnames for used interfaces / NICs"
+  ansible.builtin.template:
+    src: "network/systemd_iface_altnames.link.j2"
+    dest: "/etc/systemd/network/10-{{ item['altnames'][0] }}.link"
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=r" # 0644
+  vars:
+    # Pass (and/or adjust) Ansible inventory group_vars / host_vars
+    tpl_iface_item:
+      type: "{{ item['type'] | default('', true) }}"
+      mac_address: "{{ item['mac_address'] | default('', true) }}"
+      desc: "{{ item['desc'] | default('', true) }}"
+      altnames: "{{ item['altnames'] | default([], true) }}"
+  when:
+    - pve_proxmox_net_altnames is defined
+    - pve_proxmox_net_altnames | length > 0
+    - pve_proxmox_net_altnames[0]['altnames'] is defined
+    - pve_proxmox_net_altnames[0]['altnames'] | length > 0
+  loop: "{{ pve_proxmox_net_altnames }}"
+  notify:
+    - "pve_proxmox: restart network"
+
+
 - name: "Network | Render /etc/network/interfaces.d/10-host"
   ansible.builtin.template:
     src: "network/interfaces.j2"
