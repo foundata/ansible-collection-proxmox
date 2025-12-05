@@ -6,7 +6,9 @@ The `foundata.proxmox.pve` Ansible role (part of the `foundata.proxmox` Ansible 
 
 ## Table of contents<a id="toc"></a>
 
+- [Features](#features)<!-- ANSIBLE DOCSMITH TOC START -->
 - [Role variables](#variables)
+<!-- ANSIBLE DOCSMITH TOC END -->
 - [Example playbooks, using this role](#examples)
 - [Supported tags](#tags)
 - [Dependencies](#dependencies)
@@ -15,6 +17,26 @@ The `foundata.proxmox.pve` Ansible role (part of the `foundata.proxmox` Ansible 
 
 
 
+## Features<a id="features"></a>
+
+Main features:
+
+- **Network Configuration**
+  - Interface alternative names: Assign predictable names to NICs via systemd link files (preserves kernel names, avoids udev conflicts)
+  - Flexible interface definitions: Separate host-specific and shared configurations for bonds, VLANs, bridges, and management interfaces
+- **Firewall Management**
+  - Manage datacenter-level options, policies, and rules (`/etc/pve/firewall/cluster.fw`), define reusable address references for cleaner rule management etc. pp.
+  - nftables support: modern firewall backend
+- **Storage Management**
+  - ZFS: pool creation (Automated pool provisioning with mirror, RAIDZ1/2/3 support and extensive disk validation); Create datasets with optional native encryption (AES-256-GCM), passphrase rotation support
+  - NFS mounts: Network storage integration with reachability checks
+  - Register storage backends for use in PVE web UI (`dir`, `zfspool` types)
+- **Operating system configuration**
+  - IOMMU/PCI passthrough: Automatic detection and GRUB configuration for Intel/AMD IOMMU
+
+
+<!-- ANSIBLE DOCSMITH MAIN START -->
+
 ## Role variables<a id="variables"></a>
 
 See [`meta/argument_specs.yml`](./meta/argument_specs.yml) for all available role parameters and their description. [`vars/main.yml`](./vars/main.yml) contains internal variables you should not override (but their description might be interesting).
@@ -22,7 +44,7 @@ See [`meta/argument_specs.yml`](./meta/argument_specs.yml) for all available rol
 Additionally, there are variables read from other roles and/or the global scope (for example, host or group vars) as follows:
 
 - None right now.
-
+<!-- ANSIBLE DOCSMITH MAIN END -->
 
 
 ## Example playbooks, using this role<a id="examples"></a>
