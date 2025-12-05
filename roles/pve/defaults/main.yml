@@ -7,38 +7,702 @@
 
 ---
 
+# Switch to control whether temporary disaster-safeguard backups of important
+# configuration files should be created before re-writing them via Ansible.
+#
+# When set to `true` (which is the default), the role will:
+#
+# 1. Create a temporary directory with the `ansible_pve_backup_` prefix.
+# 2. Copy important configuration files there before editing them.
+#
+# This is only a disaster safeguard. If the automatic configuration causes an
+# error, you can log in to the machine and restore the original configuration
+# files from that backup. The role outputs where the backups are copied to.
+#
+# There is no role-based cleanup of these backup files, but the temporary
+# directory is usually cleaned up by the operating system during boot. The
+# backup files are typically just a few kilobytes in size, so keeping them
+# around until the next reboot should not be an issue.
+#
+# - Type: bool
+# - Required: No
+# - Default: true
 pve_proxmox_tmpbackupfiles: true
 
+# Switch to control if the role should manage input–output memory management
+# unit (IOMMU) related operating system configuration. IOMMU support is needed
+# for PCI and/or GPU passthrough.
+#
+# When set to `true` (which is the default), the role will:
+#
+# 1. Check for CPU vendor based IOMMU support.
+# 2. Add or remove needed GRUB parameters based on CPU vendor and IOMMU support.
+#
+# - Type: bool
+# - Required: No
+# - Default: true
 pve_proxmox_iommu_manage: true
 
+# Network interface definitions for `/etc/network/interfaces.d/10-host` specific
+# to individual hosts.
+#
+# These interfaces are NOT visible in the PVE web UI and are intended for
+# backend networking configurations. Use this variable for host-specific
+# physical interfaces, bonds, management bridges, or VLAN subinterfaces that
+# should remain hidden from VMs.
+#
+# Typically defined in `host_vars/` and merged with
+# `pve_proxmox_net_ifaces_host_shared` during template rendering. The
+# host-specific definitions are processed before shared ones.
+#
+# Data structure (identical for all `pve_proxmox_net_ifaces_*` variables):
+#
+# ```yaml
+# pve_proxmox_net_ifaces_host_specific:
+#   options_before: |
+#     # Optional header lines using interfaces(5) syntax
+#     source /etc/network/interfaces.d/*
+#
+#   sections:
+#     - title: "Section title for human readability"
+#       comment: |
+#         Optional multi-line comment explaining this section.
+#         Rendered with '# ' prefix on each line.
+#
+#       interfaces:
+#         - name: "bond_main"
+#           method: "manual"
+#           auto: true
+#           comment: |
+#             Optional multi-line comment above the interface.
+#           iface_properties:
+#             bond-slaves: "eth0 eth1"
+#             bond-mode: "802.3ad"
+#             mtu: 1500
+#             comment: "Inline comment within iface block"
+#
+#         - name: "bond_main.0020"
+#           method: "static"
+#           auto: true
+#           iface_properties:
+#             address: "10.0.20.1/24"
+#             gateway: "10.0.20.254"
+#             comment: "0020_management"
+#
+#   options_after: |
+#     # Optional footer lines using interfaces(5) syntax
+# ```
+#
+# - Type: dict
+# - Required: No
+# - Default: {}
 pve_proxmox_net_ifaces_host_specific: {}
 
+# Network interface definitions for `/etc/network/interfaces.d/10-host` shared
+# across all hosts in the inventory group.
+#
+# These interfaces are NOT visible in the PVE web UI and are intended for
+# backend networking configurations. Use this variable for VLAN devices, bond
+# members, or configurations that should remain hidden from VMs and
+# administrators.
+#
+# Typically defined in `group_vars/` and merged with
+# `pve_proxmox_net_ifaces_host_specific` during template rendering. The shared
+# definitions are processed after host-specific ones.
+#
+# See `pve_proxmox_net_ifaces_host_specific` for the data structure
+# documentation.
+#
+# - Type: dict
+# - Required: No
+# - Default: {}
 pve_proxmox_net_ifaces_host_shared: {}
 
+# Network interface definitions for `/etc/network/interfaces` shared across all
+# hosts in the inventory group.
+#
+# These interfaces ARE visible in the PVE web UI and available for assignment to
+# virtual machines and containers. Use this variable for workload bridge
+# interfaces (typically named `vmbr<VLAN_ID>`) that VMs and containers attach
+# to.
+#
+# Typically defined in `group_vars/` and merged with
+# `pve_proxmox_net_ifaces_workload_specific` during template rendering. The
+# shared definitions are processed after host-specific ones.
+#
+# The `options_before` value typically includes `source
+# /etc/network/interfaces.d/*` to include host-specific configurations.
+#
+# See `pve_proxmox_net_ifaces_host_specific` for the data structure
+# documentation.
+#
+# - Type: dict
+# - Required: No
+# - Default: {}
 pve_proxmox_net_ifaces_workload_shared: {}
 
+# Network interface definitions for `/etc/network/interfaces` specific to
+# individual hosts.
+#
+# These interfaces ARE visible in the PVE web UI and available for assignment to
+# virtual machines and containers. Use this variable for host-specific workload
+# interfaces such as Corosync cluster links, special-purpose bridges, or
+# interfaces unique to a particular node.
+#
+# Typically defined in `host_vars/` and merged with
+# `pve_proxmox_net_ifaces_workload_shared` during template rendering. The
+# host-specific definitions are processed before shared ones.
+#
+# See `pve_proxmox_net_ifaces_host_specific` for the data structure
+# documentation.
+#
+# - Type: dict
+# - Required: No
+# - Default: {}
 pve_proxmox_net_ifaces_workload_specific: {}
 
+# List of network interface alternative name definitions for systemd link files
+# (`/etc/systemd/network/10-*.link`).
+#
+# Instead of renaming kernel network devices, this approach assigns alternative
+# names (altnames). This preserves the original device name assigned by the
+# kernel and avoids potential kernel/udev conflicts during boot or device
+# hotplug.
+#
+# Each entry generates a separate `.link` file named after the first altname
+# (e.g., `10-main1.link`). The systemd-networkd service uses these files to
+# match interfaces by MAC address and type, then applies the specified
+# alternative names.
+#
+# Use `ip -br link show` to display current interface names and their altnames
+# after configuration.
+#
+# References:
+#
+# - https://www.freedesktop.org/software/systemd/man/latest/systemd.link.html
+# - https://manpages.debian.org/trixie/udev/systemd.link.5.en.html
+# - https://pve.proxmox.com/wiki/Network_Configuration#_manual_method
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_net_altnames:
+#   - type: "en"
+#     desc: "enp134s0f0np0 (dual-port NIC, upper port)"
+#     mac_address: "aa:bb:11:44:77:38"
+#     altnames:
+#       - "main1"
+#
+#   - type: "en"
+#     desc: "enp134s0f1np1 (dual-port NIC, lower port)"
+#     mac_address: "aa:bb:22:55:88:39"
+#     altnames:
+#       - "main2"
+#
+#   - type: "en"
+#     desc: "eno3np0 (quad-port NIC, first port)"
+#     mac_address: "aa:bb:33:66:99:b1"
+#     altnames:
+#       - "admfb"
+# ```
+#
+# - Type: list
+# - Required: No
+# - Default: []
+# - List elements: dict
 pve_proxmox_net_altnames: []
 
+# Cluster-wide firewall rules applied to all PVE hosts.
+#
+# Rules define traffic filtering policies. Each rule generates a line in the
+# `[RULES]` section of `/etc/pve/firewall/cluster.fw`.
+#
+# Rules can reference aliases (`dc/<name>`), IP sets (`+dc/<name>`), security
+# groups (`GROUP <name>`), and PVE macros (`MACRO(ACTION)`).
+#
+# Reference: https://pve.proxmox.com/wiki/Firewall#_firewall_rules
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_fw_cluster_rules:
+#   # Apply a security group
+#   - action: "GROUP"
+#     security_group: "allow_pve_mgmt_in"
+#
+#   # Direct rule with macro
+#   - direction: "IN"
+#     action: "SSH(ACCEPT)"
+#     source: "+dc/trusted_networks"
+#     comment: "SSH from trusted networks"
+#
+#   # Direct rule with protocol and port
+#   - direction: "IN"
+#     action: "ACCEPT"
+#     proto: "tcp"
+#     dport: 8006
+#     source: "+dc/trusted_networks"
+#     comment: "PVE Web UI"
+# ```
+#
+# - Type: list
+# - Required: No
+# - Default: []
+# - List elements: dict
 pve_proxmox_fw_cluster_rules: []
 
+# Cluster-wide (datacenter) firewall options applied to all PVE hosts.
+#
+# This is a passthrough of original Proxmox VE firewall options. Keys and values
+# are rendered directly into the `[OPTIONS]` section of
+# `/etc/pve/firewall/cluster.fw`.
+#
+# Nested dictionaries are automatically converted to the PVE
+# `key=value,key2=value2` format (e.g., for `log_ratelimit`).
+#
+# Common options:
+#
+# - `enable`: Enable/disable the cluster firewall (`0` or `1`, default: `0`)
+# - `ebtables`: Enable ebtables rules cluster-wide (`0` or `1`, default: `1`)
+# - `policy_in`: Default policy for incoming traffic (`ACCEPT`, `DROP`,
+#   `REJECT`, default: `DROP`)
+# - `policy_out`: Default policy for outgoing traffic (`ACCEPT`, `DROP`,
+#   `REJECT`, default: `ACCEPT`)
+# - `policy_forward`: Default policy for forwarded traffic (`ACCEPT`, `DROP`,
+#   `REJECT`, default: `ACCEPT`, PVE 8.3+)
+# - `log_ratelimit`: Rate limiting for firewall log messages (dict with
+#   `enable`, `rate`, `burst` keys)
+#
+# Reference:
+# https://pve.proxmox.com/wiki/Firewall#pve_firewall_cluster_wide_setup
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_fw_cluster_options:
+#   enable: 1
+#   ebtables: 1
+#   log_ratelimit:
+#     burst: 5
+#     enable: 1
+#     rate: "1/second"
+#   policy_in: "DROP"
+#   policy_out: "ACCEPT"
+#   policy_forward: "ACCEPT"
+# ```
+#
+# - Type: dict
+# - Required: No
+# - Default: {}
 pve_proxmox_fw_cluster_options: {}
 
+# Cluster-wide IP aliases for use in firewall rules.
+#
+# Aliases provide speakable, stable names for IP addresses and networks. Once
+# defined, aliases can be referenced in rules, IP sets, and other aliases using
+# the `dc/<alias_name>` syntax.
+#
+# Each alias generates a line in the `[ALIASES]` section of
+# `/etc/pve/firewall/cluster.fw`.
+#
+# Reference: https://pve.proxmox.com/wiki/Firewall#pve_firewall_ip_aliases
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_fw_cluster_aliases:
+#   - name: "gateway-main"
+#     ip: "10.1.1.254"
+#     comment: "Main gateway router"
+#
+#   - name: "pve-node1"
+#     ip: "10.1.1.10"
+#     comment: "PVE node 1 management IP"
+#
+#   - name: "admin-network"
+#     ip: "10.123.0.0/24"
+#     comment: "Admin VLAN"
+# ```
+#
+# - Type: list
+# - Required: No
+# - Default: []
+# - List elements: dict
 pve_proxmox_fw_cluster_aliases: []
 
+# Cluster-wide IP sets for use in firewall rules.
+#
+# IP sets are reusable collections of IP addresses, networks, and aliases. They
+# simplify rule management by allowing a single rule to match multiple
+# addresses.
+#
+# Each IP set generates an `[IPSET <name>]` section in
+# `/etc/pve/firewall/cluster.fw`.
+#
+# Reference IP sets in rules using the `+dc/<ipset_name>` syntax (note the `+`
+# prefix).
+#
+# Reference: https://pve.proxmox.com/wiki/Firewall#pve_firewall_ip_sets
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_fw_cluster_ipsets:
+#   - name: "trusted_networks"
+#     comment: "Networks allowed to access management"
+#     entries:
+#       - ip: "10.1.20.0/24"
+#         comment: "Management VLAN"
+#       - ip: "10.1.2.0/24"
+#         comment: "Admin VLAN"
+#
+#   - name: "pve_nodes"
+#     comment: "All PVE cluster nodes"
+#     entries:
+#       - ip: "dc/pve-node1"
+#         comment: "Node 1"
+#       - ip: "dc/pve-node2"
+#         comment: "Node 2"
+# ```
+#
+# - Type: list
+# - Required: No
+# - Default: []
+# - List elements: dict
 pve_proxmox_fw_cluster_ipsets: []
 
+# Cluster-wide security groups (reusable rule collections).
+#
+# Security groups bundle multiple firewall rules under a single name, allowing
+# them to be applied as a unit to hosts, VMs, or containers. This promotes rule
+# reuse and simplifies management.
+#
+# Each security group generates a `[group <name>]` section in
+# `/etc/pve/firewall/cluster.fw`.
+#
+# Reference security groups in the `[RULES]` section using: `GROUP <group_name>`
+#
+# Reference: https://pve.proxmox.com/wiki/Firewall#pve_firewall_security_groups
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_fw_cluster_securitygroups:
+#   - name: "allow_web_out"
+#     comment: "Allow HTTP/HTTPS outbound"
+#     rules:
+#       - direction: "OUT"
+#         action: "ACCEPT"
+#         proto: "tcp"
+#         dport: "80,443"
+#         comment: "HTTP(S) outbound"
+#
+#   - name: "allow_ssh_in"
+#     comment: "Allow SSH from trusted networks"
+#     rules:
+#       - direction: "IN"
+#         action: "SSH(ACCEPT)"
+#         source: "+dc/trusted_networks"
+#         comment: "SSH inbound"
+# ```
+#
+# - Type: list
+# - Required: No
+# - Default: []
+# - List elements: dict
 pve_proxmox_fw_cluster_securitygroups: []
 
+# Node-specific firewall options for this PVE host.
+#
+# This is a passthrough of original Proxmox VE firewall options. Keys and values
+# are rendered directly into the `[OPTIONS]` section of
+# `/etc/pve/nodes/<hostname>/host.fw`.
+#
+# These options only affect the specific node, not the entire cluster.
+#
+# Common options:
+#
+# - `enable`: Enable/disable the host firewall (`0` or `1`)
+# - `log_level_in`: Log level for incoming traffic
+# - `log_level_out`: Log level for outgoing traffic
+# - `log_nf_conntrack`: Log nf_conntrack messages (`0` or `1`)
+# - `ndp`: Allow NDP (Neighbor Discovery Protocol) for IPv6 (`0` or `1`,
+#   default: `0`)
+# - `nf_conntrack_allow_invalid`: Allow invalid conntrack states (`0` or `1`,
+#   default: `0`)
+# - `nf_conntrack_helpers`: Enable conntrack helpers (`0` or `1`)
+# - `nf_conntrack_max`: Maximum conntrack table entries
+# - `nf_conntrack_tcp_timeout_established`: TCP established timeout
+# - `nf_conntrack_tcp_timeout_syn_recv`: TCP SYN received timeout
+# - `nftables`: Use nftables instead of iptables (`0` or `1`, default: `0`)
+# - `nosmurfs`: Enable smurf attack protection (`0` or `1`)
+# - `protection_synflood`: Enable SYN flood protection (`0` or `1`)
+# - `protection_synflood_burst`: SYN flood burst limit
+# - `protection_synflood_rate`: SYN flood rate limit
+# - `smurf_log_level`: Log level for smurf attack attempts
+# - `tcp_flags_log_level`: Log level for TCP flag violations
+# - `tcpflags`: Enable TCP flag checks (`0` or `1`)
+#
+# Reference:
+# https://pve.proxmox.com/wiki/Firewall#pve_firewall_host_specific_configuration
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_fw_node_options:
+#   nftables: 1
+#   ndp: 1
+#   log_level_in: "warning"
+#   log_level_out: "warning"
+# ```
+#
+# - Type: dict
+# - Required: No
+# - Default: {}
 pve_proxmox_fw_node_options: {}
 
+# Node-specific firewall rules for this PVE host.
+#
+# Rules defined here only apply to this specific node, not the entire cluster.
+# Each rule generates a line in the `[RULES]` section of
+# `/etc/pve/nodes/<hostname>/host.fw`.
+#
+# The data structure is identical to `pve_proxmox_fw_cluster_rules`. Rules can
+# reference cluster-wide aliases (`dc/<name>`) and IP sets (`+dc/<name>`), as
+# well as security groups.
+#
+# Reference: https://pve.proxmox.com/wiki/Firewall#_firewall_rules
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_fw_node_rules:
+#   # Allow ICMP from monitoring server
+#   - direction: "IN"
+#     action: "Ping(ACCEPT)"
+#     source: "dc/monitoring-server"
+#     comment: "Monitoring health checks"
+#
+#   # Allow backup traffic from specific network
+#   - direction: "IN"
+#     action: "ACCEPT"
+#     proto: "tcp"
+#     dport: "8007"
+#     source: "+dc/backup_networks"
+#     comment: "PBS backup traffic"
+# ```
+#
+# - Type: list
+# - Required: No
+# - Default: []
+# - List elements: dict
 pve_proxmox_fw_node_rules: []
 
+# Proxmox VE datacenter-wide configuration settings.
+#
+# This variable defines cluster-wide defaults rendered to
+# `/etc/pve/datacenter.cfg`. Since this file resides on pmxcfs (the FUSE-backed
+# cluster filesystem synchronized via Corosync), settings apply to all nodes in
+# the cluster.
+#
+# This is a passthrough of original Proxmox VE datacenter options. Keys and
+# values are rendered directly as `key: value` lines into
+# /etc/pve/datacenter.cfg. Nested dictionaries are automatically converted to
+# the PVE `key=value,key2=value2` format.
+#
+# Reference: https://pve.proxmox.com/wiki/Manual:_datacenter.cfg
+# https://pve.proxmox.com/pve-docs/datacenter.cfg.5.html
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_datacentercfg:
+#   language: "en"
+#   keyboard: "en-us"
+#   console: "html5"
+#   next-id:
+#     lower: 100
+#     upper: 1000000
+#   migration:
+#     type: "secure"
+#     network: "10.1.2.0/24"
+# ```
+#
+# - Type: dict
+# - Required: No
+# - Default: {}
 pve_proxmox_datacentercfg: {}
 
+# List of storage definitions for the PVE host.
+#
+# This variable manages operating system-level storage configuration including
+# ZFS pools, ZFS datasets, and NFS mounts. Each entry defines a storage resource
+# with its type-specific attributes.
+#
+# Supported storage types:
+#
+# - `zpool`: ZFS storage pool (creates new pools from raw disks)
+# - `zfs_dataset`: ZFS dataset/filesystem (creates datasets within existing
+#   pools, supports encryption)
+# - `nfs`: NFS network mount
+#
+# The role performs extensive validation before creating storage:
+#
+# - Verifies disk existence and accessibility
+# - Checks for existing data on disks (safety check)
+# - Validates vdev disk counts match RAID requirements
+# - Detects disks belonging to different pools
+#
+# For ZFS pools, the role will NOT automatically destroy existing data. Set
+# `storage_force_cleanup: true` to allow automatic disk wiping (DESTRUCTIVE -
+# use with extreme caution).
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_storage:
+#   # ZFS mirror pool on SSDs
+#   - name: "pool1"
+#     type: "zpool"
+#     attributes:
+#       mountpoint: "none"
+#       vdevs:
+#         - type: "mirror"
+#           disks:
+#             - "/dev/disk/by-id/scsi-SATA_SSD1"
+#             - "/dev/disk/by-id/scsi-SATA_SSD2"
+#       pool_properties:
+#         ashift: "12"
+#
+#   # Encrypted dataset for VM storage
+#   - name: "pool1/vms-encrypted"
+#     type: "zfs_dataset"
+#     attributes:
+#       zfs_properties:
+#         mountpoint: "/mnt/pool1/vms"
+#         compression: "on"
+#         encryption: "aes-256-gcm"
+#         keyformat: "passphrase"
+#         keylocation: "prompt"
+#         passphrase: "{{ vault_zfs_passphrase }}"
+#
+#   # NFS backup storage
+#   - name: "nfs-backup"
+#     type: "nfs"
+#     attributes:
+#       storage_properties:
+#         src: "nas.example.com:/exports/backup"
+#         path: "/mnt/nfs-backup"
+#         opts: "defaults,noatime"
+# ```
+#
+# - Type: list
+# - Required: No
+# - Default: []
+# - List elements: dict
 pve_proxmox_storage: []
 
+# Allow automatic cleanup of existing data on disks for ZFS pool creation.
+#
+# DESTRUCTIVE OPERATION WARNING: When set to `true`, the role will automatically
+# wipe filesystem signatures and ZFS labels from disks that have existing data
+# but whose target pool does not exist.
+#
+# This is a safety mechanism. By default (`false`), the role will fail with
+# detailed instructions if it encounters disks with existing data, allowing you
+# to manually verify and clean the disks.
+#
+# Use cases for enabling:
+#
+# - Fresh installations where disks are known to be empty or recyclable
+# - Automated provisioning where disk contents are irrelevant
+# - Rebuilding pools after intentional destruction
+#
+# The role will NEVER automatically clean disks that:
+#
+# - Belong to a different existing ZFS pool (requires manual intervention)
+# - Are part of an existing pool that matches the configuration
+#
+# Example:
+#
+# ```yaml
+# # Enable automatic disk cleanup (DANGEROUS)
+# pve_proxmox_storage_force_cleanup: true
+# ```
+#
+# - Type: bool
+# - Required: No
+# - Default: false
 pve_proxmox_storage_force_cleanup: false
 
+# Proxmox VE Storage Manager (pvesm) configuration.
+#
+# This variable defines storage resources visible in the PVE web UI and
+# available for VM/container disk allocation, backups, ISO storage, and
+# container templates.
+#
+# These entries configure PVE's storage layer (`/etc/pve/storage.cfg`), which is
+# separate from the underlying filesystem/pool creation handled by
+# `pve_proxmox_storage`. Typically, you first create the storage backend (ZFS
+# pool, NFS mount, etc.) via `pve_proxmox_storage`, then register it with PVE
+# via `pve_proxmox_sm`.
+#
+# Supported storage types:
+#
+# - `dir`: Directory-based storage (any mounted filesystem)
+# - `zfspool`: ZFS pool/dataset storage (for zvols and datasets)
+#
+# Where:
+#
+# - `nodename|shared`: Node-local or cluster-shared storage
+# - `guest`: VM/container disk storage (usually encrypted)
+# - `assets`: ISOs, templates, snippets (usually not encrypted)
+# - `backup`: Backup target for vzdump (usually encrypted)
+# - `N`: Priority index (lower = preferred for workload type)
+#
+# Example:
+#
+# ```yaml
+# pve_proxmox_sm:
+#   # ZFS storage for VMs/containers
+#   - name: "pve1-guest1"
+#     type: "zfspool"
+#     storage_properties:
+#       pool: "pool123/vms"
+#       content:
+#         - "images"
+#         - "rootdir"
+#       sparse: true
+#       nodes:
+#         - "pve1"
+#
+#   # Directory storage for ISOs and templates
+#   - name: "pve1-assets1"
+#     type: "dir"
+#     storage_properties:
+#       path: "/mnt/assets"
+#       is_mountpoint: true
+#       content:
+#         - "iso"
+#         - "vztmpl"
+#         - "snippets"
+#       nodes:
+#         - "pve1"
+#
+#   # Directory storage for backups
+#   - name: "pve1-backup1"
+#     type: "dir"
+#     storage_properties:
+#       path: "/mnt/backup"
+#       is_mountpoint: true
+#       content:
+#         - "backup"
+#       nodes:
+#         - "pve1"
+# ```
+#
+# - Type: list
+# - Required: No
+# - Default: []
+# - List elements: dict
 pve_proxmox_sm: []
