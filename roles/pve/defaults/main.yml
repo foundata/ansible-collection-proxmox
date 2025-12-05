@@ -19,11 +19,17 @@ pve_proxmox_net_ifaces_workload_shared: {}
 
 pve_proxmox_net_ifaces_workload_specific: {}
 
+pve_proxmox_net_altnames: []
+
+pve_proxmox_fw_cluster_rules: []
+
 pve_proxmox_fw_cluster_options: {}
 
 pve_proxmox_fw_cluster_aliases: []
 
 pve_proxmox_fw_cluster_ipsets: []
+
+pve_proxmox_fw_cluster_securitygroups: []
 
 pve_proxmox_fw_node_options: {}
 
