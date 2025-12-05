@@ -89,4 +89,5 @@
         | regex_replace(' +', ' ')
         | trim
       }}
-  notify: "pve_proxmox: update grub"
+  notify:
+    - "pve_proxmox: update grub"

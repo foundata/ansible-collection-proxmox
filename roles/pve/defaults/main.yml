@@ -34,3 +34,5 @@ pve_proxmox_datacentercfg: {}
 pve_proxmox_storage: []
 
 pve_proxmox_storage_force_cleanup: false
+
+pve_proxmox_sm: []

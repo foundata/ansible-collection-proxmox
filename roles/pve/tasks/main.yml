@@ -1,0 +1,104 @@
+# Main entry point for the role.
+
+---
+
+- name: "Main | Include role initialization tasks"
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/tasks/init.yml"
+    apply:
+      tags:
+        - "always"
+        - "pve_proxmox_always"
+  tags:
+    - "always"
+    - "pve_proxmox_always"
+
+
+- name: "Main | Include operating system (OS) configuration: best platform matches (if any), then default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_os"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/os/{{ __pve_proxmox_loop_item }}"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is file
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop_control:
+    loop_var: "__pve_proxmox_loop_item"
+  tags:
+    - "pve_proxmox_os"
+
+
+- name: "Main | Include network configuration: best platform matches (if any), then default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_network"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/network/{{ __pve_proxmox_loop_item }}"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is file
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop_control:
+    loop_var: "__pve_proxmox_loop_item"
+  tags:
+    - "pve_proxmox_network"
+
+
+- name: "Main | Include firewall configuration: best platform matches (if any), then default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_firewall"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/firewall/{{ __pve_proxmox_loop_item }}"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is file
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop_control:
+    loop_var: "__pve_proxmox_loop_item"
+  tags:
+    - "pve_proxmox_firewall"
+
+
+- name: "Main | Include storage configuration: best platform matches (if any), then default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_storage"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/storage/{{ __pve_proxmox_loop_item }}"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is file
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop_control:
+    loop_var: "__pve_proxmox_loop_item"
+  tags:
+    - "pve_proxmox_storage"
+
+
+- name: "Main | Include datacenter configuration: best platform matches (if any), then default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_datacenter"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/datacenter/{{ __pve_proxmox_loop_item }}"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is file
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop_control:
+    loop_var: "__pve_proxmox_loop_item"
+  tags:
+    - "pve_proxmox_datacenter"
