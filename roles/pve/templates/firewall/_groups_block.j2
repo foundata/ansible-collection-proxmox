@@ -1,6 +1,6 @@
 {#-
   Template to generate Proxmox VE firewall [group ...] blocks. To be called
-  from other templates files: {% include 'pve/firewall/_groups_block.j2' %}
+  from other templates files: {% include 'firewall/_groups_block.j2' %}
 
   Expects an 'fw_securitygroups' variable.
 -#}
@@ -25,7 +25,7 @@
 [group {{ group['name'] }}]{% if group['comment'] is defined %} # {{ group['comment'] }}{% endif %}
 
 {%     for rule in group['rules'] %}
-{%       include 'pve/firewall/_rule_line.j2' %}
+{%       include 'firewall/_rule_line.j2' %}
 {%     endfor %}
 
 {%   endfor %}

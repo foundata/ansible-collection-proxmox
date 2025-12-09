@@ -15,7 +15,7 @@
 #     gather_subset:
 #       - '!min'
 #       - '<subset_name, see parameter doc for details>'
-__run_proxmox_used_facts:
+__pve_proxmox_used_facts:
   # from subset "distribution"
   - "distribution"
   - "distribution_major_version"
@@ -41,29 +41,38 @@ __run_proxmox_used_facts:
 # - name: "Debian"
 #   versions:
 #     - "all"
-__run_proxmox_supported_platforms:
-  [] # Remove the "[]" when adding values to this list.
+__pve_proxmox_supported_platforms:
+  - name: "Debian"
+    versions:
+      - "13"
 
 
 # List of package names to be installed when run_proxmox_state is
 # set to "present".
-__run_proxmox_packages_install:
-  [] # Remove the "[]" when adding values to this list.
+# See https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_13_Trixie
+__pve_proxmox_packages_install:
+  - "proxmox-default-kernel"
+  - "proxmox-ve"
+  - "postfix"
+  - "open-iscsi"
+  - "chrony"
 
 
 # List of package names to be uninstalled when run_proxmox_state is
-# set to "absent". This variable is useful when __run_proxmox_packages_install
+# set to "absent". This variable is useful when __pve_proxmox_packages_install
 # contains packages that are required for the managed software to function but
 # should not be removed during uninstallation, as doing so could break other
 # software. This is usually the case if there are common dependencies like
 # "curl" or "openssl" which typically should remain installed even after
 # uninstalling the software managed by this role.
-__run_proxmox_packages_uninstall: "{{ run_proxmox_packages_install }}"
+__pve_proxmox_packages_uninstall:
+  - "proxmox-default-kernel"
+  - "proxmox-ve"
 
 
 # List of package names to be removed unconditionally before installation
 # (e.g., to prevent conflicts or resolve incompatibilities).
-__run_proxmox_packages_removal:
+__pve_proxmox_packages_removal:
   [] # Remove the "[]" when adding values to this list.
 
 
@@ -71,7 +80,7 @@ __run_proxmox_packages_removal:
 # installation. This is useful for removing default configuration resources
 # that would otherwise create confusion or conflict with custom configurations
 # managed by this role.
-__run_proxmox_paths_removal:
+__pve_proxmox_paths_removal:
   [] # Remove the "[]" when adding values to this list.
 
 

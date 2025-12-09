@@ -8,7 +8,7 @@
 {%- set fw_rules = tpl_fw_rules | default([], true) -%}
 
 {# Node-specific firewall options #}
-{% include 'pve/firewall/_options_block.j2' %}
+{% include 'firewall/_options_block.j2' %}
 
 {# Node-specific firewall rules #}
-{% include 'pve/firewall/_rules_block.j2' %}
+{% include 'firewall/_rules_block.j2' %}

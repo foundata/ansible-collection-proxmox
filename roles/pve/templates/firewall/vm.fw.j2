@@ -4,13 +4,13 @@
 # Reference: https://pve.proxmox.com/wiki/Firewall
 
 {# VM/Container-specific firewall options #}
-{% include 'pve/firewall/_options_block.j2' %}
+{% include 'firewall/_options_block.j2' %}
 
 {# VM/Container-specific aliases (speakable, stable alias names for IP addresses and networks) #}
-{% include 'pve/firewall/_aliases_block.j2' %}
+{% include 'firewall/_aliases_block.j2' %}
 
 {# VM/Container-specific IP sets (reusable collection of IP addresses and networks, referenced by rules) #}
-{% include 'pve/firewall/_ipsets_block.j2' %}
+{% include 'firewall/_ipsets_block.j2' %}
 
 {# VM/Container-specific firewall rules #}
-{% include 'pve/firewall/_rules_block.j2' %}
+{% include 'firewall/_rules_block.j2' %}
