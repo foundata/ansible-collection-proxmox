@@ -91,4 +91,3 @@
       - "{{ pve_proxmox_net_ifaces_workload_specific }}"
   notify:
     - "pve_proxmox: restart network"
-

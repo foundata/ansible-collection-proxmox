@@ -337,9 +337,7 @@
         __pve_zpool_missing_devices: >-
           {{
             __pve_zpool_missing_devices | default({}) | combine({
-              pool_name: (
-                __pve_zpool_missing_devices[pool_name] | default([])
-              ) + device_map | selectattr('exists', 'equalto', false) | map(attribute='by_id') | list
+              pool_name: existing_devices + (device_map | selectattr('exists', 'equalto', false) | map(attribute='by_id') | list)
             })
           }}
       loop: "{{ __pve_zpool_device_map | default({}) | dict2items }}"
@@ -349,6 +347,7 @@
       vars:
         pool_name: "{{ pool_item['key'] }}"
         device_map: "{{ pool_item['value'] }}"
+        existing_devices: "{{ (__pve_zpool_missing_devices | default({})).get(pool_name, []) }}"
       when:
         - __pve_zpool_device_map is defined
         - pool_item['value'] | selectattr('exists', 'equalto', false) | list | length > 0
