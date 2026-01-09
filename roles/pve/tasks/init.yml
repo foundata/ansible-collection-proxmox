@@ -4,10 +4,9 @@
 
 - name: "Init | Gather role-specific facts"
   ansible.builtin.setup:
-    gather_subset:
-      - "distribution"
+    gather_subset: "{{ __pve_proxmox_used_facts }}"
   when:
-    - not ansible_facts.keys() | list | intersect(__pve_proxmox_used_facts) == __pve_proxmox_used_facts
+    - not (__pve_proxmox_used_facts is subset(ansible_facts.keys()))
 
 
 - name: "Init | Include role meta data"
@@ -84,9 +83,12 @@
   loop: "{{ __pve_proxmox_platform_filenames_most_specific_last }}"
 
 
+### PVE specific
+
+
 - name: "Init | Create temporary directory for file backups (disaster safeguard)"
   ansible.builtin.tempfile:
-    state: directory
+    state: "directory"
     prefix: "ansible_pve_backup_{{ ansible_date_time['epoch'] }}_"
   register: __pve_tmpdir_backup
   when:
