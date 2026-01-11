@@ -12,6 +12,17 @@ It provides resources to manage and different Proxmox products:
 ⚠ Please note: The features, roles, and modules in this collection are stable and tested, but the **collection is still evolving and not yet fully feature-complete**. We recommend checking that the features and products you need are currently supported before use.<br> We decided to release this collection earlier than usual because we think the available functionality is already useful and worth sharing with the community.
 
 
+<div align="center" id="project-readme-header">
+<br>
+<br>
+
+**⭐ Found this useful? Support open-source and star this project:**
+
+[![GitHub repository](https://img.shields.io/github/stars/foundata/ansible-collection-proxmox.svg)](https://github.com/foundata/ansible-collection-proxmox)
+
+<br>
+</div>
+
 
 ## Table of contents<a id="toc"></a>
 
