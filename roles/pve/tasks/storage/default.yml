@@ -768,7 +768,7 @@
           {{
             item['attributes']['zfs_properties'] | ansible.builtin.default({})
             | ansible.builtin.dict2items
-            | rejectattr('key', 'in', ['encryption', 'keyformat', 'keylocation', 'passphrase', 'passphrase_old'])
+            | ansible.builtin.rejectattr('key', 'in', ['encryption', 'keyformat', 'keylocation', 'passphrase', 'passphrase_old'])
             | items2dict
           }}
       loop: "{{ pve_proxmox_storage | ansible.builtin.default([], true) | selectattr('type', 'equalto', 'zfs_dataset') | ansible.builtin.list }}"
