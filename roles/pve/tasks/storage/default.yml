@@ -291,7 +291,7 @@
                     (item['stat']['lnk_source']
                       if (item['stat']['exists'] and item['stat']['islnk'] | default(false))
                       else item['item']['disk'])
-                    | basename
+                    | ansible.builtin.basename
                   )
                 }
               ]
