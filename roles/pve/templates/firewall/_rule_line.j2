@@ -19,7 +19,7 @@
 {%- set rule_parts = [] -%}
 
 {#- Handle different action types -#}
-{%- if rule['action'] | upper == 'GROUP' -%}
+{%- if rule['action'] | ansible.builtin.upper == 'GROUP' -%}
 {#-   Security group reference -#}
 {%-   if rule['security_group'] is defined -%}
 {%-     set _ = rule_parts.append('GROUP ' ~ rule['security_group']) -%}
@@ -28,7 +28,7 @@
 {%-   endif -%}
 {%- else -%}
 {#-   Direction is always first -#}
-{%-   set _ = rule_parts.append(rule['direction'] | upper) -%}
+{%-   set _ = rule_parts.append(rule['direction'] | ansible.builtin.upper) -%}
 
 {#-   Regular action (ACCEPT/DROP/REJECT) or Macro -#}
 {%-   set _ = rule_parts.append(rule['action']) -%}
@@ -40,7 +40,7 @@
 {%- endif -%}
 
 {#- Only add other additional parameters if not using GROUP action -#}
-{%- if rule['action'] | upper != 'GROUP' -%}
+{%- if rule['action'] | ansible.builtin.upper != 'GROUP' -%}
 
 {#-   Optional: Source -#}
 {%-   if rule['source'] is defined -%}
