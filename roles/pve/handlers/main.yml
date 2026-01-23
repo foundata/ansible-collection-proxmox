@@ -15,7 +15,7 @@
 
 - name: "Handlers | Restart network service"
   ansible.builtin.service:
-    name: "{{ network_service_name | default('networking') }}"
+    name: "{{ network_service_name | ansible.builtin.default('networking') }}"
     state: "restarted"
   listen:
     - "pve_proxmox: restart network"

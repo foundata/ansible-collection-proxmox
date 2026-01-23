@@ -63,7 +63,7 @@
         | ansible.builtin.b64decode
         | regex_search('GRUB_CMDLINE_LINUX_DEFAULT="([^"]*)"', '\1')
         | first
-        | default('quiet')
+        | ansible.builtin.default('quiet')
       }}
     __pve_grub_cmdline_clean: >-
       {{

@@ -10,7 +10,7 @@
 {#     Check if required keys are provided #}
 {%     set required_keys = ['name', 'ip'] %}
 {%     for key in required_keys %}
-{%       set value = alias[key] | default(none, true) %}
+{%       set value = alias[key] | ansible.builtin.default(none, true) %}
 {%       set is_nonempty =
            (value is string and (value | string | ansible.builtin.trim) != '') or
            (value is mapping and (value | ansible.builtin.length > 0)) or

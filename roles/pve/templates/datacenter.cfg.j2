@@ -3,7 +3,7 @@
 # Reference: https://pve.proxmox.com/wiki/Manual:_datacenter.cfg
 
 {# Normalize and/or validate input #}
-{%- set pve_datacentercfg = tpl_pve_datacentercfg | default({}, true) -%}
+{%- set pve_datacentercfg = tpl_pve_datacentercfg | ansible.builtin.default({}, true) -%}
 {%- from '_render_cfg_value.j2' import render_cfg_value -%}
 
 {% if pve_datacentercfg | ansible.builtin.length > 0 %}

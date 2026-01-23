@@ -4,11 +4,11 @@
 # Reference: https://pve.proxmox.com/wiki/Firewall
 
 {# Normalize and/or validate input #}
-{%- set fw_options = tpl_fw_options | default({}, true) -%}
-{%- set fw_aliases = tpl_fw_aliases | default([], true) -%}
-{%- set fw_ipsets = tpl_fw_ipsets | default([], true) -%}
-{%- set fw_securitygroups = tpl_fw_securitygroups | default([], true) -%}
-{%- set fw_rules = tpl_fw_rules | default([], true) -%}
+{%- set fw_options = tpl_fw_options | ansible.builtin.default({}, true) -%}
+{%- set fw_aliases = tpl_fw_aliases | ansible.builtin.default([], true) -%}
+{%- set fw_ipsets = tpl_fw_ipsets | ansible.builtin.default([], true) -%}
+{%- set fw_securitygroups = tpl_fw_securitygroups | ansible.builtin.default([], true) -%}
+{%- set fw_rules = tpl_fw_rules | ansible.builtin.default([], true) -%}
 
 {# Cluster-wide firewall options #}
 {% include 'firewall/_options_block.j2' %}

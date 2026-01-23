@@ -10,11 +10,11 @@
      altnames:
        - "[...]"
 #}
-{%- set iface_item = tpl_iface_item | default({}, true) -%}
+{%- set iface_item = tpl_iface_item | ansible.builtin.default({}, true) -%}
 
 {%- set required_keys = ['type', 'mac_address', 'altnames'] -%}
 {%- for key in required_keys -%}
-{%-   set value = iface_item[key] | default(none, true) -%}
+{%-   set value = iface_item[key] | ansible.builtin.default(none, true) -%}
 {%-   set is_nonempty =
         (value is string and (value | string | ansible.builtin.trim) != '') or
         (value is mapping and (value | ansible.builtin.length > 0)) or
@@ -42,7 +42,7 @@
 
 {#- Prepare optional fields -#}
 {%- set iface_item = iface_item | ansible.builtin.combine({
-    'desc': iface_item['desc'] | default('', true) | string | ansible.builtin.trim
+    'desc': iface_item['desc'] | ansible.builtin.default('', true) | string | ansible.builtin.trim
   }, recursive=true)
 -%}
 

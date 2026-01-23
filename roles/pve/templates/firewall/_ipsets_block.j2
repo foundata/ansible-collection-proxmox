@@ -9,7 +9,7 @@
 {#     Check if required keys are provided #}
 {%     set required_keys = ['name', 'entries'] %}
 {%     for key in required_keys %}
-{%       set value = ipset[key] | default(none, true) %}
+{%       set value = ipset[key] | ansible.builtin.default(none, true) %}
 {%       set is_nonempty =
            (value is string and (value | string | ansible.builtin.trim) != '') or
            (value is mapping and (value | ansible.builtin.length > 0)) or
@@ -28,7 +28,7 @@
 {#       Check if required keys are provided #}
 {%       set required_keys = ['ip'] %}
 {%       for key in required_keys %}
-{%         set value = entry[key] | default(none, true) %}
+{%         set value = entry[key] | ansible.builtin.default(none, true) %}
 {%         set is_nonempty =
              (value is string and (value | string | ansible.builtin.trim) != '') or
              (value is mapping and (value | ansible.builtin.length > 0)) or

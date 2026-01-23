@@ -79,11 +79,11 @@
     # mode: "u=rw,g=r,o=r" # 0640
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
-    tpl_fw_options: "{{ pve_proxmox_fw_cluster_options | default({}, true) }}"
-    tpl_fw_aliases: "{{ pve_proxmox_fw_cluster_aliases | default([], true) }}"
-    tpl_fw_ipsets: "{{ pve_proxmox_fw_cluster_ipsets | default([], true) }}"
-    tpl_fw_securitygroups: "{{ pve_proxmox_fw_cluster_securitygroups | default([], true) }}"
-    tpl_fw_rules: "{{ pve_fw_cluster_rules | default([], true) }}"
+    tpl_fw_options: "{{ pve_proxmox_fw_cluster_options | ansible.builtin.default({}, true) }}"
+    tpl_fw_aliases: "{{ pve_proxmox_fw_cluster_aliases | ansible.builtin.default([], true) }}"
+    tpl_fw_ipsets: "{{ pve_proxmox_fw_cluster_ipsets | ansible.builtin.default([], true) }}"
+    tpl_fw_securitygroups: "{{ pve_proxmox_fw_cluster_securitygroups | ansible.builtin.default([], true) }}"
+    tpl_fw_rules: "{{ pve_fw_cluster_rules | ansible.builtin.default([], true) }}"
   notify:
     - "pve_proxmox: reload pve-firewall"
 
@@ -144,8 +144,8 @@
     # mode: "u=rw,g=r,o=r" # 0640
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
-    tpl_fw_options: "{{ pve_proxmox_fw_node_options | default({}, true) }}"
-    tpl_fw_rules: "{{ pve_proxmox_fw_node_rules | default([], true) }}"
+    tpl_fw_options: "{{ pve_proxmox_fw_node_options | ansible.builtin.default({}, true) }}"
+    tpl_fw_rules: "{{ pve_proxmox_fw_node_rules | ansible.builtin.default([], true) }}"
   notify:
     - "pve_proxmox: reload pve-firewall"
 
@@ -172,7 +172,7 @@
   when:
     - pve_proxmox_tmpbackupfiles
     - pve_proxmox_managed_vms is defined
-  loop: "{{ pve_proxmox_managed_vms | default([], true) }}"
+  loop: "{{ pve_proxmox_managed_vms | ansible.builtin.default([], true) }}"
   failed_when:
     - false
   changed_when:
@@ -189,11 +189,11 @@
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
     vmid: "{{ item['vmid'] }}"
-    vm_options: "{{ item['options'] | default({}, true) }}"
-    vm_rules: "{{ item['rules'] | default([], true) }}"
-    vm_ipsets: "{{ item['ipsets'] | default([], true) }}"
+    vm_options: "{{ item['options'] | ansible.builtin.default({}, true) }}"
+    vm_rules: "{{ item['rules'] | ansible.builtin.default([], true) }}"
+    vm_ipsets: "{{ item['ipsets'] | ansible.builtin.default([], true) }}"
   when:
     - pve_proxmox_managed_vms is defined
-  loop: "{{ pve_proxmox_managed_vms | default([], true) }}"
+  loop: "{{ pve_proxmox_managed_vms | ansible.builtin.default([], true) }}"
   notify:
     - "pve_proxmox: reload pve-firewall"

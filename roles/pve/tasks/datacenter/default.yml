@@ -46,4 +46,4 @@
     # mode: "u=rw,g=r,o=r" # 0640
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
-    tpl_pve_datacentercfg: "{{ pve_proxmox_datacentercfg | default({}, true) }}"
+    tpl_pve_datacentercfg: "{{ pve_proxmox_datacentercfg | ansible.builtin.default({}, true) }}"
