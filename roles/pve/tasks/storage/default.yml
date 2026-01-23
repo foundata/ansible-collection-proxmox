@@ -393,8 +393,8 @@
     - name: "Storage | ZFS | zpool | Validate existing pool configuration matches expectations"
       ansible.builtin.assert:
         that:
-          - __pve_zpool_actual_devices[item['name']]['expected_devices'] | difference(__pve_zpool_actual_devices[item['name']]['pool_devices']) | ansible.builtin.length == 0
-          - __pve_zpool_actual_devices[item['name']]['pool_devices'] | difference(__pve_zpool_actual_devices[item['name']]['expected_devices']) | ansible.builtin.length == 0
+          - __pve_zpool_actual_devices[item['name']]['expected_devices'] | ansible.builtin.difference(__pve_zpool_actual_devices[item['name']]['pool_devices']) | ansible.builtin.length == 0
+          - __pve_zpool_actual_devices[item['name']]['pool_devices'] | ansible.builtin.difference(__pve_zpool_actual_devices[item['name']]['expected_devices']) | ansible.builtin.length == 0
         fail_msg: |
           ERROR: Pool '{{ item['name'] }}' exists but disk configuration does NOT match!
 
@@ -411,8 +411,8 @@
           Resolved base devices from pool: {{ __pve_zpool_actual_devices[item['name']]['pool_devices'] | ansible.builtin.list }}
           Expected base devices: {{ __pve_zpool_actual_devices[item['name']]['expected_devices'] | ansible.builtin.list }}
 
-          Disks missing from pool: {{ __pve_zpool_actual_devices[item['name']]['expected_devices'] | difference(__pve_zpool_actual_devices[item['name']]['pool_devices']) | ansible.builtin.list }}
-          Extra disks in pool: {{ __pve_zpool_actual_devices[item['name']]['pool_devices'] | difference(__pve_zpool_actual_devices[item['name']]['expected_devices']) | ansible.builtin.list }}
+          Disks missing from pool: {{ __pve_zpool_actual_devices[item['name']]['expected_devices'] | ansible.builtin.difference(__pve_zpool_actual_devices[item['name']]['pool_devices']) | ansible.builtin.list }}
+          Extra disks in pool: {{ __pve_zpool_actual_devices[item['name']]['pool_devices'] | ansible.builtin.difference(__pve_zpool_actual_devices[item['name']]['expected_devices']) | ansible.builtin.list }}
 
           To investigate:
           {% for dev_info in __pve_zpool_device_map[item['name']] | selectattr('exists', 'equalto', true) %}
