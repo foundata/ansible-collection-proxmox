@@ -84,7 +84,7 @@
     __pve_grub_cmdline_final: >-
       {{
         ([__pve_grub_cmdline_clean, __pve_iommu_vendor_param, __pve_iommu_pt_param]
-        | select('ne', '')
+        | ansible.builtin.select('ne', '')
         | join(' '))
         | ansible.builtin.regex_replace(' +', ' ')
         | ansible.builtin.trim
