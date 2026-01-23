@@ -229,7 +229,7 @@
         - __pve_zpool_status_detail is defined
         - __pve_zpool_status_detail['results'] is defined
         - not item['skipped'] | ansible.builtin.default(false)
-        - item is success
+        - item is ansible.builtin.success
 
 
     - name: "Storage | ZFS | zpool | Resolve zpool status device paths to base devices"
@@ -665,7 +665,7 @@
         __pve_zfs_dataset_exists: >-
           {{
             __pve_zfs_dataset_exists | ansible.builtin.default({}) | ansible.builtin.combine({
-              item['item']['name']: item is success and (item['ansible_facts']['ansible_zfs_datasets'] | ansible.builtin.default([]) | ansible.builtin.length > 0)
+              item['item']['name']: item is ansible.builtin.success and (item['ansible_facts']['ansible_zfs_datasets'] | ansible.builtin.default([]) | ansible.builtin.length > 0)
             })
           }}
       loop: "{{ __pve_zfs_dataset_facts['results'] | ansible.builtin.default([]) }}"
@@ -880,7 +880,7 @@
         - item['attributes']['zfs_properties']['passphrase_old'] is defined
         - item['attributes']['zfs_properties']['passphrase_old'] is not none
       changed_when:
-        - __pve_zfs_passphrase_change is success
+        - __pve_zfs_passphrase_change is ansible.builtin.success
         - "'SUCCESS' in __pve_zfs_passphrase_change['stdout']"
       no_log: true
 
@@ -1054,7 +1054,7 @@
       loop: "{{ __pve_nfs_server_check['results'] | ansible.builtin.default([]) }}"
       when:
         - __pve_nfs_server_check is defined
-        - item is success
+        - item is ansible.builtin.success
 
 
     - name: "Storage | NFS | Check current mount status"
@@ -1077,7 +1077,7 @@
           {{
             __pve_nfs_mount_status | ansible.builtin.default({}) | ansible.builtin.combine({
               item['item']['name']: {
-                'is_mounted': item is success | ansible.builtin.bool,
+                'is_mounted': item is ansible.builtin.success | ansible.builtin.bool,
                 'current_source': item['stdout'] | ansible.builtin.default('') | ansible.builtin.trim
               }
             })
@@ -1119,7 +1119,7 @@
     - name: "Storage | NFS | Report mount verification results"
       ansible.builtin.debug:
         msg: |
-          {% if item is success %}
+          {% if item is ansible.builtin.success %}
           ✓ NFS mount '{{ item['item']['name'] }}' at {{ item['item']['attributes']['storage_properties']['path'] }} is mounted and accessible
           {% else %}
           ✗ NFS mount '{{ item['item']['name'] }}' at {{ item['item']['attributes']['storage_properties']['path'] }} is NOT properly mounted
@@ -1168,7 +1168,7 @@
             | ansible.builtin.list
           }}
       when:
-        - __pve_storage_status is success
+        - __pve_storage_status is ansible.builtin.success
 
 
     - name: "Storage | pvesm | Validate all storage types are supported"
