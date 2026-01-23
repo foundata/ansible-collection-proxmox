@@ -75,10 +75,10 @@
     # Build IOMMU parameters only when hardware support is detected.
     __pve_iommu_vendor_param: >-
       {{
-        (__pve_iommu_supported and __pve_cpu_vendor == 'intel') | ternary('intel_iommu=on', '') +
-        (__pve_iommu_supported and __pve_cpu_vendor == 'amd') | ternary('amd_iommu=on', '')
+        (__pve_iommu_supported and __pve_cpu_vendor == 'intel') | ansible.builtin.ternary('intel_iommu=on', '') +
+        (__pve_iommu_supported and __pve_cpu_vendor == 'amd') | ansible.builtin.ternary('amd_iommu=on', '')
       }}
-    __pve_iommu_pt_param: "{{ __pve_iommu_supported | ternary('iommu=pt', '') }}"
+    __pve_iommu_pt_param: "{{ __pve_iommu_supported | ansible.builtin.ternary('iommu=pt', '') }}"
     # Combine clean baseline with IOMMU parameters (empty strings when unsupported,
     # effectively removing them).
     __pve_grub_cmdline_final: >-
