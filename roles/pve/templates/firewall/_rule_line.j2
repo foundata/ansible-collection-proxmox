@@ -50,8 +50,8 @@
 {%-     set is_valid_ip =
           ((rule['source'] is ansible.utils.ipv4) or
            (rule['source'] is ansible.utils.ipv6) or
-           (rule['source'] | regex_search(alias_pattern)) or
-           (rule['source'] | regex_search(ipset_pattern))) -%}
+           (rule['source'] | ansible.builtin.regex_search(alias_pattern)) or
+           (rule['source'] | ansible.builtin.regex_search(ipset_pattern))) -%}
 {%-     if not is_valid_ip %}
       {{- undefined | mandatory('ERROR: Invalid source IP address `' ~ rule['source'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') -}}
 {%-     endif %}
@@ -66,8 +66,8 @@
 {%-     set is_valid_ip =
           ((rule['dest'] is ansible.utils.ipv4) or
            (rule['dest'] is ansible.utils.ipv6) or
-           (rule['dest'] | regex_search(alias_pattern)) or
-           (rule['dest'] | regex_search(ipset_pattern))) -%}
+           (rule['dest'] | ansible.builtin.regex_search(alias_pattern)) or
+           (rule['dest'] | ansible.builtin.regex_search(ipset_pattern))) -%}
 {%-     if not is_valid_ip %}
       {{- undefined | mandatory('ERROR: Invalid dest IP address `' ~ rule['dest'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') -}}
 {%-     endif %}

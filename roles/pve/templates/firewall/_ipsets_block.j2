@@ -19,7 +19,7 @@
 {%       endif %}
 {%   endfor %}
 {#   Validate name format (must start with letter, alphanumeric + underscore/hyphen) #}
-{%   if not (ipset['name'] | regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
+{%   if not (ipset['name'] | ansible.builtin.regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
 {{      undefined | mandatory('ERROR: Invalid ipset name `' ~ ipset['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
 {%   endif %}
 [IPSET {{ ipset['name'] }}]{% if ipset['comment'] is defined %} # {{ ipset['comment'] }}{% endif %}
@@ -42,7 +42,7 @@
 {%       set is_valid_ip =
            ((entry['ip'] is ansible.utils.ipv4) or
             (entry['ip'] is ansible.utils.ipv6) or
-            (entry['ip'] | regex_search(alias_pattern))) %}
+            (entry['ip'] | ansible.builtin.regex_search(alias_pattern))) %}
 {%       if not is_valid_ip %}
 {{         undefined | mandatory('ERROR: Invalid IP address `' ~ entry['ip'] ~ '` in ipset ' ~ ipset['name'] ~ ' - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') }}
 {%       endif %}

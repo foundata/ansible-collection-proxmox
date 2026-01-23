@@ -20,7 +20,7 @@
 {%       endif %}
 {%   endfor %}
 {#   Validate name format (must start with letter, alphanumeric + underscore/hyphen) #}
-{%   if not (alias['name'] | regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
+{%   if not (alias['name'] | ansible.builtin.regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
 {{      undefined | mandatory('ERROR: Invalid alias name `' ~ alias['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
 {%   endif %}
 {#   Validate IP address format (IPv4 or IPv6, with optional CIDR) #}

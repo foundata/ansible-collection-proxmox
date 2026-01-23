@@ -1028,7 +1028,7 @@
 
     - name: "Storage | NFS | Check if NFS server is reachable"
       ansible.builtin.command:
-        argv: ["showmount", "-e", "{{ item['attributes']['storage_properties']['src'] | regex_replace(':.*$', '') }}"]
+        argv: ["showmount", "-e", "{{ item['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}"]
       loop: "{{ pve_proxmox_storage | ansible.builtin.default([], true) | selectattr('type', 'equalto', 'nfs') | ansible.builtin.list }}"
       register: __pve_nfs_server_check
       changed_when:
@@ -1043,14 +1043,14 @@
     - name: "Storage | NFS | Warn about unreachable NFS servers"
       ansible.builtin.debug:
         msg: |
-          WARNING: NFS server {{ item['item']['attributes']['storage_properties']['src'] | regex_replace(':.*$', '') }}
+          WARNING: NFS server {{ item['item']['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}
           for mount '{{ item['item']['name'] }}' is not reachable or does not respond to showmount.
 
           This may cause the mount task to hang or fail.
 
           To investigate:
-            ping {{ item['item']['attributes']['storage_properties']['src'] | regex_replace(':.*$', '') }}
-            showmount -e {{ item['item']['attributes']['storage_properties']['src'] | regex_replace(':.*$', '') }}
+            ping {{ item['item']['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}
+            showmount -e {{ item['item']['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}
       loop: "{{ __pve_nfs_server_check['results'] | ansible.builtin.default([]) }}"
       when:
         - __pve_nfs_server_check is defined

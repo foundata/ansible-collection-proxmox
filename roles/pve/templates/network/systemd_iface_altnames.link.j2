@@ -24,7 +24,7 @@
 {%-   endif -%}
 {%- endfor -%}
 
-{%- if not (iface_item['mac_address'] | regex_search('^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')) -%}
+{%- if not (iface_item['mac_address'] | ansible.builtin.regex_search('^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')) -%}
 {{-   undefined | mandatory('ERROR: Invalid MAC address `' ~ iface_item['mac_address'] ~ '` for interface ' ~ iface_name) -}}
 {%- endif -%}
 

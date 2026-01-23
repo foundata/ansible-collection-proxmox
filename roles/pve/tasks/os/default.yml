@@ -61,15 +61,15 @@
       {{
         __pve_grub_config['content']
         | ansible.builtin.b64decode
-        | regex_search('GRUB_CMDLINE_LINUX_DEFAULT="([^"]*)"', '\1')
+        | ansible.builtin.regex_search('GRUB_CMDLINE_LINUX_DEFAULT="([^"]*)"', '\1')
         | ansible.builtin.first
         | ansible.builtin.default('quiet')
       }}
     __pve_grub_cmdline_clean: >-
       {{
         __pve_grub_cmdline_extracted
-        | regex_replace(' *(intel_iommu|amd_iommu|iommu)=[^ ]*', '')
-        | regex_replace(' +', ' ')
+        | ansible.builtin.regex_replace(' *(intel_iommu|amd_iommu|iommu)=[^ ]*', '')
+        | ansible.builtin.regex_replace(' +', ' ')
         | ansible.builtin.trim
       }}
     # Build IOMMU parameters only when hardware support is detected.
@@ -86,7 +86,7 @@
         ([__pve_grub_cmdline_clean, __pve_iommu_vendor_param, __pve_iommu_pt_param]
         | select('ne', '')
         | join(' '))
-        | regex_replace(' +', ' ')
+        | ansible.builtin.regex_replace(' +', ' ')
         | ansible.builtin.trim
       }}
   notify:
