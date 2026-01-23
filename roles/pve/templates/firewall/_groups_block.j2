@@ -11,7 +11,7 @@
 {%     for key in required_keys %}
 {%       set value = group[key] | default(none, true) %}
 {%       set is_nonempty =
-           (value is string and (value | string | trim) != '') or
+           (value is string and (value | string | ansible.builtin.trim) != '') or
            (value is mapping and (value | length > 0)) or
            ((value is sequence and not (value is string)) and (value | length > 0)) %}
 {%       if value is none or not is_nonempty %}

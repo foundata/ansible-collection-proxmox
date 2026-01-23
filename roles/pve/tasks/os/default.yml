@@ -70,7 +70,7 @@
         __pve_grub_cmdline_extracted
         | regex_replace(' *(intel_iommu|amd_iommu|iommu)=[^ ]*', '')
         | regex_replace(' +', ' ')
-        | trim
+        | ansible.builtin.trim
       }}
     # Build IOMMU parameters only when hardware support is detected.
     __pve_iommu_vendor_param: >-
@@ -87,7 +87,7 @@
         | select('ne', '')
         | join(' '))
         | regex_replace(' +', ' ')
-        | trim
+        | ansible.builtin.trim
       }}
   notify:
     - "pve_proxmox: update grub"

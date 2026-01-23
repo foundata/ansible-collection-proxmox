@@ -471,7 +471,7 @@
               ) + [
                 {
                   'device': item['item']['disk'],
-                  'current_pool': item['stdout'] | trim,
+                  'current_pool': item['stdout'] | ansible.builtin.trim,
                   'expected_pool': item['item']['pool']
                 }
               ]
@@ -480,8 +480,8 @@
       loop: "{{ __pve_storage_zfs_pool_owner['results'] | default([]) }}"
       when:
         - item['stdout'] is defined
-        - item['stdout'] | trim != 'none'
-        - item['stdout'] | trim != item['item']['pool']
+        - item['stdout'] | ansible.builtin.trim != 'none'
+        - item['stdout'] | ansible.builtin.trim != item['item']['pool']
 
 
     - name: "Storage | ZFS | zpool | Fail if disks belong to different pools"
@@ -1078,7 +1078,7 @@
             __pve_nfs_mount_status | default({}) | combine({
               item['item']['name']: {
                 'is_mounted': item is success | ansible.builtin.bool,
-                'current_source': item['stdout'] | default('') | trim
+                'current_source': item['stdout'] | default('') | ansible.builtin.trim
               }
             })
           }}
