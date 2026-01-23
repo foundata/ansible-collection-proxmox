@@ -16,7 +16,7 @@
 {%- for key in required_keys -%}
 {%-   set value = iface_item[key] | ansible.builtin.default(none, true) -%}
 {%-   set is_nonempty =
-        (value is string and (value | string | ansible.builtin.trim) != '') or
+        (value is string and (value | ansible.builtin.string | ansible.builtin.trim) != '') or
         (value is mapping and (value | ansible.builtin.length > 0)) or
         ((value is sequence and not (value is string)) and (value | ansible.builtin.length > 0)) -%}
 {%-   if value is none or not is_nonempty -%}
@@ -42,7 +42,7 @@
 
 {#- Prepare optional fields -#}
 {%- set iface_item = iface_item | ansible.builtin.combine({
-    'desc': iface_item['desc'] | ansible.builtin.default('', true) | string | ansible.builtin.trim
+    'desc': iface_item['desc'] | ansible.builtin.default('', true) | ansible.builtin.string | ansible.builtin.trim
   }, recursive=true)
 -%}
 

@@ -75,7 +75,7 @@
 {%-   endif -%}
 
 {#-   Protocol (only if not using a macro) -#}
-{%-   if rule['proto'] is defined and not '(' in (rule['action'] | string) -%}
+{%-   if rule['proto'] is defined and not '(' in (rule['action'] | ansible.builtin.string) -%}
 {%-     set _ = rule_parts.append('-p ' ~ rule['proto']) -%}
 {%-   endif -%}
 
@@ -85,7 +85,7 @@
 {%-   endif -%}
 
 {#-   Optional: Destination Port (only if not using a macro) -#}
-{%-   if rule['dport'] is defined and not '(' in (rule['action'] | string) -%}
+{%-   if rule['dport'] is defined and not '(' in (rule['action'] | ansible.builtin.string) -%}
 {%-     set _ = rule_parts.append('-dport ' ~ rule['dport']) -%}
 {%-   endif -%}
 
