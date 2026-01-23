@@ -43,7 +43,7 @@
             __pve_zpool_all_disks | ansible.builtin.default({}) | ansible.builtin.combine({
               item['name']: item['attributes']['vdevs']
                 | ansible.builtin.map(attribute='disks')
-                | flatten
+                | ansible.builtin.flatten
                 | ansible.builtin.list
             })
           }}
