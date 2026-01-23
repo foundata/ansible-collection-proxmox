@@ -210,7 +210,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - __pve_pool_exists[item['name']] | default(false) | bool
+        - __pve_pool_exists[item['name']] | default(false) | ansible.builtin.bool
 
 
     - name: "Storage | ZFS | zpool | Extract device paths from zpool status"
@@ -561,9 +561,9 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - __pve_storage_pool_data_status[item['name']]['has_data'] | default(false) | bool
-        - not __pve_storage_pool_data_status[item['name']]['exists'] | default(false) | bool
-        - not (pve_proxmox_storage_force_cleanup | default(false) | bool)
+        - __pve_storage_pool_data_status[item['name']]['has_data'] | default(false) | ansible.builtin.bool
+        - not __pve_storage_pool_data_status[item['name']]['exists'] | default(false) | ansible.builtin.bool
+        - not (pve_proxmox_storage_force_cleanup | default(false) | ansible.builtin.bool)
         - item['name'] not in (__pve_storage_wrong_pool_devices | default({}) | list)
 
 
@@ -576,9 +576,9 @@
       when:
         - __pve_disk_check_list is defined
         - __pve_disk_check_list | length > 0
-        - __pve_storage_pool_data_status[item['pool']]['has_data'] | default(false) | bool
-        - not __pve_storage_pool_data_status[item['pool']]['exists'] | default(false) | bool
-        - pve_proxmox_storage_force_cleanup | default(false) | bool
+        - __pve_storage_pool_data_status[item['pool']]['has_data'] | default(false) | ansible.builtin.bool
+        - not __pve_storage_pool_data_status[item['pool']]['exists'] | default(false) | ansible.builtin.bool
+        - pve_proxmox_storage_force_cleanup | default(false) | ansible.builtin.bool
       changed_when: true
 
 
@@ -591,9 +591,9 @@
       when:
         - __pve_disk_check_list is defined
         - __pve_disk_check_list | length > 0
-        - __pve_storage_pool_data_status[item['pool']]['has_data'] | default(false) | bool
-        - not __pve_storage_pool_data_status[item['pool']]['exists'] | default(false) | bool
-        - pve_proxmox_storage_force_cleanup | default(false) | bool
+        - __pve_storage_pool_data_status[item['pool']]['has_data'] | default(false) | ansible.builtin.bool
+        - not __pve_storage_pool_data_status[item['pool']]['exists'] | default(false) | ansible.builtin.bool
+        - pve_proxmox_storage_force_cleanup | default(false) | ansible.builtin.bool
       changed_when: true
       failed_when: false
 
@@ -624,12 +624,12 @@
         pool_properties: "{{ item['attributes']['pool_properties'] | default({}) }}"
         mountpoint: "{{ item['attributes']['mountpoint'] | default(omit) }}"
         altroot: "{{ item['attributes']['altroot'] | default(omit) }}"
-        disable_new_features: "{{ item['attributes']['disable_new_features'] | default(false) | bool }}"
+        disable_new_features: "{{ item['attributes']['disable_new_features'] | default(false) | ansible.builtin.bool }}"
       loop: "{{ pve_proxmox_storage | default([], true) | selectattr('type', 'equalto', 'zpool') | list }}"
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - not __pve_storage_pool_data_status[item['name']]['exists'] | default(false) | bool
+        - not __pve_storage_pool_data_status[item['name']]['exists'] | default(false) | ansible.builtin.bool
 
 
     - name: "Storage | ZFS | zpool | Update pool properties if pool exists"
@@ -641,7 +641,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - __pve_storage_pool_data_status[item['name']]['exists'] | default(false) | bool
+        - __pve_storage_pool_data_status[item['name']]['exists'] | default(false) | ansible.builtin.bool
         - item['attributes']['storage_properties'] is defined
 
 
@@ -695,7 +695,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - not __pve_zfs_dataset_exists[item['name']] | default(false) | bool
+        - not __pve_zfs_dataset_exists[item['name']] | default(false) | ansible.builtin.bool
         - item['attributes']['zfs_properties']['encryption'] is defined
         - item['attributes']['zfs_properties']['keylocation'] | default('prompt') == 'prompt'
       changed_when: true
@@ -723,7 +723,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - not __pve_zfs_dataset_exists[item['name']] | default(false) | bool
+        - not __pve_zfs_dataset_exists[item['name']] | default(false) | ansible.builtin.bool
         - item['attributes']['zfs_properties']['encryption'] is defined
         - item['attributes']['zfs_properties']['keylocation'] is defined
         - item['attributes']['zfs_properties']['keylocation'] != 'prompt'
@@ -756,7 +756,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - not __pve_zfs_dataset_exists[item['name']] | default(false) | bool
+        - not __pve_zfs_dataset_exists[item['name']] | default(false) | ansible.builtin.bool
         - item['attributes']['zfs_properties']['encryption'] is not defined
 
 
@@ -775,7 +775,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - __pve_zfs_dataset_exists[item['name']] | default(false) | bool
+        - __pve_zfs_dataset_exists[item['name']] | default(false) | ansible.builtin.bool
 
 
     - name: "Storage | ZFS | zfs_dataset | Check encryption status of existing volumes"
@@ -790,7 +790,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - __pve_zfs_dataset_exists[item['name']] | default(false) | bool
+        - __pve_zfs_dataset_exists[item['name']] | default(false) | ansible.builtin.bool
         - item['attributes']['zfs_properties']['encryption'] is defined
 
 
@@ -874,7 +874,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - __pve_zfs_dataset_exists[item['name']] | default(false) | bool
+        - __pve_zfs_dataset_exists[item['name']] | default(false) | ansible.builtin.bool
         - item['attributes']['zfs_properties']['encryption'] is defined
         - item['attributes']['zfs_properties']['passphrase'] is defined
         - item['attributes']['zfs_properties']['passphrase_old'] is defined
@@ -897,7 +897,7 @@
       when:
         - pve_proxmox_storage is defined
         - pve_proxmox_storage | length > 0
-        - __pve_zfs_dataset_exists[item['name']] | default(false) | bool
+        - __pve_zfs_dataset_exists[item['name']] | default(false) | ansible.builtin.bool
         - item['attributes']['zfs_properties']['encryption'] is defined
 
 
@@ -1077,7 +1077,7 @@
           {{
             __pve_nfs_mount_status | default({}) | combine({
               item['item']['name']: {
-                'is_mounted': item is success | bool,
+                'is_mounted': item is success | ansible.builtin.bool,
                 'current_source': item['stdout'] | default('') | trim
               }
             })
@@ -1224,7 +1224,7 @@
             ["pvesm", "add", "dir", pve_storage_item['name'],
               "--path", pve_storage_item['storage_properties']['path']]
             + (["--is_mountpoint", "yes"]
-              if (pve_storage_item['storage_properties']['is_mountpoint'] | default(false) | bool) else [])
+              if (pve_storage_item['storage_properties']['is_mountpoint'] | default(false) | ansible.builtin.bool) else [])
             + (["--content", (pve_storage_item['storage_properties']['content'] | join(','))]
               if pve_storage_item['storage_properties']['content'] is defined else [])
             + (["--nodes", (pve_storage_item['storage_properties']['nodes'] | join(','))]
@@ -1236,7 +1236,7 @@
       when:
         - pve_proxmox_sm is defined
         - pve_proxmox_sm | length > 0
-        - not __pve_storage_is_configured[pve_storage_item['name']] | default(false) | bool
+        - not __pve_storage_is_configured[pve_storage_item['name']] | default(false) | ansible.builtin.bool
       changed_when: true
 
 
@@ -1250,11 +1250,11 @@
             + (["--path", pve_storage_item['storage_properties']['path']]
               if pve_storage_item['storage_properties']['path'] is defined else [])
             + (["--is_mountpoint", 'yes']
-                if (pve_storage_item['storage_properties']['is_mountpoint'] | default(false) | bool) else [])
+                if (pve_storage_item['storage_properties']['is_mountpoint'] | default(false) | ansible.builtin.bool) else [])
             + (["--content", (pve_storage_item['storage_properties']['content'] | join(','))]
                 if pve_storage_item['storage_properties']['content'] is defined else [])
             + (["--sparse", 'true']
-                if (pve_storage_item['storage_properties']['sparse'] | default(false) | bool) else [])
+                if (pve_storage_item['storage_properties']['sparse'] | default(false) | ansible.builtin.bool) else [])
             + (["--blocksize", pve_storage_item['storage_properties']['blocksize']]
                 if pve_storage_item['storage_properties']['blocksize'] is defined else [])
             + (["--nodes", (pve_storage_item['storage_properties']['nodes'] | join(','))]
@@ -1266,7 +1266,7 @@
       when:
         - pve_proxmox_sm is defined
         - pve_proxmox_sm | length > 0
-        - not __pve_storage_is_configured[pve_storage_item['name']] | default(false) | bool
+        - not __pve_storage_is_configured[pve_storage_item['name']] | default(false) | ansible.builtin.bool
       changed_when: true
 
 
