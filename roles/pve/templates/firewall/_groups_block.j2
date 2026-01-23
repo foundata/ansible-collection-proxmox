@@ -4,7 +4,7 @@
 
   Expects an 'fw_securitygroups' variable.
 -#}
-{% if fw_securitygroups is defined and fw_securitygroups | length > 0 %}
+{% if fw_securitygroups is defined and fw_securitygroups | ansible.builtin.length > 0 %}
 {%   for group in fw_securitygroups %}
 {#     Check if required keys are provided #}
 {%     set required_keys = ['name', 'rules'] %}
@@ -12,8 +12,8 @@
 {%       set value = group[key] | default(none, true) %}
 {%       set is_nonempty =
            (value is string and (value | string | ansible.builtin.trim) != '') or
-           (value is mapping and (value | length > 0)) or
-           ((value is sequence and not (value is string)) and (value | length > 0)) %}
+           (value is mapping and (value | ansible.builtin.length > 0)) or
+           ((value is sequence and not (value is string)) and (value | ansible.builtin.length > 0)) %}
 {%       if value is none or not is_nonempty %}
 {{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for security group ' ~ group) }}
 {%       endif %}

@@ -4,7 +4,7 @@
 
   Expects an 'fw_ipsets' variable.
 -#}
-{% if fw_ipsets is defined and fw_ipsets | length > 0 %}
+{% if fw_ipsets is defined and fw_ipsets | ansible.builtin.length > 0 %}
 {%   for ipset in fw_ipsets %}
 {#     Check if required keys are provided #}
 {%     set required_keys = ['name', 'entries'] %}
@@ -12,8 +12,8 @@
 {%       set value = ipset[key] | default(none, true) %}
 {%       set is_nonempty =
            (value is string and (value | string | ansible.builtin.trim) != '') or
-           (value is mapping and (value | length > 0)) or
-           ((value is sequence and not (value is string)) and (value | length > 0)) %}
+           (value is mapping and (value | ansible.builtin.length > 0)) or
+           ((value is sequence and not (value is string)) and (value | ansible.builtin.length > 0)) %}
 {%       if value is none or not is_nonempty %}
 {{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for ipset ' ~ ipset) }}
 {%       endif %}
@@ -31,8 +31,8 @@
 {%         set value = entry[key] | default(none, true) %}
 {%         set is_nonempty =
              (value is string and (value | string | ansible.builtin.trim) != '') or
-             (value is mapping and (value | length > 0)) or
-             ((value is sequence and not (value is string)) and (value | length > 0)) %}
+             (value is mapping and (value | ansible.builtin.length > 0)) or
+             ((value is sequence and not (value is string)) and (value | ansible.builtin.length > 0)) %}
 {%         if value is none or not is_nonempty %}
 {{           undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for ipset ' ~ ipset) }}
 {%         endif %}

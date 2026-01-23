@@ -6,7 +6,7 @@
 {%- set pve_datacentercfg = tpl_pve_datacentercfg | default({}, true) -%}
 {%- from '_render_cfg_value.j2' import render_cfg_value -%}
 
-{% if pve_datacentercfg | length > 0 %}
+{% if pve_datacentercfg | ansible.builtin.length > 0 %}
 {%   for item in pve_datacentercfg | dict2items | ansible.builtin.sort(attribute='key') %}
 {{ item['key'] }}: {{ render_cfg_value(item['value']) }}
 {%   endfor %}

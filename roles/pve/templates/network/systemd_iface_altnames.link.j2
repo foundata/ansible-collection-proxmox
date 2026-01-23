@@ -17,8 +17,8 @@
 {%-   set value = iface_item[key] | default(none, true) -%}
 {%-   set is_nonempty =
         (value is string and (value | string | ansible.builtin.trim) != '') or
-        (value is mapping and (value | length > 0)) or
-        ((value is sequence and not (value is string)) and (value | length > 0)) -%}
+        (value is mapping and (value | ansible.builtin.length > 0)) or
+        ((value is sequence and not (value is string)) and (value | ansible.builtin.length > 0)) -%}
 {%-   if value is none or not is_nonempty -%}
 {{-     undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for interface ' ~ iface_item['name']) -}}
 {%-   endif -%}
@@ -51,7 +51,7 @@ MACAddress={{ iface_item['mac_address'] }}
 Type={{ type_mapping[iface_item['type']] }}
 
 [Link]
-{% if iface_item['desc'] | length > 0 %}
+{% if iface_item['desc'] | ansible.builtin.length > 0 %}
 Description={{ iface_item['desc'] }}
 {% endif %}
 {% for altname in iface_item['altnames'] %}

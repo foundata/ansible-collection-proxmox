@@ -4,7 +4,7 @@
 
   Expects an 'fw_aliases' variable.
 -#}
-{% if fw_aliases is defined and fw_aliases | length > 0 %}
+{% if fw_aliases is defined and fw_aliases | ansible.builtin.length > 0 %}
 [ALIASES]
 {%   for alias in fw_aliases %}
 {#     Check if required keys are provided #}
@@ -13,8 +13,8 @@
 {%       set value = alias[key] | default(none, true) %}
 {%       set is_nonempty =
            (value is string and (value | string | ansible.builtin.trim) != '') or
-           (value is mapping and (value | length > 0)) or
-           ((value is sequence and not (value is string)) and (value | length > 0)) %}
+           (value is mapping and (value | ansible.builtin.length > 0)) or
+           ((value is sequence and not (value is string)) and (value | ansible.builtin.length > 0)) %}
 {%       if value is none or not is_nonempty %}
 {{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for alias ' ~ alias) }}
 {%       endif %}
