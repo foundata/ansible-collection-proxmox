@@ -40,7 +40,7 @@
       ansible.builtin.set_fact:
         __pve_zpool_all_disks: >-
           {{
-            __pve_zpool_all_disks | default({}) | combine({
+            __pve_zpool_all_disks | default({}) | ansible.builtin.combine({
               item['name']: item['attributes']['vdevs']
                 | map(attribute='disks')
                 | flatten
@@ -161,7 +161,7 @@
       ansible.builtin.set_fact:
         __pve_pool_exists: >-
           {{
-            __pve_pool_exists | default({}) | combine({
+            __pve_pool_exists | default({}) | ansible.builtin.combine({
               item['name']: item['name'] in (ansible_zfs_pools | default([]) | map(attribute='name') | ansible.builtin.list)
             })
           }}
@@ -175,7 +175,7 @@
       ansible.builtin.set_fact:
         __pve_storage_pool_data_status: >-
           {{
-            __pve_storage_pool_data_status | default({}) | combine({
+            __pve_storage_pool_data_status | default({}) | ansible.builtin.combine({
               item['name']: {
                 'has_data': (
                   __pve_storage_blkid_check['results'] | default([])
@@ -217,7 +217,7 @@
       ansible.builtin.set_fact:
         __pve_zpool_status_devices: >-
           {{
-            __pve_zpool_status_devices | default({}) | combine({
+            __pve_zpool_status_devices | default({}) | ansible.builtin.combine({
               item['item']['name']: item['stdout_lines']
                 | select('match', '^\s+/dev/')
                 | map('regex_replace', '^\s+(/dev/[^\s]+).*', '\1')
@@ -279,7 +279,7 @@
       ansible.builtin.set_fact:
         __pve_zpool_device_map: >-
           {{
-            __pve_zpool_device_map | default({}) | combine({
+            __pve_zpool_device_map | default({}) | ansible.builtin.combine({
               item['item']['pool']: (
                 __pve_zpool_device_map[item['item']['pool']] | default([])
               ) + [
@@ -306,7 +306,7 @@
       ansible.builtin.set_fact:
         __pve_zpool_actual_devices: >-
           {{
-            __pve_zpool_actual_devices | default({}) | combine({
+            __pve_zpool_actual_devices | default({}) | ansible.builtin.combine({
               pool_name: {
                 'devices_found': __pve_zpool_status_devices[pool_name],
                 'pool_devices': __pve_zpool_status_devices_resolved['results']
@@ -336,7 +336,7 @@
       ansible.builtin.set_fact:
         __pve_zpool_missing_devices: >-
           {{
-            __pve_zpool_missing_devices | default({}) | combine({
+            __pve_zpool_missing_devices | default({}) | ansible.builtin.combine({
               pool_name: existing_devices + (device_map | selectattr('exists', 'equalto', false) | map(attribute='by_id') | ansible.builtin.list)
             })
           }}
@@ -465,7 +465,7 @@
       ansible.builtin.set_fact:
         __pve_storage_wrong_pool_devices: >-
           {{
-            __pve_storage_wrong_pool_devices | default({}) | combine({
+            __pve_storage_wrong_pool_devices | default({}) | ansible.builtin.combine({
               item['item']['pool']: (
                   __pve_storage_wrong_pool_devices[item['item']['pool']] | default([])
               ) + [
@@ -664,7 +664,7 @@
       ansible.builtin.set_fact:
         __pve_zfs_dataset_exists: >-
           {{
-            __pve_zfs_dataset_exists | default({}) | combine({
+            __pve_zfs_dataset_exists | default({}) | ansible.builtin.combine({
               item['item']['name']: item is success and (item['ansible_facts']['ansible_zfs_datasets'] | default([]) | length > 0)
             })
           }}
@@ -1075,7 +1075,7 @@
       ansible.builtin.set_fact:
         __pve_nfs_mount_status: >-
           {{
-            __pve_nfs_mount_status | default({}) | combine({
+            __pve_nfs_mount_status | default({}) | ansible.builtin.combine({
               item['item']['name']: {
                 'is_mounted': item is success | ansible.builtin.bool,
                 'current_source': item['stdout'] | default('') | ansible.builtin.trim
@@ -1205,7 +1205,7 @@
       ansible.builtin.set_fact:
         __pve_storage_is_configured: >-
           {{
-            __pve_storage_is_configured | default({}) | combine({
+            __pve_storage_is_configured | default({}) | ansible.builtin.combine({
               pve_storage_item['name']: pve_storage_item['name'] in (__pve_existing_storages | default([]))
             })
           }}

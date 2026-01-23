@@ -41,7 +41,7 @@
 {%- endif -%}
 
 {#- Prepare optional fields -#}
-{%- set iface_item = iface_item | combine({
+{%- set iface_item = iface_item | ansible.builtin.combine({
     'desc': iface_item['desc'] | default('', true) | string | ansible.builtin.trim
   }, recursive=true)
 -%}
