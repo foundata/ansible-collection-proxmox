@@ -12,9 +12,9 @@
 {%     for key in required_keys %}
 {%       set value = alias[key] | ansible.builtin.default(none, true) %}
 {%       set is_nonempty =
-           (value is string and (value | ansible.builtin.string | ansible.builtin.trim) != '') or
+           (value is ansible.builtin.string and (value | ansible.builtin.string | ansible.builtin.trim) != '') or
            (value is mapping and (value | ansible.builtin.length > 0)) or
-           ((value is sequence and not (value is string)) and (value | ansible.builtin.length > 0)) %}
+           ((value is sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
 {%       if value is ansible.builtin.none or not is_nonempty %}
 {{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for alias ' ~ alias) }}
 {%       endif %}

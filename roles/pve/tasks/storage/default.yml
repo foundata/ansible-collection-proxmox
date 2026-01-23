@@ -805,7 +805,7 @@
 
           # Parse old passphrase(s) into an array
           {% if item['attributes']['zfs_properties']['passphrase_old'] is defined and item['attributes']['zfs_properties']['passphrase_old'] is not none %}
-          {%   if item['attributes']['zfs_properties']['passphrase_old'] is string %}
+          {%   if item['attributes']['zfs_properties']['passphrase_old'] is ansible.builtin.string %}
           __pve_old_passes=( {{ item['attributes']['zfs_properties']['passphrase_old'] | ansible.builtin.quote }} )
           {%   else %}
           __pve_old_passes=( {% for old_pass in item['attributes']['zfs_properties']['passphrase_old'] %}{{ old_pass | ansible.builtin.quote }} {% endfor %})
