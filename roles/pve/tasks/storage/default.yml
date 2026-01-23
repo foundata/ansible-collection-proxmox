@@ -91,7 +91,7 @@
               }
             ]
           }}
-      loop: "{{ __pve_zpool_all_disks | ansible.builtin.default({}) | dict2items | subelements('value') }}"
+      loop: "{{ __pve_zpool_all_disks | ansible.builtin.default({}) | ansible.builtin.dict2items | subelements('value') }}"
       when:
         - __pve_zpool_all_disks is defined
         - __pve_zpool_all_disks | ansible.builtin.length > 0
@@ -252,7 +252,7 @@
       vars:
         pool_name: "{{ item[0]['key'] }}"
         zpool_device: "{{ item[1] }}"
-      loop: "{{ __pve_zpool_status_devices | ansible.builtin.default({}) | dict2items | subelements('value') }}"
+      loop: "{{ __pve_zpool_status_devices | ansible.builtin.default({}) | ansible.builtin.dict2items | subelements('value') }}"
       loop_control:
         label: "{{ pool_name }}: {{ zpool_device }}"
       register: __pve_zpool_status_devices_resolved
@@ -324,7 +324,7 @@
           }}
       vars:
         pool_name: "{{ item['key'] }}"
-      loop: "{{ __pve_zpool_status_devices | ansible.builtin.default({}) | dict2items }}"
+      loop: "{{ __pve_zpool_status_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
       loop_control:
         label: "{{ pool_name }}"
       when:
@@ -340,7 +340,7 @@
               pool_name: existing_devices + (device_map | selectattr('exists', 'equalto', false) | ansible.builtin.map(attribute='by_id') | ansible.builtin.list)
             })
           }}
-      loop: "{{ __pve_zpool_device_map | ansible.builtin.default({}) | dict2items }}"
+      loop: "{{ __pve_zpool_device_map | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
       loop_control:
         loop_var: pool_item
         label: "{{ pool_item['key'] }}"
@@ -384,7 +384,7 @@
           4. Update Ansible variables with correct paths
 
           Cannot proceed with pool creation until disks are available.
-      loop: "{{ __pve_zpool_missing_devices | ansible.builtin.default({}) | dict2items }}"
+      loop: "{{ __pve_zpool_missing_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
       when:
         - __pve_zpool_missing_devices is defined
         - __pve_zpool_missing_devices | ansible.builtin.length > 0
@@ -511,7 +511,7 @@
 
           DO NOT set pve_proxmox_storage_force_cleanup=true to bypass this check!
           This requires manual verification to prevent data loss.
-      loop: "{{ __pve_storage_wrong_pool_devices | ansible.builtin.default({}) | dict2items }}"
+      loop: "{{ __pve_storage_wrong_pool_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
       when:
         - __pve_storage_wrong_pool_devices is defined
         - __pve_storage_wrong_pool_devices | ansible.builtin.length > 0
@@ -767,7 +767,7 @@
         extra_zfs_properties: >-
           {{
             item['attributes']['zfs_properties'] | ansible.builtin.default({})
-            | dict2items
+            | ansible.builtin.dict2items
             | rejectattr('key', 'in', ['encryption', 'keyformat', 'keylocation', 'passphrase', 'passphrase_old'])
             | items2dict
           }}

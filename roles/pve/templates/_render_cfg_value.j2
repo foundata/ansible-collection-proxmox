@@ -5,7 +5,7 @@
 {%- macro render_cfg_value(value) -%}
 {%-   if value is mapping -%}
 {%-     set pairs = [] -%}
-{%-     for kv in value | dict2items -%}
+{%-     for kv in value | ansible.builtin.dict2items -%}
 {%-       set _ = pairs.append(kv['key'] ~ '=' ~ kv['value']) -%}
 {%-     endfor -%}
 {{ pairs | join(',') }}
