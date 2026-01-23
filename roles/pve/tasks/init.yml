@@ -79,7 +79,7 @@
   vars:
     __pve_proxmox_vars_file: "{{ role_path }}/vars/{{ item }}"
   when:
-    - __pve_proxmox_vars_file is file
+    - __pve_proxmox_vars_file is ansible.builtin.file
   loop: "{{ __pve_proxmox_platform_filenames_most_specific_last }}"
 
 
