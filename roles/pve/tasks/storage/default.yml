@@ -42,7 +42,7 @@
           {{
             __pve_zpool_all_disks | default({}) | ansible.builtin.combine({
               item['name']: item['attributes']['vdevs']
-                | map(attribute='disks')
+                | ansible.builtin.map(attribute='disks')
                 | flatten
                 | ansible.builtin.list
             })
@@ -162,7 +162,7 @@
         __pve_pool_exists: >-
           {{
             __pve_pool_exists | default({}) | ansible.builtin.combine({
-              item['name']: item['name'] in (ansible_zfs_pools | default([]) | map(attribute='name') | ansible.builtin.list)
+              item['name']: item['name'] in (ansible_zfs_pools | default([]) | ansible.builtin.map(attribute='name') | ansible.builtin.list)
             })
           }}
       loop: "{{ pve_proxmox_storage | default([], true) | selectattr('type', 'equalto', 'zpool') | ansible.builtin.list }}"
@@ -220,7 +220,7 @@
             __pve_zpool_status_devices | default({}) | ansible.builtin.combine({
               item['item']['name']: item['stdout_lines']
                 | select('match', '^\s+/dev/')
-                | map('regex_replace', '^\s+(/dev/[^\s]+).*', '\1')
+                | ansible.builtin.map('regex_replace', '^\s+(/dev/[^\s]+).*', '\1')
                 | ansible.builtin.list
             })
           }}
@@ -311,13 +311,13 @@
                 'devices_found': __pve_zpool_status_devices[pool_name],
                 'pool_devices': __pve_zpool_status_devices_resolved['results']
                   | selectattr('item.0.key', 'equalto', pool_name)
-                  | map(attribute='stdout')
-                  | map('trim')
+                  | ansible.builtin.map(attribute='stdout')
+                  | ansible.builtin.map('trim')
                   | ansible.builtin.unique
                   | ansible.builtin.list,
                 'expected_devices': __pve_zpool_device_map[pool_name]
                   | selectattr('exists', 'equalto', true)
-                  | map(attribute='basename')
+                  | ansible.builtin.map(attribute='basename')
                   | ansible.builtin.list
               }
             })
@@ -337,7 +337,7 @@
         __pve_zpool_missing_devices: >-
           {{
             __pve_zpool_missing_devices | default({}) | ansible.builtin.combine({
-              pool_name: existing_devices + (device_map | selectattr('exists', 'equalto', false) | map(attribute='by_id') | ansible.builtin.list)
+              pool_name: existing_devices + (device_map | selectattr('exists', 'equalto', false) | ansible.builtin.map(attribute='by_id') | ansible.builtin.list)
             })
           }}
       loop: "{{ __pve_zpool_device_map | default({}) | dict2items }}"
@@ -1164,7 +1164,7 @@
           {{
             __pve_storage_status['stdout_lines']
             | select('match', '^[a-zA-Z]')
-            | map('regex_replace', '^([^\s]+).*', '\1')
+            | ansible.builtin.map('regex_replace', '^([^\s]+).*', '\1')
             | ansible.builtin.list
           }}
       when:
