@@ -313,7 +313,7 @@
                   | selectattr('item.0.key', 'equalto', pool_name)
                   | map(attribute='stdout')
                   | map('trim')
-                  | unique
+                  | ansible.builtin.unique
                   | ansible.builtin.list,
                 'expected_devices': __pve_zpool_device_map[pool_name]
                   | selectattr('exists', 'equalto', true)
