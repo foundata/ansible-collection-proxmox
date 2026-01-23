@@ -37,7 +37,7 @@
   'ib': 'infiniband'
 } -%}
 {%- if iface_item['type'] not in type_mapping -%}
-{{-   undefined | mandatory(("ERROR: Unknown interface type '" ~ iface_item['type'] ~ "' for " ~ iface_item['name'] ~ ". Valid types are: " ~ type_mapping.keys() | list | join(', '))) -}}
+{{-   undefined | mandatory(("ERROR: Unknown interface type '" ~ iface_item['type'] ~ "' for " ~ iface_item['name'] ~ ". Valid types are: " ~ type_mapping.keys() | ansible.builtin.list | join(', '))) -}}
 {%- endif -%}
 
 {#- Prepare optional fields -#}
