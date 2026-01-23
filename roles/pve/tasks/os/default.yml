@@ -62,7 +62,7 @@
         __pve_grub_config['content']
         | ansible.builtin.b64decode
         | regex_search('GRUB_CMDLINE_LINUX_DEFAULT="([^"]*)"', '\1')
-        | first
+        | ansible.builtin.first
         | ansible.builtin.default('quiet')
       }}
     __pve_grub_cmdline_clean: >-
