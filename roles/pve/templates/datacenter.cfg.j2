@@ -7,7 +7,7 @@
 {%- from '_render_cfg_value.j2' import render_cfg_value -%}
 
 {% if pve_datacentercfg | length > 0 %}
-{%   for item in pve_datacentercfg | dict2items | sort(attribute='key') %}
+{%   for item in pve_datacentercfg | dict2items | ansible.builtin.sort(attribute='key') %}
 {{ item['key'] }}: {{ render_cfg_value(item['value']) }}
 {%   endfor %}
 {% else %}
