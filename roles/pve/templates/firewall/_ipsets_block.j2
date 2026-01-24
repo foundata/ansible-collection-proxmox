@@ -4,7 +4,7 @@
 
   Expects an 'fw_ipsets' variable.
 -#}
-{% if fw_ipsets is defined and fw_ipsets | ansible.builtin.length > 0 %}
+{% if fw_ipsets is ansible.builtin.defined and fw_ipsets | ansible.builtin.length > 0 %}
 {%   for ipset in fw_ipsets %}
 {#     Check if required keys are provided #}
 {%     set required_keys = ['name', 'entries'] %}
@@ -22,7 +22,7 @@
 {%   if not (ipset['name'] | ansible.builtin.regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
 {{      undefined | mandatory('ERROR: Invalid ipset name `' ~ ipset['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
 {%   endif %}
-[IPSET {{ ipset['name'] }}]{% if ipset['comment'] is defined %} # {{ ipset['comment'] }}{% endif %}
+[IPSET {{ ipset['name'] }}]{% if ipset['comment'] is ansible.builtin.defined %} # {{ ipset['comment'] }}{% endif %}
 
 {%     for entry in ipset['entries'] %}
 {#       Check if required keys are provided #}
@@ -46,7 +46,7 @@
 {%       if not is_valid_ip %}
 {{         undefined | mandatory('ERROR: Invalid IP address `' ~ entry['ip'] ~ '` in ipset ' ~ ipset['name'] ~ ' - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') }}
 {%       endif %}
-{{ '!' if entry.get('nomatch') else '' }}{{ entry['ip'] }}{% if entry['comment'] is defined %} # {{ entry['comment'] }}{% endif %}
+{{ '!' if entry.get('nomatch') else '' }}{{ entry['ip'] }}{% if entry['comment'] is ansible.builtin.defined %} # {{ entry['comment'] }}{% endif %}
 
 {%     endfor %}
 

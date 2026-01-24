@@ -28,8 +28,8 @@
 
 {#- accept plural list or singular dict -#}
 {%- set datasets =
-      (tpl_interface_datasets if tpl_interface_datasets is defined else
-       [tpl_interface_dataset] if tpl_interface_dataset is defined else
+      (tpl_interface_datasets if tpl_interface_datasets is ansible.builtin.defined else
+       [tpl_interface_dataset] if tpl_interface_dataset is ansible.builtin.defined else
        []) -%}
 
 {%- set ns = namespace(before_lines=[]) %}

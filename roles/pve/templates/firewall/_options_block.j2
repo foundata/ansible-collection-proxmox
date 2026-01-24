@@ -5,7 +5,7 @@
   Expects an 'fw_options' variable.
 -#}
 {%- from '_render_cfg_value.j2' import render_cfg_value -%}
-{% if fw_options is defined and fw_options | ansible.builtin.length > 0 %}
+{% if fw_options is ansible.builtin.defined and fw_options | ansible.builtin.length > 0 %}
 [OPTIONS]
 {%   for key, value in fw_options.items() %}
 {{ key }}: {{ render_cfg_value(value) }}

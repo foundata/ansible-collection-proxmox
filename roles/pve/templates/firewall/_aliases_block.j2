@@ -4,7 +4,7 @@
 
   Expects an 'fw_aliases' variable.
 -#}
-{% if fw_aliases is defined and fw_aliases | ansible.builtin.length > 0 %}
+{% if fw_aliases is ansible.builtin.defined and fw_aliases | ansible.builtin.length > 0 %}
 [ALIASES]
 {%   for alias in fw_aliases %}
 {#     Check if required keys are provided #}
@@ -30,7 +30,7 @@
 {%-   if not is_valid_ip -%}
 {{     undefined | mandatory('ERROR: Invalid IP address `' ~ alias['ip'] ~ '` for alias `' ~ alias['name'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation)') }}
 {%-   endif -%}
-{{ alias['name'] }} {{ alias['ip'] }}{% if alias['comment'] is defined %} # {{ alias['comment'] }}{% endif %}
+{{ alias['name'] }} {{ alias['ip'] }}{% if alias['comment'] is ansible.builtin.defined %} # {{ alias['comment'] }}{% endif %}
 
 {%   endfor %}
 {% else %}

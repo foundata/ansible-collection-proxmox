@@ -4,7 +4,7 @@
 
   Expects an 'fw_rules' variable.
 -#}
-{% if fw_rules is defined and fw_rules | ansible.builtin.length > 0 %}
+{% if fw_rules is ansible.builtin.defined and fw_rules | ansible.builtin.length > 0 %}
 [RULES]
 {%   for rule in fw_rules %}
 {%     include 'firewall/_rule_line.j2' %}

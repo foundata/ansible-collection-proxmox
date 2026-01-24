@@ -23,9 +23,9 @@
       desc: "{{ item['desc'] | ansible.builtin.default('', true) }}"
       altnames: "{{ item['altnames'] | ansible.builtin.default([], true) }}"
   when:
-    - pve_proxmox_net_altnames is defined
+    - pve_proxmox_net_altnames is ansible.builtin.defined
     - pve_proxmox_net_altnames | ansible.builtin.length > 0
-    - pve_proxmox_net_altnames[0]['altnames'] is defined
+    - pve_proxmox_net_altnames[0]['altnames'] is ansible.builtin.defined
     - pve_proxmox_net_altnames[0]['altnames'] | ansible.builtin.length > 0
   loop: "{{ pve_proxmox_net_altnames }}"
   notify:

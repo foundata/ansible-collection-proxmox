@@ -4,7 +4,7 @@
 
   Expects an 'fw_securitygroups' variable.
 -#}
-{% if fw_securitygroups is defined and fw_securitygroups | ansible.builtin.length > 0 %}
+{% if fw_securitygroups is ansible.builtin.defined and fw_securitygroups | ansible.builtin.length > 0 %}
 {%   for group in fw_securitygroups %}
 {#     Check if required keys are provided #}
 {%     set required_keys = ['name', 'rules'] %}
@@ -22,7 +22,7 @@
 {%   if not (group['name'] | ansible.builtin.regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
 {{      undefined | mandatory('ERROR: Invalid group name `' ~ group['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
 {%   endif %}
-[group {{ group['name'] }}]{% if group['comment'] is defined %} # {{ group['comment'] }}{% endif %}
+[group {{ group['name'] }}]{% if group['comment'] is ansible.builtin.defined %} # {{ group['comment'] }}{% endif %}
 
 {%     for rule in group['rules'] %}
 {%       include 'firewall/_rule_line.j2' %}

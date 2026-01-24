@@ -171,7 +171,7 @@
     mode: "u=rw,g=r,o=" # 0640
   when:
     - pve_proxmox_tmpbackupfiles
-    - pve_proxmox_managed_vms is defined
+    - pve_proxmox_managed_vms is ansible.builtin.defined
   loop: "{{ pve_proxmox_managed_vms | ansible.builtin.default([], true) }}"
   failed_when:
     - false
@@ -193,7 +193,7 @@
     vm_rules: "{{ item['rules'] | ansible.builtin.default([], true) }}"
     vm_ipsets: "{{ item['ipsets'] | ansible.builtin.default([], true) }}"
   when:
-    - pve_proxmox_managed_vms is defined
+    - pve_proxmox_managed_vms is ansible.builtin.defined
   loop: "{{ pve_proxmox_managed_vms | ansible.builtin.default([], true) }}"
   notify:
     - "pve_proxmox: reload pve-firewall"

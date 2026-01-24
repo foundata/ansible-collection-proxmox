@@ -21,7 +21,7 @@
 {#- Handle different action types -#}
 {%- if rule['action'] | ansible.builtin.upper == 'GROUP' -%}
 {#-   Security group reference -#}
-{%-   if rule['security_group'] is defined -%}
+{%-   if rule['security_group'] is ansible.builtin.defined -%}
 {%-     set _ = rule_parts.append('GROUP ' ~ rule['security_group']) -%}
 {%-   else -%}
 {%-     set _ = rule_parts.append('GROUP undefined_group') -%}
@@ -35,7 +35,7 @@
 {%- endif -%}
 
 {#- Optional: Interface -#}
-{%- if rule['iface'] is defined -%}
+{%- if rule['iface'] is ansible.builtin.defined -%}
 {%-   set _ = rule_parts.append('-i ' ~ rule['iface']) -%}
 {%- endif -%}
 
@@ -43,7 +43,7 @@
 {%- if rule['action'] | ansible.builtin.upper != 'GROUP' -%}
 
 {#-   Optional: Source -#}
-{%-   if rule['source'] is defined -%}
+{%-   if rule['source'] is ansible.builtin.defined -%}
 {#-     Validate address format: IPv4/6 (with optional CIDR), alias or ipset #}
 {%-     set alias_pattern = '^((dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' -%}
 {%-     set ipset_pattern = '^(\+(dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' -%}
@@ -59,7 +59,7 @@
 {%-   endif -%}
 
 {#-   Optional: Destination -#}
-{%-   if rule['dest'] is defined -%}
+{%-   if rule['dest'] is ansible.builtin.defined -%}
 {#-     Validate address format: IPv4/6 (with optional CIDR), alias or ipset #}
 {%-     set alias_pattern = '^((dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' -%}
 {%-     set ipset_pattern = '^(\+(dc|guest)\/)?[A-Za-z][A-Za-z0-9_-]*$' -%}
@@ -75,27 +75,27 @@
 {%-   endif -%}
 
 {#-   Protocol (only if not using a macro) -#}
-{%-   if rule['proto'] is defined and not '(' in (rule['action'] | ansible.builtin.string) -%}
+{%-   if rule['proto'] is ansible.builtin.defined and not '(' in (rule['action'] | ansible.builtin.string) -%}
 {%-     set _ = rule_parts.append('-p ' ~ rule['proto']) -%}
 {%-   endif -%}
 
 {#-   Optional: Source Port -#}
-{%-   if rule['sport'] is defined -%}
+{%-   if rule['sport'] is ansible.builtin.defined -%}
 {%-     set _ = rule_parts.append('-sport ' ~ rule['sport']) -%}
 {%-   endif -%}
 
 {#-   Optional: Destination Port (only if not using a macro) -#}
-{%-   if rule['dport'] is defined and not '(' in (rule['action'] | ansible.builtin.string) -%}
+{%-   if rule['dport'] is ansible.builtin.defined and not '(' in (rule['action'] | ansible.builtin.string) -%}
 {%-     set _ = rule_parts.append('-dport ' ~ rule['dport']) -%}
 {%-   endif -%}
 
 {#-   Optional: Log level -#}
-{%-   if rule['log'] is defined -%}
+{%-   if rule['log'] is ansible.builtin.defined -%}
 {%-     set _ = rule_parts.append('-log ' ~ rule['log']) -%}
 {%-   endif -%}
 
 {%- endif -%}
 
 {#- Join all parts with space -#}
-{{ rule_parts | join(' ') }}{% if rule['comment'] is defined %} # {{ rule['comment'] }}{% endif %}
+{{ rule_parts | join(' ') }}{% if rule['comment'] is ansible.builtin.defined %} # {{ rule['comment'] }}{% endif %}
 {{ '\n' -}}
