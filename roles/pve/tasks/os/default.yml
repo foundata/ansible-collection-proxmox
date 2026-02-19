@@ -33,7 +33,8 @@
   # - The dmesg output is easy te evaluate via Jinja2 search filter.
   ansible.builtin.command:
     argv: ["dmesg"]
-  changed_when: false
+  changed_when:
+    - false
   register: __pve_dmesg_output
 
 

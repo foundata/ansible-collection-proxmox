@@ -579,7 +579,8 @@
         - __pve_storage_pool_data_status[item['pool']]['has_data'] | ansible.builtin.default(false) | ansible.builtin.bool
         - not __pve_storage_pool_data_status[item['pool']]['exists'] | ansible.builtin.default(false) | ansible.builtin.bool
         - pve_proxmox_storage_force_cleanup | ansible.builtin.default(false) | ansible.builtin.bool
-      changed_when: true
+      changed_when:
+        - true
 
 
     - name: "Storage | ZFS | zpool | Clean disks - clear ZFS labels (best effort) (DESTRUCTIVE)"
@@ -594,8 +595,10 @@
         - __pve_storage_pool_data_status[item['pool']]['has_data'] | ansible.builtin.default(false) | ansible.builtin.bool
         - not __pve_storage_pool_data_status[item['pool']]['exists'] | ansible.builtin.default(false) | ansible.builtin.bool
         - pve_proxmox_storage_force_cleanup | ansible.builtin.default(false) | ansible.builtin.bool
-      changed_when: true
-      failed_when: false
+      changed_when:
+        - true
+      failed_when:
+        - false
 
 
     - name: "Storage | ZFS | zpool | Ensure mountpoint directories"
@@ -698,7 +701,8 @@
         - not __pve_zfs_dataset_exists[item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
         - item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
         - item['attributes']['zfs_properties']['keylocation'] | ansible.builtin.default('prompt') == 'prompt'
-      changed_when: true
+      changed_when:
+        - true
       no_log: true
 
 
@@ -727,7 +731,8 @@
         - item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
         - item['attributes']['zfs_properties']['keylocation'] is ansible.builtin.defined
         - item['attributes']['zfs_properties']['keylocation'] != 'prompt'
-      changed_when: true
+      changed_when:
+        - true
 
 
     - name: "Storage | ZFS | zfs_dataset | Ensure mountpoint directories"
@@ -918,7 +923,8 @@
         - not item['skipped'] | ansible.builtin.default(false)
         - item['stdout'] | ansible.builtin.default('unavailable') == 'unavailable'
         - item['item']['attributes']['zfs_properties']['keylocation'] | ansible.builtin.default('prompt') == 'prompt'
-      changed_when: true
+      changed_when:
+        - true
       no_log: true
 
 
@@ -934,7 +940,8 @@
         - item['stdout'] | ansible.builtin.default('unavailable') == 'unavailable'
         - item['item']['attributes']['zfs_properties']['keylocation'] is ansible.builtin.defined
         - item['item']['attributes']['zfs_properties']['keylocation'] != 'prompt'
-      changed_when: true
+      changed_when:
+        - true
 
 
     - name: "Storage | ZFS | zfs_dataset | Mount encrypted volumes after key load"
@@ -947,7 +954,8 @@
         - __pve_zfs_dataset_keystatus is ansible.builtin.defined
         - not item['skipped'] | ansible.builtin.default(false)
         - item['stdout'] | ansible.builtin.default('unavailable') == 'unavailable'
-      changed_when: true
+      changed_when:
+        - true
       failed_when:
         - false
 
@@ -1237,7 +1245,8 @@
         - pve_proxmox_sm is ansible.builtin.defined
         - pve_proxmox_sm | ansible.builtin.length > 0
         - not __pve_storage_is_configured[pve_storage_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-      changed_when: true
+      changed_when:
+        - true
 
 
     # FIXME add more options and types from https://pve.proxmox.com/pve-docs/pvesm.1.html
@@ -1267,7 +1276,8 @@
         - pve_proxmox_sm is ansible.builtin.defined
         - pve_proxmox_sm | ansible.builtin.length > 0
         - not __pve_storage_is_configured[pve_storage_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-      changed_when: true
+      changed_when:
+        - true
 
 
     - name: "Storage | pvesm | Verify storage configuration"
