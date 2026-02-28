@@ -37,7 +37,7 @@ It provides resources to manage and different Proxmox products:
 
 ### Role: `foundata.proxmox.pve` (Proxmox Virtual Environment)
 
-See the [role's `README.md`](./roles/pve/README.md) for more information and usage examples.
+The resource in this collection to configure and maintain Proxmox Virtual Environment (PVE) nodes, including network, firewall, storage, and related settings. See the [role's `README.md`](./roles/pve/README.md) for more information and usage examples.
 
 
 
