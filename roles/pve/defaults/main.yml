@@ -96,6 +96,101 @@ pve_proxmox_iommu_manage: true
 # - Type: dict
 # - Required: No
 # - Default: {}
+# - Dict attributes:
+#   - options_before:
+#     Optional lines placed before all sections in the generated file. Uses
+#     interfaces(5) syntax.
+#
+#     Duplicate lines across merged datasets are automatically deduplicated
+#     during rendering.
+#     - Type: str
+#     - Required: No
+#   - sections: List of logical sections grouping related interfaces.
+#
+#     Each section generates a highlighted comment header (using the `title`
+#     value) for improved human readability when inspecting the generated
+#     configuration file.
+#     - Type: list
+#     - Required: No
+#     - List elements: dict
+#     - Dict attributes:
+#       - title:
+#         Section title rendered as a highlighted comment header above the
+#         interface definitions.
+#
+#         Example output: `### Proxmox VE (PVE) main connection (LACP, trunk)`
+#         - Type: str
+#         - Required: Yes
+#       - comment: Optional comment block rendered below the title and above the
+#         interface definitions.
+#
+#         Each line is automatically prefixed with `# ` in the output. Use this
+#         for explanatory text about the section's purpose.
+#         - Type: str
+#         - Required: No
+#       - interfaces: List of network interface definitions within this section.
+#
+#         Each interface generates an `auto` directive (if enabled) and an
+#         `iface` stanza with the specified method and properties.
+#         - Type: list
+#         - Required: Yes
+#         - List elements: dict
+#         - Dict attributes:
+#           - name: Interface name as recognized by the kernel.
+#
+#             Examples: `main1`, `main2`, `bond_main`, `bond_main.0020`,
+#             `br0020`, `admfb`
+#             - Type: str
+#             - Required: Yes
+#           - method: Address assignment method for the interface as defined in
+#             interfaces(5).
+#
+#             Common values:
+#
+#             - `manual`: No automatic IP configuration. Used for bridge
+#               members, bond slaves, or interfaces managed elsewhere.
+#             - `static`: Fixed IP address specified via `iface_properties`.
+#             - `dhcp`: Obtain address via DHCP client.
+#             - `loopback`: Loopback interface (typically only for `lo`).
+#             - Type: str
+#             - Required: Yes
+#             - Choices: manual, static, dhcp, loopback
+#           - auto: Whether to automatically bring up the interface at boot.
+#
+#             When `true`, renders an `auto <name>` directive before the `iface`
+#             stanza.
+#             - Type: bool
+#             - Required: No
+#             - Default: true
+#           - comment: Optional multi-line comment rendered above the interface
+#             definition (before the `auto` directive).
+#
+#             Use this for lengthy explanations about the interface's purpose or
+#             configuration rationale. Each line is prefixed with `# `.
+#
+#             For short inline comments within the `iface` block, use
+#             `iface_properties.comment` instead.
+#             - Type: str
+#             - Required: No
+#           - iface_properties:
+#             Key-value pairs for interfaces(5) options rendered within the
+#             `iface` stanza.
+#
+#             All keys are rendered as ` <key> <value>` lines with proper
+#             indentation, except for the special `comment` key which renders as
+#             ` # <value>`.
+#
+#             See `pve_proxmox_net_ifaces_host_shared` for common properties.
+#             - Type: dict
+#             - Required: No
+#   - options_after:
+#     Optional lines placed after all sections in the generated file. Uses
+#     interfaces(5) syntax.
+#
+#     Duplicate lines across merged datasets are automatically deduplicated
+#     during rendering.
+#     - Type: str
+#     - Required: No
 pve_proxmox_net_ifaces_host_specific: {}
 
 # Network interface definitions for `/etc/network/interfaces.d/10-host` shared
@@ -116,6 +211,124 @@ pve_proxmox_net_ifaces_host_specific: {}
 # - Type: dict
 # - Required: No
 # - Default: {}
+# - Dict attributes:
+#   - options_before:
+#     Optional lines placed before all sections in the generated file. Uses
+#     interfaces(5) syntax.
+#
+#     Duplicate lines across merged datasets are automatically deduplicated
+#     during rendering.
+#     - Type: str
+#     - Required: No
+#   - sections: List of logical sections grouping related interfaces.
+#
+#     Each section generates a highlighted comment header (using the `title`
+#     value) for improved human readability when inspecting the generated
+#     configuration file.
+#     - Type: list
+#     - Required: No
+#     - List elements: dict
+#     - Dict attributes:
+#       - title:
+#         Section title rendered as a highlighted comment header above the
+#         interface definitions.
+#
+#         Example output: `### Proxmox VE (PVE) VLAN interfaces`
+#         - Type: str
+#         - Required: Yes
+#       - comment: Optional comment block rendered below the title and above the
+#         interface definitions.
+#
+#         Each line is automatically prefixed with `# ` in the output. Use this
+#         for explanatory text about the section's purpose.
+#         - Type: str
+#         - Required: No
+#       - interfaces: List of network interface definitions within this section.
+#
+#         Each interface generates an `auto` directive (if enabled) and an
+#         `iface` stanza with the specified method and properties.
+#         - Type: list
+#         - Required: Yes
+#         - List elements: dict
+#         - Dict attributes:
+#           - name: Interface name as recognized by the kernel.
+#
+#             Examples: `bond_main.0001`, `br0020`, `main1`
+#             - Type: str
+#             - Required: Yes
+#           - method: Address assignment method for the interface as defined in
+#             interfaces(5).
+#
+#             Common values:
+#
+#             - `manual`: No automatic IP configuration. Used for bridge
+#               members, bond slaves, or interfaces managed elsewhere.
+#             - `static`: Fixed IP address specified via `iface_properties`.
+#             - `dhcp`: Obtain address via DHCP client.
+#             - `loopback`: Loopback interface (typically only for `lo`).
+#             - Type: str
+#             - Required: Yes
+#             - Choices: manual, static, dhcp, loopback
+#           - auto: Whether to automatically bring up the interface at boot.
+#
+#             When `true`, renders an `auto <name>` directive before the `iface`
+#             stanza.
+#             - Type: bool
+#             - Required: No
+#             - Default: true
+#           - comment: Optional multi-line comment rendered above the interface
+#             definition (before the `auto` directive).
+#
+#             Use this for lengthy explanations about the interface's purpose or
+#             configuration rationale. Each line is prefixed with `# `.
+#
+#             For short inline comments within the `iface` block, use
+#             `iface_properties.comment` instead.
+#             - Type: str
+#             - Required: No
+#           - iface_properties:
+#             Key-value pairs for interfaces(5) options rendered within the
+#             `iface` stanza.
+#
+#             All keys are rendered as ` <key> <value>` lines with proper
+#             indentation, except for the special `comment` key which renders as
+#             ` # <value>`.
+#
+#             Common properties by interface type:
+#
+#             Static addressing:
+#
+#             - `address`: IP address with CIDR notation (e.g., `10.0.0.1/24`)
+#             - `gateway`: Default gateway IP address
+#
+#             Bonding:
+#
+#             - `bond-slaves`: Space-separated list of member interfaces
+#             - `bond-mode`: Bonding mode (e.g., `802.3ad` for LACP)
+#             - `bond-miimon`: Link monitoring interval in milliseconds
+#             - `bond-lacp-rate`: LACP rate (`slow` or `fast`)
+#             - `bond-xmit-hash-policy`: Transmit hash policy
+#
+#             Bridging:
+#
+#             - `bridge-ports`: Space-separated list of member interfaces
+#             - `bridge-stp`: Spanning tree protocol (`on` or `off`)
+#             - `bridge-fd`: Forwarding delay in seconds
+#
+#             General:
+#
+#             - `mtu`: Maximum transmission unit size
+#             - `comment`: Inline comment within the interface block
+#             - Type: dict
+#             - Required: No
+#   - options_after:
+#     Optional lines placed after all sections in the generated file. Uses
+#     interfaces(5) syntax.
+#
+#     Duplicate lines across merged datasets are automatically deduplicated
+#     during rendering.
+#     - Type: str
+#     - Required: No
 pve_proxmox_net_ifaces_host_shared: {}
 
 # Network interface definitions for `/etc/network/interfaces` shared across all
@@ -130,8 +343,8 @@ pve_proxmox_net_ifaces_host_shared: {}
 # `pve_proxmox_net_ifaces_workload_specific` during template rendering. The
 # shared definitions are processed after host-specific ones.
 #
-# The `options_before` value typically includes `source
-# /etc/network/interfaces.d/*` to include host-specific configurations.
+# The `options_before` value typically includes
+# `source /etc/network/interfaces.d/*` to include host-specific configurations.
 #
 # See `pve_proxmox_net_ifaces_host_specific` for the data structure
 # documentation.
@@ -139,6 +352,116 @@ pve_proxmox_net_ifaces_host_shared: {}
 # - Type: dict
 # - Required: No
 # - Default: {}
+# - Dict attributes:
+#   - options_before:
+#     Optional lines placed before all sections in the generated file. Uses
+#     interfaces(5) syntax.
+#
+#     For workload interfaces, this typically includes:
+#
+#     ```
+#     source /etc/network/interfaces.d/*
+#     ```
+#
+#     Duplicate lines across merged datasets are automatically deduplicated
+#     during rendering.
+#     - Type: str
+#     - Required: No
+#   - sections: List of logical sections grouping related interfaces.
+#
+#     Each section generates a highlighted comment header (using the `title`
+#     value) for improved human readability when inspecting the generated
+#     configuration file.
+#     - Type: list
+#     - Required: No
+#     - List elements: dict
+#     - Dict attributes:
+#       - title:
+#         Section title rendered as a highlighted comment header above the
+#         interface definitions.
+#
+#         Example output: `### Proxmox VE (PVE) workload bridge interfaces`
+#         - Type: str
+#         - Required: Yes
+#       - comment: Optional comment block rendered below the title and above the
+#         interface definitions.
+#
+#         Each line is automatically prefixed with `# ` in the output. Use this
+#         for explanatory text about the section's purpose.
+#         - Type: str
+#         - Required: No
+#       - interfaces: List of network interface definitions within this section.
+#
+#         Each interface generates an `auto` directive (if enabled) and an
+#         `iface` stanza with the specified method and properties.
+#         - Type: list
+#         - Required: Yes
+#         - List elements: dict
+#         - Dict attributes:
+#           - name: Interface name as recognized by the kernel.
+#
+#             PVE convention uses `vmbr<VLAN_ID>` for workload bridges.
+#
+#             Examples: `vmbr0001`, `vmbr0020`, `vmbr0254`
+#             - Type: str
+#             - Required: Yes
+#           - method: Address assignment method for the interface as defined in
+#             interfaces(5).
+#
+#             Common values:
+#
+#             - `manual`: No automatic IP configuration. Used for bridge
+#               members, bond slaves, or interfaces managed elsewhere.
+#             - `static`: Fixed IP address specified via `iface_properties`.
+#             - `dhcp`: Obtain address via DHCP client.
+#             - `loopback`: Loopback interface (typically only for `lo`).
+#             - Type: str
+#             - Required: Yes
+#             - Choices: manual, static, dhcp, loopback
+#           - auto: Whether to automatically bring up the interface at boot.
+#
+#             When `true`, renders an `auto <name>` directive before the `iface`
+#             stanza.
+#             - Type: bool
+#             - Required: No
+#             - Default: true
+#           - comment: Optional multi-line comment rendered above the interface
+#             definition (before the `auto` directive).
+#
+#             Use this for lengthy explanations about the interface's purpose or
+#             configuration rationale. Each line is prefixed with `# `.
+#
+#             For short inline comments within the `iface` block, use
+#             `iface_properties.comment` instead.
+#             - Type: str
+#             - Required: No
+#           - iface_properties:
+#             Key-value pairs for interfaces(5) options rendered within the
+#             `iface` stanza.
+#
+#             All keys are rendered as ` <key> <value>` lines with proper
+#             indentation, except for the special `comment` key which renders as
+#             ` # <value>`.
+#
+#             Common properties for workload bridges:
+#
+#             - `bridge-ports`: Member interface (e.g., `bond_main.0001`)
+#             - `bridge-stp`: Spanning tree protocol (`on` or `off`)
+#             - `bridge-fd`: Forwarding delay (typically `0`)
+#             - `comment`: VLAN name or description
+#
+#             See `pve_proxmox_net_ifaces_host_shared` for additional common
+#             properties.
+#             - Type: dict
+#             - Required: No
+#   - options_after:
+#     Optional lines placed after all sections in the generated file. Uses
+#     interfaces(5) syntax.
+#
+#     Duplicate lines across merged datasets are automatically deduplicated
+#     during rendering.
+#     - Type: str
+#     - Required: No
 pve_proxmox_net_ifaces_workload_shared: {}
 
 # Network interface definitions for `/etc/network/interfaces` specific to
@@ -159,6 +482,100 @@ pve_proxmox_net_ifaces_workload_shared: {}
 # - Type: dict
 # - Required: No
 # - Default: {}
+# - Dict attributes:
+#   - options_before:
+#     Optional lines placed before all sections in the generated file. Uses
+#     interfaces(5) syntax.
+#
+#     Duplicate lines across merged datasets are automatically deduplicated
+#     during rendering.
+#     - Type: str
+#     - Required: No
+#   - sections: List of logical sections grouping related interfaces.
+#
+#     Each section generates a highlighted comment header (using the `title`
+#     value) for improved human readability when inspecting the generated
+#     configuration file.
+#     - Type: list
+#     - Required: No
+#     - List elements: dict
+#     - Dict attributes:
+#       - title:
+#         Section title rendered as a highlighted comment header above the
+#         interface definitions.
+#
+#         Example output: `### Corosync links`
+#         - Type: str
+#         - Required: Yes
+#       - comment: Optional comment block rendered below the title and above the
+#         interface definitions.
+#
+#         Each line is automatically prefixed with `# ` in the output. Use this
+#         for explanatory text about the section's purpose.
+#         - Type: str
+#         - Required: No
+#       - interfaces: List of network interface definitions within this section.
+#
+#         Each interface generates an `auto` directive (if enabled) and an
+#         `iface` stanza with the specified method and properties.
+#         - Type: list
+#         - Required: Yes
+#         - List elements: dict
+#         - Dict attributes:
+#           - name: Interface name as recognized by the kernel.
+#
+#             Examples: `sync1`, `sync2` (for Corosync links)
+#             - Type: str
+#             - Required: Yes
+#           - method: Address assignment method for the interface as defined in
+#             interfaces(5).
+#
+#             Common values:
+#
+#             - `manual`: No automatic IP configuration. Used for bridge
+#               members, bond slaves, or interfaces managed elsewhere.
+#             - `static`: Fixed IP address specified via `iface_properties`.
+#             - `dhcp`: Obtain address via DHCP client.
+#             - `loopback`: Loopback interface (typically only for `lo`).
+#             - Type: str
+#             - Required: Yes
+#             - Choices: manual, static, dhcp, loopback
+#           - auto: Whether to automatically bring up the interface at boot.
+#
+#             When `true`, renders an `auto <name>` directive before the `iface`
+#             stanza.
+#             - Type: bool
+#             - Required: No
+#             - Default: true
+#           - comment: Optional multi-line comment rendered above the interface
+#             definition (before the `auto` directive).
+#
+#             Use this for lengthy explanations about the interface's purpose or
+#             configuration rationale. Each line is prefixed with `# `.
+#
+#             For short inline comments within the `iface` block, use
+#             `iface_properties.comment` instead.
+#             - Type: str
+#             - Required: No
+#           - iface_properties:
+#             Key-value pairs for interfaces(5) options rendered within the
+#             `iface` stanza.
+#
+#             All keys are rendered as ` <key> <value>` lines with proper
+#             indentation, except for the special `comment` key which renders as
+#             ` # <value>`.
+#
+#             See `pve_proxmox_net_ifaces_host_shared` for common properties.
+#             - Type: dict
+#             - Required: No
+#   - options_after:
+#     Optional lines placed after all sections in the generated file. Uses
+#     interfaces(5) syntax.
+#
+#     Duplicate lines across merged datasets are automatically deduplicated
+#     during rendering.
+#     - Type: str
+#     - Required: No
 pve_proxmox_net_ifaces_workload_specific: {}
 
 # List of network interface alternative name definitions for systemd link files
@@ -210,6 +627,71 @@ pve_proxmox_net_ifaces_workload_specific: {}
 # - Required: No
 # - Default: []
 # - List elements: dict
+# - Dict attributes:
+#   - type:
+#     Interface type identifier used for matching in the `[Match]` section of
+#     the generated systemd link file.
+#
+#     This value is mapped to the corresponding systemd `Type=` value:
+#
+#     - `en`: Ethernet (`ether`)
+#     - `lo`: Loopback (`loopback`)
+#     - `wl`: Wireless LAN (`wlan`)
+#     - `ww`: Wireless WAN (`wwan`)
+#     - `ib`: InfiniBand (`infiniband`)
+#
+#     The type ensures the link file only matches interfaces of the correct
+#     hardware type, preventing accidental mismatches when MAC addresses are
+#     reused or spoofed.
+#     - Type: str
+#     - Required: Yes
+#     - Choices: en, lo, wl, ww, ib
+#   - mac_address:
+#     MAC address of the network interface in colon-separated format.
+#
+#     Used in the `[Match]` section to uniquely identify the physical interface.
+#     The MAC address must match exactly for the link file to apply.
+#
+#     Format: `XX:XX:XX:XX:XX:XX` (case-insensitive)
+#
+#     Example: `3c:fd:fe:de:97:38`
+#
+#     Use `ip link show` or `cat /sys/class/net/*/address` to find the MAC
+#     addresses of installed interfaces.
+#     - Type: str
+#     - Required: Yes
+#   - desc: Optional human-readable description of the interface.
+#
+#     Rendered as the `Description=` directive in the `[Link]` section. Use this
+#     to document the physical location, purpose, or original kernel name of the
+#     interface for easier identification.
+#
+#     Example:
+#     `enp134s0f0np0 (dual-port NIC, upper port farther from the mainboard)`
+#     - Type: str
+#     - Required: No
+#   - altnames: List of alternative names to assign to the interface.
+#
+#     Each name is rendered as a separate `AlternativeName=` directive in the
+#     `[Link]` section. The first entry is also used as the filename for the
+#     generated link file (e.g., `10-main1.link`).
+#
+#     Alternative names allow referencing the interface by a human-friendly,
+#     predictable name while preserving the original kernel-assigned name.
+#     Multiple altnames can be specified if the interface should be reachable
+#     under different names.
+#
+#     Naming conventions:
+#
+#     - `main1`, `main2`: Primary workload interfaces (bond members)
+#     - `admfb`: Admin fallback interface (emergency access)
+#     - `sync1`, `sync2`: Corosync cluster communication links
+#
+#     The altnames defined here should match the interface names used in
+#     `network_interfaces_host_specific` and related variables.
+#     - Type: list
+#     - Required: Yes
+#     - List elements: str
 pve_proxmox_net_altnames: []
 
 # Cluster-wide firewall rules applied to all PVE hosts.
@@ -249,6 +731,104 @@ pve_proxmox_net_altnames: []
 # - Required: No
 # - Default: []
 # - List elements: dict
+# - Dict attributes:
+#   - direction: Traffic direction for the rule.
+#
+#     Required for all rules except `GROUP` actions.
+#
+#     - `IN`: Incoming traffic (towards the host/VM)
+#     - `OUT`: Outgoing traffic (from the host/VM)
+#     - Type: str
+#     - Required: No
+#     - Choices: IN, OUT
+#   - action: Action to take when the rule matches.
+#
+#     Supported values:
+#
+#     - `ACCEPT`: Allow the traffic
+#     - `DROP`: Silently discard the traffic
+#     - `REJECT`: Discard and send ICMP error response
+#     - `MACRO(ACTION)`: Use a predefined PVE macro (e.g., `SSH(ACCEPT)`,
+#       `Ping(ACCEPT)`, `DNS(ACCEPT)`, `HTTP(ACCEPT)`, `HTTPS(ACCEPT)`)
+#     - `GROUP`: Reference a security group (requires `security_group`)
+#
+#     PVE provides many predefined macros for common services. Macros
+#     automatically set the appropriate protocol and port.
+#
+#     Reference: https://pve.proxmox.com/wiki/Firewall#_standard_macros
+#     - Type: str
+#     - Required: Yes
+#   - security_group: Security group name to apply.
+#
+#     Required when `action` is `GROUP`. References a security group defined in
+#     `pve_proxmox_fw_cluster_securitygroups`.
+#
+#     Example: `allow_pve_mgmt_in`
+#     - Type: str
+#     - Required: No
+#   - proto: Network protocol to match.
+#
+#     Not needed when using macros (they define their own protocol).
+#
+#     Common values: `tcp`, `udp`, `icmp`, `icmpv6`, `sctp`
+#     - Type: str
+#     - Required: No
+#   - iface: Network interface to match.
+#
+#     Limits the rule to traffic on a specific interface.
+#
+#     Example: `vmbr0`, `eth0`
+#     - Type: str
+#     - Required: No
+#   - source: Source address filter.
+#
+#     Supported formats:
+#
+#     - IPv4/IPv6 address: `10.0.0.1`, `2001:db8::1`
+#     - Network (CIDR): `10.0.0.0/24`
+#     - Alias reference: `dc/<alias_name>`
+#     - IP set reference: `+dc/<ipset_name>` (note the `+` prefix)
+#     - Type: str
+#     - Required: No
+#   - sport: Source port filter.
+#
+#     Supports single port, comma-separated list, or range.
+#
+#     Examples: `22`, `80,443`, `1024:65535`
+#     - Type: str
+#     - Required: No
+#   - dest: Destination address filter.
+#
+#     Supported formats (same as `source`):
+#
+#     - IPv4/IPv6 address: `10.0.0.1`, `2001:db8::1`
+#     - Network (CIDR): `10.0.0.0/24`
+#     - Alias reference: `dc/<alias_name>`
+#     - IP set reference: `+dc/<ipset_name>` (note the `+` prefix)
+#     - Type: str
+#     - Required: No
+#   - dport: Destination port filter.
+#
+#     Not needed when using macros (they define their own port).
+#
+#     Supports single port, comma-separated list, or range.
+#
+#     Examples: `22`, `80,443`, `1024:65535`
+#     - Type: str
+#     - Required: No
+#   - log: Log level for matched traffic.
+#
+#     Logs matching packets to syslog at the specified level.
+#
+#     Values: `emerg`, `alert`, `crit`, `err`, `warning`, `notice`, `info`,
+#     `debug`, `nolog`
+#     - Type: str
+#     - Required: No
+#   - comment: Human-readable description of the rule.
+#
+#     Rendered as a comment after the rule definition.
+#     - Type: str
+#     - Required: No
 pve_proxmox_fw_cluster_rules: []
 
 # Cluster-wide (datacenter) firewall options applied to all PVE hosts.
@@ -328,6 +908,34 @@ pve_proxmox_fw_cluster_options: {}
 # - Required: No
 # - Default: []
 # - List elements: dict
+# - Dict attributes:
+#   - name: Alias name used to reference this IP address or network.
+#
+#     Must start with a letter and contain only alphanumeric characters,
+#     underscores, or hyphens (`^[A-Za-z][A-Za-z0-9_-]*$`).
+#
+#     Reference in rules and IP sets using `dc/<name>` prefix.
+#
+#     Example: `gateway-main` (referenced as `dc/gateway-main`)
+#     - Type: str
+#     - Required: Yes
+#   - ip: IP address or network in IPv4 or IPv6 format.
+#
+#     Supports CIDR notation for networks (e.g., `10.0.0.0/24`).
+#
+#     Examples:
+#
+#     - `10.1.1.2` (single host)
+#     - `10.1.2.0/24` (network)
+#     - `2001:db8::1` (IPv6 host)
+#     - `2001:db8::/32` (IPv6 network)
+#     - Type: str
+#     - Required: Yes
+#   - comment: Optional human-readable description of the alias.
+#
+#     Rendered as a comment after the alias definition.
+#     - Type: str
+#     - Required: No
 pve_proxmox_fw_cluster_aliases: []
 
 # Cluster-wide IP sets for use in firewall rules.
@@ -369,6 +977,61 @@ pve_proxmox_fw_cluster_aliases: []
 # - Required: No
 # - Default: []
 # - List elements: dict
+# - Dict attributes:
+#   - name: IP set name used to reference this collection.
+#
+#     Must start with a letter and contain only alphanumeric characters,
+#     underscores, or hyphens (`^[A-Za-z][A-Za-z0-9_-]*$`).
+#
+#     Reference in rules using `+dc/<name>` prefix (note the `+`).
+#
+#     Example: `trusted_networks` (referenced as `+dc/trusted_networks`)
+#     - Type: str
+#     - Required: Yes
+#   - comment: Optional human-readable description of the IP set.
+#
+#     Rendered as a comment after the `[IPSET <name>]` header.
+#     - Type: str
+#     - Required: No
+#   - entries: List of IP addresses, networks, or alias references in this set.
+#     - Type: list
+#     - Required: Yes
+#     - List elements: dict
+#     - Dict attributes:
+#       - ip: IP address, network (CIDR), or alias reference.
+#
+#         Supported formats:
+#
+#         - IPv4 address: `10.1.20.110`
+#         - IPv4 network: `10.1.20.0/24`
+#         - IPv6 address: `2001:db8::1`
+#         - IPv6 network: `2001:db8::/32`
+#         - Cluster alias: `dc/<alias_name>`
+#         - Guest alias: `guest/<alias_name>`
+#         - Type: str
+#         - Required: Yes
+#       - comment: Optional human-readable description of this entry.
+#
+#         Rendered as a comment after the entry.
+#         - Type: str
+#         - Required: No
+#       - nomatch: Exclude this entry from the IP set (negation).
+#
+#         When `true`, the entry is prefixed with `!` in the output, meaning
+#         traffic matching this entry will NOT match the IP set. Useful for
+#         creating exceptions within a broader network range.
+#
+#         Example: Allow `10.0.0.0/24` except `10.0.0.1`:
+#
+#         ```yaml
+#         entries:
+#           - ip: "10.0.0.0/24"
+#           - ip: "10.0.0.1"
+#             nomatch: true
+#         ```
+#         - Type: bool
+#         - Required: No
+#         - Default: false
 pve_proxmox_fw_cluster_ipsets: []
 
 # Cluster-wide security groups (reusable rule collections).
@@ -410,6 +1073,26 @@ pve_proxmox_fw_cluster_ipsets: []
 # - Required: No
 # - Default: []
 # - List elements: dict
+# - Dict attributes:
+#   - name: Security group name.
+#
+#     Must start with a letter and contain only alphanumeric characters,
+#     underscores, or hyphens (`^[A-Za-z][A-Za-z0-9_-]*$`).
+#
+#     Reference in rules using `GROUP <name>`.
+#     - Type: str
+#     - Required: Yes
+#   - comment: Optional human-readable description of the security group.
+#
+#     Rendered as a comment after the `[group <name>]` header.
+#     - Type: str
+#     - Required: No
+#   - rules: List of firewall rules within this security group.
+#
+#     See `pve_proxmox_fw_cluster_rules` for the rule data structure.
+#     - Type: list
+#     - Required: Yes
+#     - List elements: dict
 pve_proxmox_fw_cluster_securitygroups: []
 
 # Node-specific firewall options for this PVE host.
@@ -496,6 +1179,69 @@ pve_proxmox_fw_node_options: {}
 # - Required: No
 # - Default: []
 # - List elements: dict
+# - Dict attributes:
+#   - direction: Traffic direction for the rule.
+#
+#     Required for all rules except `GROUP` actions.
+#
+#     - `IN`: Incoming traffic (towards the host)
+#     - `OUT`: Outgoing traffic (from the host)
+#     - Type: str
+#     - Required: No
+#     - Choices: IN, OUT
+#   - action: Action to take when the rule matches.
+#
+#     See `pve_proxmox_fw_cluster_rules` for detailed documentation.
+#
+#     Supported values: `ACCEPT`, `DROP`, `REJECT`, `MACRO(ACTION)`, `GROUP`
+#     - Type: str
+#     - Required: Yes
+#   - security_group: Security group name to apply.
+#
+#     Required when `action` is `GROUP`.
+#     - Type: str
+#     - Required: No
+#   - proto: Network protocol to match.
+#
+#     Common values: `tcp`, `udp`, `icmp`, `icmpv6`, `sctp`
+#     - Type: str
+#     - Required: No
+#   - iface: Network interface to match.
+#
+#     Example: `vmbr0`, `eth0`
+#     - Type: str
+#     - Required: No
+#   - source: Source address filter.
+#
+#     Supports IPv4/IPv6, CIDR, aliases (`dc/<name>`), and IP sets
+#     (`+dc/<name>`).
+#     - Type: str
+#     - Required: No
+#   - sport: Source port filter.
+#
+#     Examples: `22`, `80,443`, `1024:65535`
+#     - Type: str
+#     - Required: No
+#   - dest: Destination address filter.
+#
+#     Supports IPv4/IPv6, CIDR, aliases (`dc/<name>`), and IP sets
+#     (`+dc/<name>`).
+#     - Type: str
+#     - Required: No
+#   - dport: Destination port filter.
+#
+#     Examples: `22`, `80,443`, `1024:65535`
+#     - Type: str
+#     - Required: No
+#   - log: Log level for matched traffic.
+#
+#     Values: `emerg`, `alert`, `crit`, `err`, `warning`, `notice`, `info`,
+#     `debug`, `nolog`
+#     - Type: str
+#     - Required: No
+#   - comment: Human-readable description of the rule.
+#     - Type: str
+#     - Required: No
 pve_proxmox_fw_node_rules: []
 
 # Proxmox VE datacenter-wide configuration settings.
@@ -584,7 +1330,7 @@ pve_proxmox_datacentercfg: {}
 #         encryption: "aes-256-gcm"
 #         keyformat: "passphrase"
 #         keylocation: "prompt"
-#         passphrase: "{{ vault_zfs_passphrase }}"
+#         passphrase: "\{\{ vault_passphrase \}\}"
 #
 #   # NFS backup storage
 #   - name: "nfs-backup"
@@ -600,6 +1346,260 @@ pve_proxmox_datacentercfg: {}
 # - Required: No
 # - Default: []
 # - List elements: dict
+# - Dict attributes:
+#   - name: Storage resource name.
+#
+#     For ZFS pools: The pool name (e.g., `pool1`) For ZFS datasets: The full
+#     dataset path (e.g., `pool1/vms`) For NFS: A descriptive identifier (e.g.,
+#     `nfs-backup`)
+#
+#     ZFS naming rules:
+#
+#     - Must start with a letter
+#     - Can contain alphanumeric characters, underscores, hyphens
+#     - Dataset names use `/` to denote hierarchy
+#     - Type: str
+#     - Required: Yes
+#   - type: Storage type identifier.
+#
+#     - `zpool`: Create a new ZFS storage pool from raw disks
+#     - `zfs_dataset`: Create a ZFS dataset within an existing pool
+#     - `nfs`: Mount an NFS export from a network server
+#     - Type: str
+#     - Required: Yes
+#     - Choices: zpool, zfs_dataset, nfs
+#   - attributes: Type-specific storage attributes.
+#
+#     The structure varies based on the `type` value. See the nested options
+#     documentation for each storage type.
+#     - Type: dict
+#     - Required: Yes
+#     - Dict attributes:
+#       - mountpoint: ZFS pool mountpoint (for `zpool` type).
+#
+#         Use `none` to prevent automatic mounting of the pool root. Child
+#         datasets can still have their own mountpoints.
+#
+#         Example: `none`, `/mnt/mypool`
+#         - Type: str
+#         - Required: No
+#       - vdevs: List of virtual devices (vdevs) for the ZFS pool.
+#
+#         Only applicable for `type: zpool`.
+#
+#         Each vdev defines a RAID configuration with its member disks. Multiple
+#         vdevs can be combined for additional capacity (striped across vdevs).
+#
+#         Example:
+#
+#         ```yaml
+#         vdevs:
+#           - type: "mirror"
+#             disks:
+#               - "/dev/disk/by-id/scsi-SATA_SSD1"
+#               - "/dev/disk/by-id/scsi-SATA_SSD2"
+#         ```
+#         - Type: list
+#         - Required: No
+#         - List elements: dict
+#         - Dict attributes:
+#           - type: Vdev RAID type.
+#
+#             - `stripe`: Single disk, no redundancy (NOT recommended for
+#               important data)
+#             - `mirror`: Two or more disks mirrored (can lose n-1 disks)
+#             - `raidz1`: RAID-Z with single parity (can lose 1 disk, requires
+#               2+ disks)
+#             - `raidz2`: RAID-Z with double parity (can lose 2 disks, requires
+#               3+ disks)
+#             - `raidz3`: RAID-Z with triple parity (can lose 3 disks, requires
+#               4+ disks)
+#
+#             Disk count requirements:
+#
+#             - `stripe`: exactly 1 disk
+#             - `mirror`: at least 2 disks
+#             - `raidz1`: at least 2 disks
+#             - `raidz2`: at least 3 disks
+#             - `raidz3`: at least 4 disks
+#             - Type: str
+#             - Required: Yes
+#             - Choices: stripe, mirror, raidz1, raidz2, raidz3
+#           - disks: List of disk device paths for this vdev.
+#
+#             Always use persistent device paths from `/dev/disk/by-id/` to
+#             ensure consistent identification across reboots.
+#
+#             The role validates that:
+#
+#             - All disks exist on the system
+#             - Disks don't contain existing data (unless
+#               `storage_force_cleanup: true`)
+#             - Disks aren't already part of a different pool
+#
+#             Example:
+#
+#             ```yaml
+#             disks:
+#               - "/dev/disk/by-id/scsi-SATA_Samsung_SSD_123"
+#               - "/dev/disk/by-id/scsi-SATA_Samsung_SSD_456"
+#             ```
+#             - Type: list
+#             - Required: Yes
+#             - List elements: str
+#       - pool_properties: ZFS pool properties (for `zpool` type).
+#
+#         These are pool-level properties set at creation time. This is a
+#         passthrough of original ZFS pool properties.
+#
+#         Common properties:
+#
+#         - `ashift`: Sector size exponent (9=512B, 12=4K, 13=8K). Use `12` for
+#           modern drives with 4K sectors.
+#         - `autoexpand`: Auto-expand pool when larger disks added (`on`/`off`)
+#         - `autoreplace`: Auto-replace failed disks (`on`/`off`)
+#         - `failmode`: Behavior on write failure (`wait`/`continue`/`panic`)
+#
+#         Example:
+#
+#         ```yaml
+#         pool_properties:
+#           ashift: "12"
+#           autoexpand: "on"
+#         ```
+#         - Type: dict
+#         - Required: No
+#       - filesystem_properties:
+#         ZFS filesystem properties for the pool root (for `zpool` type).
+#
+#         These properties are inherited by child datasets unless overridden.
+#         This is a passthrough of original ZFS filesystem properties.
+#
+#         Common properties: `compression`, `atime`, `xattr`, `acltype`,
+#         `recordsize`
+#
+#         See `zfs_properties` under `zfs_dataset` for detailed property
+#         descriptions.
+#         - Type: dict
+#         - Required: No
+#       - zfs_properties: ZFS dataset properties (for `zfs_dataset` type).
+#
+#         These properties configure the dataset's behavior, performance
+#         characteristics, and optional encryption. This is a passthrough of
+#         original ZFS dataset properties.
+#
+#         Common properties:
+#
+#         Storage behavior:
+#
+#         - `mountpoint`: Where to mount the dataset (e.g., `/mnt/data`) Use
+#           `none` for unmounted datasets (e.g., zvol parents)
+#         - `compression`: Compression algorithm (`on`, `off`, `lz4`, `zstd`,
+#           `gzip-N`)
+#         - `atime`: Update access time on read (`on`/`off`). Disable for
+#           performance.
+#         - `recordsize`: Maximum block size (`128K` default, `1M` for large
+#           files)
+#         - `quota`: Maximum size limit (e.g., `100G`)
+#         - `reservation`: Guaranteed minimum space (e.g., `50G`)
+#
+#         Metadata handling:
+#
+#         - `xattr`: Extended attribute handling (`on`, `off`, `sa`). Use `sa`
+#           (system attribute) for performance.
+#         - `acltype`: ACL type (`off`, `posix`, `nfsv4`)
+#         - `dnodesize`: Dnode size (`legacy`, `auto`, `1k`-`16k`)
+#
+#         Encryption (native ZFS encryption):
+#
+#         - `encryption`: Encryption algorithm (`aes-256-gcm` recommended)
+#         - `keyformat`: Key format (`passphrase`, `raw`, `hex`)
+#         - `keylocation`: Key source (`prompt`, `file:///path/to/key`)
+#         - `passphrase`: The encryption passphrase (for `keylocation: prompt`)
+#         - `passphrase_old`: Previous passphrase(s) for key rotation (string or
+#           list)
+#
+#         Note: `passphrase` and `passphrase_old` are special keys handled by
+#         the role and not passed directly to ZFS.
+#
+#         Example (encrypted dataset):
+#
+#         ```yaml
+#         zfs_properties:
+#           mountpoint: "/mnt/secure-data"
+#           compression: "on"
+#           atime: "off"
+#           xattr: "sa"
+#           encryption: "aes-256-gcm"
+#           keyformat: "passphrase"
+#           keylocation: "prompt"
+#           passphrase: "\{\{ vault_passphrase \}\}"
+#           passphrase_old:
+#             - "12345aaaaarrrrRR"
+#             - "456789bbbbbbbTTT"
+#         ```
+#
+#         Example (high-performance dataset):
+#
+#         ```yaml
+#         zfs_properties:
+#           mountpoint: "/mnt/vms"
+#           compression: "lz4"
+#           atime: "off"
+#           recordsize: "64K"
+#           xattr: "sa"
+#           acltype: "off"
+#         ```
+#         - Type: dict
+#         - Required: No
+#       - storage_properties: NFS mount properties (for `nfs` type).
+#
+#         Configures NFS client mounts. The role validates server reachability
+#         before attempting to mount.
+#         - Type: dict
+#         - Required: No
+#         - Dict attributes:
+#           - src: NFS server and export path.
+#
+#             Format: `<server>:<export_path>`
+#
+#             Example: `nas.example.com:/exports/backup`
+#             - Type: str
+#             - Required: Yes
+#           - path: Local mountpoint directory.
+#
+#             The directory will be created if it doesn't exist.
+#
+#             Example: `/mnt/nfs-backup`
+#             - Type: str
+#             - Required: Yes
+#           - opts:
+#             NFS mount options. This is a passthrough of the original mount
+#             options.
+#
+#             Common options:
+#
+#             - `defaults`: Standard mount options
+#             - `noatime`: Don't update access times (performance)
+#             - `nfsvers=4`: Force NFSv4
+#             - `soft`: Return errors on timeout (vs. `hard`)
+#             - `timeo=N`: Timeout in deciseconds
+#             - `retrans=N`: Number of retries
+#
+#             Example: `defaults,noatime,nfsvers=4`
+#             - Type: str
+#             - Required: No
+#             - Default: defaults
+#           - state: Desired mount state.
+#
+#             - `mounted`: Mount and add to fstab
+#             - `present`: Add to fstab but don't mount
+#             - `unmounted`: Unmount but keep in fstab
+#             - `absent`: Unmount and remove from fstab
+#             - Type: str
+#             - Required: No
+#             - Default: mounted
+#             - Choices: mounted, present, unmounted, absent
 pve_proxmox_storage: []
 
 # Allow automatic cleanup of existing data on disks for ZFS pool creation.
@@ -705,4 +1705,167 @@ pve_proxmox_storage_force_cleanup: false
 # - Required: No
 # - Default: []
 # - List elements: dict
+# - Dict attributes:
+#   - name: Storage identifier as shown in the PVE web UI.
+#
+#     Must be unique across the cluster. This name is used to reference the
+#     storage in VM/container configurations and backup jobs.
+#
+#     Naming convention: `<node|shared>-<purpose><index>`
+#
+#     Examples:
+#
+#     - `pve1-guest1`: Primary guest storage on node pve1
+#     - `pve1-backup1`: Backup storage on node pve1
+#     - `shared-assets1`: Shared asset storage (cluster-wide)
+#     - Type: str
+#     - Required: Yes
+#   - type: PVE storage type.
+#
+#     Determines how PVE interacts with the underlying storage backend.
+#
+#     - `dir`: Directory-based storage. Uses a filesystem path for storing disk
+#       images as files (qcow2, raw, vmdk). Suitable for any mounted filesystem
+#       (local, NFS, CIFS, etc.).
+#     - `zfspool`: Native ZFS storage. Uses ZFS zvols for VM disks and ZFS
+#       datasets for container storage. Provides better performance and snapshot
+#       capabilities than directory storage on ZFS.
+#
+#     Note: The underlying storage (ZFS pool, NFS mount, etc.) must already
+#     exist. Use `pve_proxmox_storage` to create it first.
+#     - Type: str
+#     - Required: Yes
+#     - Choices: dir, zfspool
+#   - storage_properties: Type-specific storage configuration properties.
+#
+#     The available options depend on the `type` value.
+#     - Type: dict
+#     - Required: Yes
+#     - Dict attributes:
+#       - content: List of content types this storage can hold.
+#
+#         Determines what PVE allows to be stored here. A storage can support
+#         multiple content types.
+#
+#         Available content types:
+#
+#         - `images`: Virtual machine disk images (qcow2, raw, vmdk)
+#         - `rootdir`: Container root directories (for LXC containers)
+#         - `backup`: Backup archives from vzdump
+#         - `iso`: ISO images for VM installation
+#         - `vztmpl`: Container templates (.tar.gz, .tar.xz)
+#         - `snippets`: Configuration snippets (hookscripts, cloud-init)
+#
+#         Typical combinations:
+#
+#         - Guest storage: `[images, rootdir]`
+#         - Asset storage: `[iso, vztmpl, snippets]`
+#         - Backup storage: `[backup]`
+#
+#         Example:
+#
+#         ```yaml
+#         content:
+#           - "images"
+#           - "rootdir"
+#         ```
+#         - Type: list
+#         - Required: No
+#         - Choices: images, rootdir, backup, iso, vztmpl, snippets
+#         - List elements: str
+#       - nodes: List of cluster nodes where this storage is available.
+#
+#         Limits storage visibility to specific nodes. Useful for node-local
+#         storage that shouldn't appear on other nodes.
+#
+#         If omitted, the storage is available on all cluster nodes (appropriate
+#         for shared/network storage).
+#
+#         Example:
+#
+#         ```yaml
+#         nodes:
+#           - "pve1"
+#           - "pve2"
+#         ```
+#         - Type: list
+#         - Required: No
+#         - List elements: str
+#       - is_mountpoint: Indicates the storage path is an external mountpoint.
+#
+#         When `true`, PVE will:
+#
+#         - Check that the path is actually mounted before use
+#         - Prevent operations if the mountpoint is not available
+#         - Display appropriate warnings in the UI
+#
+#         Set to `true` for:
+#
+#         - NFS/CIFS mounts
+#         - ZFS datasets with dedicated mountpoints
+#         - Any storage on a separately mounted filesystem
+#
+#         Set to `false` (or omit) for:
+#
+#         - Subdirectories on the root filesystem
+#         - Paths that are always available
+#         - Type: bool
+#         - Required: No
+#         - Default: false
+#       - path: Filesystem path for directory storage (for `type: dir`).
+#
+#         The directory must exist and be writable. For ZFS datasets, this is
+#         typically the dataset's mountpoint.
+#
+#         The role will create the directory if it doesn't exist.
+#
+#         Example: `/mnt/pool123/assets`
+#         - Type: str
+#         - Required: No
+#       - pool: ZFS pool or dataset name (for `type: zfspool`).
+#
+#         This is the ZFS dataset path, not a filesystem path. PVE will create
+#         zvols and child datasets under this location.
+#
+#         The pool/dataset must already exist. Use `pve_proxmox_storage` with
+#         `type: zpool` or `type: zfs_dataset` to create it.
+#
+#         Example: `pool123/vms` or `tank/proxmox/guests`
+#         - Type: str
+#         - Required: No
+#       - sparse: Enable thin provisioning for ZFS zvols (for `type: zfspool`).
+#
+#         When `true`:
+#
+#         - Zvols only consume space for written data
+#         - VM disks appear full-sized but use less actual space
+#         - Risk of overcommitment if total allocated exceeds pool
+#
+#         When `false`:
+#
+#         - Zvols pre-allocate their full size immediately
+#         - Guaranteed space availability
+#         - No overcommitment risk
+#
+#         Thin provisioning is generally recommended for efficiency but requires
+#         monitoring pool usage to avoid space exhaustion.
+#         - Type: bool
+#         - Required: No
+#         - Default: false
+#       - blocksize:
+#         ZFS block size (volblocksize) for new zvols (for `type: zfspool`).
+#
+#         Determines the minimum allocation unit for VM disk writes. Optimal
+#         value depends on workload:
+#
+#         - `4k`/`8k`: Database workloads, random I/O
+#         - `16k`: General purpose (good default)
+#         - `32k`/`64k`: Sequential workloads, large files
+#         - `128k`: Maximum, for mostly sequential large-file access
+#
+#         If omitted, uses the pool's default recordsize.
+#
+#         Example: `16k`
+#         - Type: str
+#         - Required: No
 pve_proxmox_sm: []

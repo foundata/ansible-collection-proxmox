@@ -346,6 +346,13 @@ There are also tags usually not meant to be called directly but listed for the s
 
 ## Role variables<a id="variables"></a>
 
+Main entry point for the foundata.proxmox.run role
+
+Configures Proxmox Virtual Environment (PVE) hosts:
+
+Manages network interfaces, IOMMU settings, and other OS-level
+configurations as well as the storage, firewall and datacenter settings.
+
 The following variables can be configured for this role:
 
 | Variable | Type | Required | Default | Description (abstract) |
@@ -2235,7 +2242,7 @@ pve_proxmox_storage:
         encryption: "aes-256-gcm"
         keyformat: "passphrase"
         keylocation: "prompt"
-        passphrase: "{{ vault_zfs_passphrase }}"
+        passphrase: "\{\{ vault_passphrase \}\}"
 
   # NFS backup storage
   - name: "nfs-backup"
@@ -2489,7 +2496,7 @@ zfs_properties:
   encryption: "aes-256-gcm"
   keyformat: "passphrase"
   keylocation: "prompt"
-  passphrase: "{{ vault_passphrase }}"
+  passphrase: "\{\{ vault_passphrase \}\}"
   passphrase_old:
     - "12345aaaaarrrrRR"
     - "456789bbbbbbbTTT"
