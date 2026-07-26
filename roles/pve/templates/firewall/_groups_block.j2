@@ -12,15 +12,15 @@
 {%       set value = group[key] | ansible.builtin.default(none, true) %}
 {%       set is_nonempty =
            (value is ansible.builtin.string and (value | ansible.builtin.string | ansible.builtin.trim) != '') or
-           (value is mapping and (value | ansible.builtin.length > 0)) or
-           ((value is sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
+           (value is ansible.builtin.mapping and (value | ansible.builtin.length > 0)) or
+           ((value is ansible.builtin.sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
 {%       if value is ansible.builtin.none or not is_nonempty %}
-{{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for security group ' ~ group) }}
+{{         undefined | ansible.builtin.mandatory('ERROR: Missing required key `' ~ key ~ '` for security group ' ~ group) }}
 {%       endif %}
 {%     endfor %}
 {#   Validate name format (must start with letter, alphanumeric + underscore/hyphen) #}
 {%   if not (group['name'] | ansible.builtin.regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
-{{      undefined | mandatory('ERROR: Invalid group name `' ~ group['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
+{{      undefined | ansible.builtin.mandatory('ERROR: Invalid group name `' ~ group['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
 {%   endif %}
 [group {{ group['name'] }}]{% if group['comment'] is ansible.builtin.defined %} # {{ group['comment'] }}{% endif %}
 

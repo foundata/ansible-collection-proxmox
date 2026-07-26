@@ -12,15 +12,15 @@
 {%       set value = ipset[key] | ansible.builtin.default(none, true) %}
 {%       set is_nonempty =
            (value is ansible.builtin.string and (value | ansible.builtin.string | ansible.builtin.trim) != '') or
-           (value is mapping and (value | ansible.builtin.length > 0)) or
-           ((value is sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
+           (value is ansible.builtin.mapping and (value | ansible.builtin.length > 0)) or
+           ((value is ansible.builtin.sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
 {%       if value is ansible.builtin.none or not is_nonempty %}
-{{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for ipset ' ~ ipset) }}
+{{         undefined | ansible.builtin.mandatory('ERROR: Missing required key `' ~ key ~ '` for ipset ' ~ ipset) }}
 {%       endif %}
 {%   endfor %}
 {#   Validate name format (must start with letter, alphanumeric + underscore/hyphen) #}
 {%   if not (ipset['name'] | ansible.builtin.regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
-{{      undefined | mandatory('ERROR: Invalid ipset name `' ~ ipset['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
+{{      undefined | ansible.builtin.mandatory('ERROR: Invalid ipset name `' ~ ipset['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
 {%   endif %}
 [IPSET {{ ipset['name'] }}]{% if ipset['comment'] is ansible.builtin.defined %} # {{ ipset['comment'] }}{% endif %}
 
@@ -31,10 +31,10 @@
 {%         set value = entry[key] | ansible.builtin.default(none, true) %}
 {%         set is_nonempty =
              (value is ansible.builtin.string and (value | ansible.builtin.string | ansible.builtin.trim) != '') or
-             (value is mapping and (value | ansible.builtin.length > 0)) or
-             ((value is sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
+             (value is ansible.builtin.mapping and (value | ansible.builtin.length > 0)) or
+             ((value is ansible.builtin.sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
 {%         if value is ansible.builtin.none or not is_nonempty %}
-{{           undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for ipset ' ~ ipset) }}
+{{           undefined | ansible.builtin.mandatory('ERROR: Missing required key `' ~ key ~ '` for ipset ' ~ ipset) }}
 {%         endif %}
 {%       endfor %}
 {#       Validate address format: IPv4/6 (with optional CIDR) or alias #}
@@ -44,7 +44,7 @@
             (entry['ip'] is ansible.utils.ipv6) or
             (entry['ip'] | ansible.builtin.regex_search(alias_pattern))) %}
 {%       if not is_valid_ip %}
-{{         undefined | mandatory('ERROR: Invalid IP address `' ~ entry['ip'] ~ '` in ipset ' ~ ipset['name'] ~ ' - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') }}
+{{         undefined | ansible.builtin.mandatory('ERROR: Invalid IP address `' ~ entry['ip'] ~ '` in ipset ' ~ ipset['name'] ~ ' - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') }}
 {%       endif %}
 {{ '!' if entry.get('nomatch') else '' }}{{ entry['ip'] }}{% if entry['comment'] is ansible.builtin.defined %} # {{ entry['comment'] }}{% endif %}
 

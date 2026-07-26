@@ -7,7 +7,7 @@
     argv: ["update-grub"]
   changed_when:
     - __pve_grub_update is ansible.builtin.success
-    - __pve_grub_update['stdout'] is search('(?i)Generating')
+    - __pve_grub_update['stdout'] is ansible.builtin.search('(?i)Generating')
   register: __pve_grub_update
   listen:
     - "pve_proxmox: update grub"

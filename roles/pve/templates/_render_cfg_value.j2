@@ -3,12 +3,12 @@
   Import once from other templates files: {% from '_render_cfg_value.j2' import render_cfg_value %}
 -#}
 {%- macro render_cfg_value(value) -%}
-{%-   if value is mapping -%}
+{%-   if value is ansible.builtin.mapping -%}
 {%-     set pairs = [] -%}
 {%-     for kv in value | ansible.builtin.dict2items -%}
 {%-       set _ = pairs.append(kv['key'] ~ '=' ~ kv['value']) -%}
 {%-     endfor -%}
-{{ pairs | join(',') }}
+{{ pairs | ansible.builtin.join(',') }}
 {%-   else -%}
 {{ value }}
 {%-   endif -%}

@@ -13,22 +13,22 @@
 {%       set value = alias[key] | ansible.builtin.default(none, true) %}
 {%       set is_nonempty =
            (value is ansible.builtin.string and (value | ansible.builtin.string | ansible.builtin.trim) != '') or
-           (value is mapping and (value | ansible.builtin.length > 0)) or
-           ((value is sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
+           (value is ansible.builtin.mapping and (value | ansible.builtin.length > 0)) or
+           ((value is ansible.builtin.sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) %}
 {%       if value is ansible.builtin.none or not is_nonempty %}
-{{         undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for alias ' ~ alias) }}
+{{         undefined | ansible.builtin.mandatory('ERROR: Missing required key `' ~ key ~ '` for alias ' ~ alias) }}
 {%       endif %}
 {%   endfor %}
 {#   Validate name format (must start with letter, alphanumeric + underscore/hyphen) #}
 {%   if not (alias['name'] | ansible.builtin.regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
-{{      undefined | mandatory('ERROR: Invalid alias name `' ~ alias['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
+{{      undefined | ansible.builtin.mandatory('ERROR: Invalid alias name `' ~ alias['name'] ~ '` - must start with a letter and contain only alphanumeric characters, underscores, or hyphens') }}
 {%   endif %}
 {#   Validate IP address format (IPv4 or IPv6, with optional CIDR) #}
 {%-   set is_valid_ip =
         ((alias['ip'] is ansible.utils.ipv4) or
          (alias['ip'] is ansible.utils.ipv6)) -%}
 {%-   if not is_valid_ip -%}
-{{     undefined | mandatory('ERROR: Invalid IP address `' ~ alias['ip'] ~ '` for alias `' ~ alias['name'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation)') }}
+{{     undefined | ansible.builtin.mandatory('ERROR: Invalid IP address `' ~ alias['ip'] ~ '` for alias `' ~ alias['name'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation)') }}
 {%-   endif -%}
 {{ alias['name'] }} {{ alias['ip'] }}{% if alias['comment'] is ansible.builtin.defined %} # {{ alias['comment'] }}{% endif %}
 

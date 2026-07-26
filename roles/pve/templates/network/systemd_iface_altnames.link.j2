@@ -17,15 +17,15 @@
 {%-   set value = iface_item[key] | ansible.builtin.default(none, true) -%}
 {%-   set is_nonempty =
         (value is ansible.builtin.string and (value | ansible.builtin.string | ansible.builtin.trim) != '') or
-        (value is mapping and (value | ansible.builtin.length > 0)) or
-        ((value is sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) -%}
+        (value is ansible.builtin.mapping and (value | ansible.builtin.length > 0)) or
+        ((value is ansible.builtin.sequence and not (value is ansible.builtin.string)) and (value | ansible.builtin.length > 0)) -%}
 {%-   if value is ansible.builtin.none or not is_nonempty -%}
-{{-     undefined | mandatory('ERROR: Missing required key `' ~ key ~ '` for interface ' ~ iface_item['name']) -}}
+{{-     undefined | ansible.builtin.mandatory('ERROR: Missing required key `' ~ key ~ '` for interface ' ~ iface_item['name']) -}}
 {%-   endif -%}
 {%- endfor -%}
 
 {%- if not (iface_item['mac_address'] | ansible.builtin.regex_search('^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')) -%}
-{{-   undefined | mandatory('ERROR: Invalid MAC address `' ~ iface_item['mac_address'] ~ '` for interface ' ~ iface_name) -}}
+{{-   undefined | ansible.builtin.mandatory('ERROR: Invalid MAC address `' ~ iface_item['mac_address'] ~ '` for interface ' ~ iface_name) -}}
 {%- endif -%}
 
 {#- Mapping of interface(5) types to systemd link types -#}
@@ -37,7 +37,7 @@
   'ib': 'infiniband'
 } -%}
 {%- if iface_item['type'] not in type_mapping -%}
-{{-   undefined | mandatory(("ERROR: Unknown interface type '" ~ iface_item['type'] ~ "' for " ~ iface_item['name'] ~ ". Valid types are: " ~ type_mapping.keys() | ansible.builtin.list | join(', '))) -}}
+{{-   undefined | ansible.builtin.mandatory(("ERROR: Unknown interface type '" ~ iface_item['type'] ~ "' for " ~ iface_item['name'] ~ ". Valid types are: " ~ type_mapping.keys() | ansible.builtin.list | ansible.builtin.join(', '))) -}}
 {%- endif -%}
 
 {#- Prepare optional fields -#}

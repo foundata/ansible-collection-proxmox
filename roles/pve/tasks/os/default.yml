@@ -12,8 +12,8 @@
 - name: "OS | Default | Set CPU vendor fact"
   ansible.builtin.set_fact:
     __pve_cpu_vendor: >-
-      {{      'intel' if 'GenuineIntel' in ansible_processor | join(' ')
-        else ('amd' if 'AuthenticAMD' in ansible_processor | join(' ')
+      {{      'intel' if 'GenuineIntel' in ansible_processor | ansible.builtin.join(' ')
+        else ('amd' if 'AuthenticAMD' in ansible_processor | ansible.builtin.join(' ')
         else  'unknown') }}
 
 
@@ -40,7 +40,7 @@
 
 - name: "OS | Default | IOMMU | Set IOMMU support fact"
   ansible.builtin.set_fact:
-    __pve_iommu_supported: "{{ __pve_dmesg_output['stdout'] is search('DMAR|IOMMU|AMD-Vi') }}"
+    __pve_iommu_supported: "{{ __pve_dmesg_output['stdout'] is ansible.builtin.search('DMAR|IOMMU|AMD-Vi') }}"
 
 
 - name: "OS | Default | IOMMU | Read current GRUB configuration"
@@ -85,8 +85,8 @@
     __pve_grub_cmdline_final: >-
       {{
         ([__pve_grub_cmdline_clean, __pve_iommu_vendor_param, __pve_iommu_pt_param]
-        | ansible.builtin.select('ne', '')
-        | join(' '))
+        | ansible.builtin.select('ansible.builtin.ne', '')
+        | ansible.builtin.join(' '))
         | ansible.builtin.regex_replace(' +', ' ')
         | ansible.builtin.trim
       }}
