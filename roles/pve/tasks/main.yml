@@ -14,7 +14,13 @@
     - "pve_proxmox_always"
 
 
-- name: "Main | Include operating system (OS) configuration: best platform matches (if any), then default"
+# Separate includes for platform-specific files and default.yml on purpose. When
+# looping over "platform files + ['default.yml']" for multiple platforms in one
+# play, Ansible batches them across all hosts. Insertion order depends on when
+# results arrive (non-deterministic behavior) and default.yml may run before the
+# platform-specific files. Separate tasks enforce the required barrier.
+
+- name: "Main | Include operating system (OS) configuration: best platform matches (if any)"
   ansible.builtin.include_tasks:
     file: "{{ __pve_proxmox_task_file }}"
     apply:
@@ -25,14 +31,29 @@
   when:
     - pve_proxmox_state == 'present'
     - __pve_proxmox_task_file is ansible.builtin.file
-  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first }}"
   loop_control:
     loop_var: "__pve_proxmox_loop_item"
   tags:
     - "pve_proxmox_os"
 
 
-- name: "Main | Include network configuration: best platform matches (if any), then default"
+- name: "Main | Include operating system (OS) configuration: default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_os"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/os/default.yml"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is ansible.builtin.file
+  tags:
+    - "pve_proxmox_os"
+
+
+- name: "Main | Include network configuration: best platform matches (if any)"
   ansible.builtin.include_tasks:
     file: "{{ __pve_proxmox_task_file }}"
     apply:
@@ -43,14 +64,29 @@
   when:
     - pve_proxmox_state == 'present'
     - __pve_proxmox_task_file is ansible.builtin.file
-  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first }}"
   loop_control:
     loop_var: "__pve_proxmox_loop_item"
   tags:
     - "pve_proxmox_network"
 
 
-- name: "Main | Include firewall configuration: best platform matches (if any), then default"
+- name: "Main | Include network configuration: default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_network"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/network/default.yml"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is ansible.builtin.file
+  tags:
+    - "pve_proxmox_network"
+
+
+- name: "Main | Include firewall configuration: best platform matches (if any)"
   ansible.builtin.include_tasks:
     file: "{{ __pve_proxmox_task_file }}"
     apply:
@@ -61,14 +97,29 @@
   when:
     - pve_proxmox_state == 'present'
     - __pve_proxmox_task_file is ansible.builtin.file
-  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first }}"
   loop_control:
     loop_var: "__pve_proxmox_loop_item"
   tags:
     - "pve_proxmox_firewall"
 
 
-- name: "Main | Include storage configuration: best platform matches (if any), then default"
+- name: "Main | Include firewall configuration: default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_firewall"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/firewall/default.yml"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is ansible.builtin.file
+  tags:
+    - "pve_proxmox_firewall"
+
+
+- name: "Main | Include storage configuration: best platform matches (if any)"
   ansible.builtin.include_tasks:
     file: "{{ __pve_proxmox_task_file }}"
     apply:
@@ -79,14 +130,29 @@
   when:
     - pve_proxmox_state == 'present'
     - __pve_proxmox_task_file is ansible.builtin.file
-  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first }}"
   loop_control:
     loop_var: "__pve_proxmox_loop_item"
   tags:
     - "pve_proxmox_storage"
 
 
-- name: "Main | Include datacenter configuration: best platform matches (if any), then default"
+- name: "Main | Include storage configuration: default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_storage"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/storage/default.yml"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is ansible.builtin.file
+  tags:
+    - "pve_proxmox_storage"
+
+
+- name: "Main | Include datacenter configuration: best platform matches (if any)"
   ansible.builtin.include_tasks:
     file: "{{ __pve_proxmox_task_file }}"
     apply:
@@ -97,8 +163,22 @@
   when:
     - pve_proxmox_state == 'present'
     - __pve_proxmox_task_file is ansible.builtin.file
-  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first + ['default.yml'] }}"
+  loop: "{{ __pve_proxmox_platform_filenames_most_specific_first }}"
   loop_control:
     loop_var: "__pve_proxmox_loop_item"
+  tags:
+    - "pve_proxmox_datacenter"
+
+- name: "Main | Include datacenter configuration: default"
+  ansible.builtin.include_tasks:
+    file: "{{ __pve_proxmox_task_file }}"
+    apply:
+      tags:
+        - "pve_proxmox_datacenter"
+  vars:
+    __pve_proxmox_task_file: "{{ role_path }}/tasks/datacenter/default.yml"
+  when:
+    - pve_proxmox_state == 'present'
+    - __pve_proxmox_task_file is ansible.builtin.file
   tags:
     - "pve_proxmox_datacenter"
