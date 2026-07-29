@@ -1,0 +1,115 @@
+# Configuration for the Ansible Molecule "default" scenario.
+#
+# See the official documentation for details on this file and all settings:
+# https://docs.ansible.com/projects/molecule/configuration/
+#
+# Each platform selects its backend via the "type" key: "podman" (container,
+# the default when omitted) or "libvirt" (QEMU/KVM virtual machine). Use VM
+# platforms for tests containers cannot cover (kernel settings, nested
+# virtualization, Podman insid  e the test target, ...). Mixed scenarios are
+# possible. See extensions/molecule/README.md for requirements and usage
+# details.
+
+---
+
+driver:
+  name: "default"
+  options:
+    managed: true
+    # Resolved per instance from the instance config written by the create
+    # playbooks, so "molecule login" works for containers and VMs alike.
+    login_cmd_template: "{login_cmd}"
+
+
+# Target platforms for testing
+platforms:
+  # Platform keys by backend type:
+  #
+  # type: "podman" (default when omitted)
+  #   image (required):          OCI image reference
+  #   systemd (optional):        run a systemd entrypoint, usually true
+  #
+  # type: "libvirt" - QEMU/KVM virtual machines from vendor cloud images via a
+  # session libvirt daemon (no root privileges needed):
+  #   image (required):          URL of a cloud image (qcow2, cloud-init
+  #                              inside) or an absolute local path to one
+  #   ssh_port (required):       unique local port for the SSH port forward
+  #   image_checksum (optional): e.g. "sha512:...", off by default (trust in
+  #                              vendor and TLS, like the ":latest" ITT images)
+  #   memory (optional):         RAM in MiB, default 2048
+  #   vcpus (optional):          default 2
+  #   disk_size (optional):      virtual disk size, default "10G"
+  #   extra_disks (optional):    additional blank disks (e.g. for testing
+  #                              storage management): list of mappings with
+  #                              "serial" (required, becomes
+  #                              /dev/disk/by-id/virtio-<serial>) and "size"
+  #                              (default "4G")
+
+  # Proxmox VE 9 (golden image built by hack/build-pve-image.yml)
+  #
+  # This collection manages Proxmox VE hosts, so the test instance is a QEMU/KVM
+  # virtual machine running a real Proxmox VE built from the official
+  # installation ISO. Build the golden image once with:
+  #   ansible-playbook hack/build-pve-image.yml
+
+  - name: "molecule-pve9"
+    type: "libvirt"
+    # Note: nested defaults are not supported by Molecule's interpolation,
+    # so the standard cache path is spelled out (a MOLECULE_VM_CACHE_DIR
+    # override does not apply to this literal image path).
+    image: "${HOME}/.cache/ansible-molecule-libvirt/images/pve-9.2.qcow2"
+    ssh_port: 2220
+    memory: 4096
+    disk_size: "16G"
+    # blank disks for the storage management tests (ZFS pools, datasets);
+    # referenced as /dev/disk/by-id/virtio-<serial> in the test tasks
+    extra_disks:
+      - serial: "molecule0"
+        size: "4G"
+      - serial: "molecule1"
+        size: "4G"
+
+
+# Ansible dependencies (collections, roles) of this Molecule scenario
+dependency:
+  name: "galaxy"
+  enabled: true
+  options:
+    requirements-file: "${MOLECULE_SCENARIO_DIRECTORY}/requirements.yml"
+    ignore-certs: false
+    ignore-errors: false
+
+
+# Configuration parameters for Ansible to provision test infrastructure and
+# enable Molecule to execute test scenarios against the provisioned environment.
+# See the following for more information:
+# https://docs.ansible.com/projects/molecule/configuration/#provisioner
+# https://docs.ansible.com/projects/molecule/configuration/#molecule.interpolation.Interpolator.interpolate
+provisioner:
+  name: "ansible"
+  inventory:
+    links:
+      hosts: "inventory/hosts.yml"
+  config_options:
+    defaults:
+      verbosity: ${ANSIBLE_VERBOSITY:-0} # noqa
+      display_args_to_stdout: ${ANSIBLE_DISPLAY_ARGS_TO_STDOUT:-false} # noqa
+      # set forks >= number of test platforms for better performance
+      forks: ${ANSIBLE_FORKS:-12} # noqa
+      host_key_checking: false
+      retry_files_enabled: false
+    connection:
+      pipelining: true
+  playbooks:
+    create: "../shared/playbooks/create-dispatch.yml"
+    prepare: "../shared/playbooks/prepare.yml"
+    converge: "../shared/playbooks/converge.yml"
+    side_effect: "../shared/playbooks/side_effect.yml"
+    verify: "../shared/playbooks/verify.yml"
+    cleanup: "../shared/playbooks/cleanup.yml"
+    destroy: "../shared/playbooks/destroy-dispatch.yml"
+
+
+verifier:
+  name: "ansible"
+  enabled: true
