@@ -77,17 +77,21 @@
           - 'raidz2' requires at least 3 disks
           - 'raidz3' requires at least 4 disks
           You specified {{ vdev_item['disks'] | ansible.builtin.length }} disk(s)
+      # subelements on purpose: every vdev of a pool has to be validated, not
+      # just the first one.
       loop: >-
         {{
           pve_proxmox_storage | ansible.builtin.default([], true)
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
+          | ansible.builtin.subelements('attributes.vdevs', skip_missing=true)
         }}
       loop_control:
         loop_var: pool_item
+        label: "{{ pool_item[0]['name'] }}: {{ pool_item[1]['type'] }}"
       vars:
-        item: "{{ pool_item }}"
-        vdev_item: "{{ pool_item['attributes']['vdevs'][0] }}"
+        item: "{{ pool_item[0] }}"
+        vdev_item: "{{ pool_item[1] }}"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -1206,9 +1210,11 @@
             ping {{ item['item']['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}
             showmount -e {{ item['item']['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}
       loop: "{{ __pve_nfs_server_check['results'] | ansible.builtin.default([]) }}"
+      # The check task uses "failed_when: false", so every result registers as
+      # a success; only the return code tells whether showmount worked.
       when:
         - __pve_nfs_server_check is ansible.builtin.defined
-        - item is ansible.builtin.success
+        - (item['rc'] | ansible.builtin.default(0)) != 0
 
 
     - name: "Storage | NFS | Check current mount status"
@@ -1452,6 +1458,77 @@
         - pve_proxmox_sm is ansible.builtin.defined
         - pve_proxmox_sm | ansible.builtin.length > 0
         - not __pve_storage_is_configured[pve_storage_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+      changed_when:
+        - true
+
+
+    # "pvesm add" only handles new storage IDs, so property changes on already
+    # configured storages (content, nodes, is_mountpoint, sparse, blocksize)
+    # would silently never be applied. Creation-time properties (type, path,
+    # pool) are immutable in PVE and deliberately not compared.
+    - name: "Storage | pvesm | Get the configuration of already configured storages"
+      ansible.builtin.command:
+        argv: ["pvesh", "get", "/storage/{{ pve_storage_item['name'] }}", "--output-format", "json"]
+      loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
+      loop_control:
+        loop_var: pve_storage_item
+        label: "{{ pve_storage_item['name'] }}"
+      register: __pve_storage_current
+      changed_when:
+        - false
+      when:
+        - __pve_storage_is_configured[pve_storage_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+
+
+    - name: "Storage | pvesm | Update properties of already configured storages"
+      ansible.builtin.command:
+        argv: "{{ ['pvesm', 'set', __pve_sm_item['name']] + __pve_sm_set_args }}"
+      vars:
+        __pve_sm_item: "{{ item['pve_storage_item'] }}"
+        __pve_sm_props: "{{ __pve_sm_item['storage_properties'] }}"
+        __pve_sm_current: "{{ item['stdout'] | ansible.builtin.from_json }}"
+        # PVE returns list-ish options as comma-separated strings in arbitrary
+        # member order; both sides get normalized to sorted lists.
+        __pve_sm_content_desired: "{{ __pve_sm_props['content'] | ansible.builtin.default([]) | ansible.builtin.sort }}"
+        __pve_sm_content_current: >-
+          {{
+            (__pve_sm_current['content'] | ansible.builtin.default('')).split(',')
+            | ansible.builtin.select() | ansible.builtin.sort
+          }}
+        __pve_sm_nodes_desired: "{{ __pve_sm_props['nodes'] | ansible.builtin.default([]) | ansible.builtin.sort }}"
+        __pve_sm_nodes_current: >-
+          {{
+            (__pve_sm_current['nodes'] | ansible.builtin.default('')).split(',')
+            | ansible.builtin.select() | ansible.builtin.sort
+          }}
+        __pve_sm_mp_desired: "{{ __pve_sm_props['is_mountpoint'] | ansible.builtin.default(false) | ansible.builtin.bool }}"
+        __pve_sm_mp_current: "{{ __pve_sm_current['is_mountpoint'] | ansible.builtin.default('no') | ansible.builtin.bool }}"
+        __pve_sm_sparse_desired: "{{ __pve_sm_props['sparse'] | ansible.builtin.default(false) | ansible.builtin.bool }}"
+        __pve_sm_sparse_current: "{{ __pve_sm_current['sparse'] | ansible.builtin.default(0) | ansible.builtin.bool }}"
+        __pve_sm_set_args: >-
+          {{
+            (['--content', (__pve_sm_content_desired | ansible.builtin.join(','))]
+             if ((__pve_sm_props['content'] is ansible.builtin.defined)
+                 and (__pve_sm_content_desired != __pve_sm_content_current)) else [])
+            + (['--nodes', (__pve_sm_nodes_desired | ansible.builtin.join(','))]
+               if ((__pve_sm_props['nodes'] is ansible.builtin.defined)
+                   and (__pve_sm_nodes_desired != __pve_sm_nodes_current)) else [])
+            + (['--is_mountpoint', ('yes' if (__pve_sm_mp_desired | ansible.builtin.bool) else 'no')]
+               if ((__pve_sm_item['type'] == 'dir')
+                   and ((__pve_sm_mp_desired | ansible.builtin.bool) != (__pve_sm_mp_current | ansible.builtin.bool))) else [])
+            + (['--sparse', ('1' if (__pve_sm_sparse_desired | ansible.builtin.bool) else '0')]
+               if ((__pve_sm_item['type'] == 'zfspool')
+                   and ((__pve_sm_sparse_desired | ansible.builtin.bool) != (__pve_sm_sparse_current | ansible.builtin.bool))) else [])
+            + (['--blocksize', __pve_sm_props['blocksize']]
+               if ((__pve_sm_props['blocksize'] is ansible.builtin.defined)
+                   and (__pve_sm_props['blocksize'] != (__pve_sm_current['blocksize'] | ansible.builtin.default('')))) else [])
+          }}
+      loop: "{{ __pve_storage_current['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        label: "{{ item['pve_storage_item']['name'] | ansible.builtin.default('skipped') }}"
+      when:
+        - not (item['skipped'] | ansible.builtin.default(false))
+        - (__pve_sm_set_args | ansible.builtin.length) > 0
       changed_when:
         - true
 

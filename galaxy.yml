@@ -28,6 +28,8 @@ tags:
 dependencies:
   "ansible.utils": ">=5.1.0"
   "ansible.posix": ">=2.0.0"
+  # ZFS storage management; the zpool module needs >= 11.0.0
+  "community.general": ">=11.0.0"
 
 # List of file glob-like patterns to filter files or directories that should
 # not be included in the build artifact. Some are always filtered by

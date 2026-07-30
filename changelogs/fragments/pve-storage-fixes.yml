@@ -1,0 +1,19 @@
+---
+
+minor_changes:
+  - >
+    ``pve`` - properties of already configured ``pvesm`` storages (content,
+    nodes, is_mountpoint, sparse, blocksize) are now compared and updated via
+    ``pvesm set``. Previously a matching storage ID was considered complete
+    and property changes were silently never applied.
+
+bugfixes:
+  - >
+    ``pve`` - only the first vdev of a ZFS pool was validated, so invalid
+    disk counts in later vdevs reached pool creation.
+  - >
+    ``pve`` - the NFS reachability warning was shown for every server
+    (including reachable ones) instead of only when ``showmount`` failed.
+  - >
+    the collection now declares its ``community.general`` dependency (ZFS
+    pool, dataset and facts modules).
