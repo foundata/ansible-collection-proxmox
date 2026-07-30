@@ -103,6 +103,9 @@
       - "'iface vmbr0 inet dhcp' in __testing_pve_cfg['interfaces']"
       - "'bridge-ports ' ~ __testing_pve_uplink_iface in __testing_pve_cfg['interfaces']"
       - "'source /etc/network/interfaces.d/*' in __testing_pve_cfg['interfaces']"
+      # the uplink NIC is declared with "auto: false" and must not get an auto
+      # directive (only vmbr0 has one)
+      - "('auto ' ~ __testing_pve_uplink_iface) not in __testing_pve_cfg['interfaces']"
       # /etc/pve/datacenter.cfg incl. the nested key=value,key2=value2 rendering
       - "'keyboard: en-us' in __testing_pve_cfg['datacenter']"
       - "'console: html5' in __testing_pve_cfg['datacenter']"
@@ -113,6 +116,10 @@
       - "'[IPSET molecule_trusted]' in __testing_pve_cfg['cluster_fw']"
       - "'[group molecule_mgmt_in]' in __testing_pve_cfg['cluster_fw']"
       - "'IN SSH(ACCEPT) -source +dc/molecule_trusted' in __testing_pve_cfg['cluster_fw']"
+      # the [RULES] section renders pve_proxmox_fw_cluster_rules (was silently
+      # empty when the renderer read a misspelled variable)
+      - "'GROUP molecule_mgmt_in' in __testing_pve_cfg['cluster_fw']"
+      - "'IN ACCEPT -source +dc/molecule_trusted -p tcp -dport 8006 # PVE web UI' in __testing_pve_cfg['cluster_fw']"
       # /etc/pve/nodes/<hostname>/host.fw
       - "'enable: 0' in __testing_pve_cfg['host_fw']"
       - "'IN Ping(ACCEPT) # Molecule ICMP' in __testing_pve_cfg['host_fw']"
@@ -125,3 +132,120 @@
       {%-   set _ = __ns.cfg.update({__result['item']['key']: (__result['content'] | ansible.builtin.b64decode)}) -%}
       {%- endfor -%}
       {{ __ns.cfg }}
+
+
+- name: "Molecule | Verify | pve | Get information about /etc/network/interfaces.d/10-host"
+  ansible.builtin.stat:
+    path: "/etc/network/interfaces.d/10-host"
+  register: __testing_pve_10host_stat
+
+
+- name: "Molecule | Verify | pve | Assert empty host datasets left /etc/network/interfaces.d/10-host alone"
+  ansible.builtin.assert:
+    that:
+      - not __testing_pve_10host_stat['stat']['exists']
+    fail_msg: >-
+      /etc/network/interfaces.d/10-host was created although both
+      pve_proxmox_net_ifaces_host_* datasets are empty.
+    success_msg: "Empty host datasets did not render /etc/network/interfaces.d/10-host."
+
+
+- name: "Molecule | Verify | pve | Read the rendered systemd link files (altnames)"
+  ansible.builtin.slurp:
+    src: "/etc/systemd/network/10-{{ item }}.link"
+  register: __testing_pve_links
+  loop:
+    - "molecule1"
+    - "molecule2"
+
+
+- name: "Molecule | Verify | pve | Assert both altname link files were rendered"
+  ansible.builtin.assert:
+    that:
+      - "'MACAddress=0e:54:00:aa:bb:01' in (__testing_pve_links['results'][0]['content'] | ansible.builtin.b64decode)"
+      - "'AlternativeName=molecule1' in (__testing_pve_links['results'][0]['content'] | ansible.builtin.b64decode)"
+      - "'MACAddress=0e:54:00:aa:bb:02' in (__testing_pve_links['results'][1]['content'] | ansible.builtin.b64decode)"
+      - "'AlternativeName=molecule2' in (__testing_pve_links['results'][1]['content'] | ansible.builtin.b64decode)"
+    fail_msg: "At least one pve_proxmox_net_altnames entry was not rendered (all entries must be processed, not just the first)."
+    success_msg: "Both altname link files were rendered."
+
+
+- name: "Molecule | Verify | pve | Query the ZFS pool health (fails if the pool is missing)"
+  ansible.builtin.command:
+    argv: ["zpool", "list", "-H", "-o", "health", "moleculepool"]
+  register: __testing_pve_zpool_health
+  changed_when:
+    - false
+
+
+- name: "Molecule | Verify | pve | Assert the ZFS mirror pool is healthy"
+  ansible.builtin.assert:
+    that:
+      - __testing_pve_zpool_health['stdout'] == 'ONLINE'
+    fail_msg: "The moleculepool ZFS mirror is not healthy: {{ __testing_pve_zpool_health['stdout'] }}"
+    success_msg: "The moleculepool ZFS mirror is online."
+
+
+- name: "Molecule | Verify | pve | Query the PVE storage manager configuration"
+  ansible.builtin.command:
+    argv: ["pvesh", "get", "/storage/{{ item }}", "--output-format", "json"]
+  register: __testing_pve_sm
+  changed_when:
+    - false
+  loop:
+    - "molecule-guest1"
+    - "molecule-assets1"
+
+
+- name: "Molecule | Verify | pve | Assert the storages are registered with the expected properties"
+  ansible.builtin.assert:
+    that:
+      - __testing_pve_sm_guest['type'] == 'zfspool'
+      - __testing_pve_sm_guest['pool'] == 'moleculepool'
+      - (__testing_pve_sm_guest['content'].split(',') | ansible.builtin.sort) == ['images', 'rootdir']
+      - (__testing_pve_sm_guest['sparse'] | ansible.builtin.bool)
+      - __testing_pve_sm_assets['type'] == 'dir'
+      - __testing_pve_sm_assets['path'] == '/var/lib/molecule-assets'
+      - (__testing_pve_sm_assets['content'].split(',') | ansible.builtin.sort) == ['iso', 'vztmpl']
+    fail_msg: "At least one pvesm storage is missing or has unexpected properties."
+    success_msg: "Both pvesm storages are registered with the expected properties."
+  vars:
+    __testing_pve_sm_guest: "{{ __testing_pve_sm['results'][0]['stdout'] | ansible.builtin.from_json }}"
+    __testing_pve_sm_assets: "{{ __testing_pve_sm['results'][1]['stdout'] | ansible.builtin.from_json }}"
+
+
+## Reconciliation of drifted pvesm properties
+#
+# "pvesm add" only handles new storage IDs; the role has to detect and update
+# drifted properties of already configured storages. Drift the content of the
+# directory storage by hand, re-run the role (the pve_proxmox_* facts were
+# restored from __testing_state above) and expect the declared value back.
+
+- name: "Molecule | Verify | pve | Drift the content of the directory storage"
+  ansible.builtin.command:
+    argv: ["pvesm", "set", "molecule-assets1", "--content", "iso"]
+  changed_when:
+    - true
+
+
+- name: "Molecule | Verify | pve | Re-run the foundata.proxmox.pve role"
+  ansible.builtin.include_role:
+    name: "foundata.proxmox.pve"
+
+
+- name: "Molecule | Verify | pve | Query the drifted storage again"
+  ansible.builtin.command:
+    argv: ["pvesh", "get", "/storage/molecule-assets1", "--output-format", "json"]
+  register: __testing_pve_sm_restored
+  changed_when:
+    - false
+
+
+- name: "Molecule | Verify | pve | Assert the drifted property was reconciled"
+  ansible.builtin.assert:
+    that:
+      - >-
+        ((__testing_pve_sm_restored['stdout'] | ansible.builtin.from_json)['content'].split(',')
+         | ansible.builtin.sort) == ['iso', 'vztmpl']
+    fail_msg: "The role did not update the drifted content of the already configured storage."
+    success_msg: "The drifted pvesm property was updated back to the declared value."

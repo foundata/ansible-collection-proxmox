@@ -40,6 +40,8 @@
                 method: "loopback"
               - name: "{{ __testing_pve_uplink_iface }}"
                 method: "manual"
+                # like the golden image; also checks "auto: false" is honored
+                auto: false
               - name: "vmbr0"
                 method: "dhcp"
                 iface_properties:
@@ -48,14 +50,23 @@
                   bridge-fd: 0
         options_after: |
           source /etc/network/interfaces.d/*
-      # The interfaces template expects the "sections" key in every dataset;
-      # there are no hidden backend interfaces on the single-NIC test VM.
-      pve_proxmox_net_ifaces_host_specific:
-        sections: []
-      pve_proxmox_net_ifaces_host_shared:
-        sections: []
-      pve_proxmox_net_ifaces_workload_specific:
-        sections: []
+      # The host datasets stay at their empty defaults on the single-NIC test
+      # VM: /etc/network/interfaces.d/10-host must NOT be created then (the
+      # verify stage checks this).
+      # Altnames for MAC addresses no Molecule NIC uses (libvirt assigns
+      # 52:54:00:*): renders the systemd link files without affecting the
+      # instance's networking. Two entries so per-entry processing is covered.
+      pve_proxmox_net_altnames:
+        - type: "en"
+          desc: "Molecule test NIC 1"
+          mac_address: "0e:54:00:aa:bb:01"
+          altnames:
+            - "molecule1"
+        - type: "en"
+          desc: "Molecule test NIC 2"
+          mac_address: "0e:54:00:aa:bb:02"
+          altnames:
+            - "molecule2"
       # Keep the firewall disabled (enable: 0): activating it on the throwaway
       # single-node instance could cut the SSH port forward. Rendering,
       # validation and the service reload are still exercised.
@@ -102,6 +113,37 @@
         next-id:
           lower: 100
           upper: 999999
+      # ZFS mirror on the two blank disks the platform provides for storage
+      # tests (see extra_disks in molecule.yml), registered with the PVE
+      # storage manager together with a directory storage.
+      pve_proxmox_storage:
+        - name: "moleculepool"
+          type: "zpool"
+          attributes:
+            mountpoint: "/moleculepool"
+            vdevs:
+              - type: "mirror"
+                disks:
+                  - "/dev/disk/by-id/virtio-molecule0"
+                  - "/dev/disk/by-id/virtio-molecule1"
+            pool_properties:
+              ashift: "12"
+      pve_proxmox_sm:
+        - name: "molecule-guest1"
+          type: "zfspool"
+          storage_properties:
+            pool: "moleculepool"
+            content:
+              - "images"
+              - "rootdir"
+            sparse: true
+        - name: "molecule-assets1"
+          type: "dir"
+          storage_properties:
+            path: "/var/lib/molecule-assets"
+            content:
+              - "iso"
+              - "vztmpl"
 
 
 - name: "Molecule | Converge | pve | Set pve_proxmox_* parameters as facts from __testing_state"
