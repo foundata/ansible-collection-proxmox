@@ -4,6 +4,34 @@ foundata.proxmox Ansible collection Release Notes
 
 .. contents:: Topics
 
+v1.1.0
+======
+
+Release Summary
+---------------
+
+Release Date: 2026-07-30
+
+Maintenance and bugfix release.
+
+Minor Changes
+-------------
+
+- ``pve`` - properties of already configured ``pvesm`` storages (content, nodes, is_mountpoint, sparse, blocksize) are now compared and updated via ``pvesm set``. Previously a matching storage ID was considered complete and property changes were silently never applied.
+
+Bugfixes
+--------
+
+- ``pve`` - ``pve_proxmox_net_altnames`` entries were gated on the first list entry instead of the entry at hand, so a defective first entry skipped all remaining (valid) ones.
+- ``pve`` - ``pve_proxmox_state`` gated every configuration section but was neither defined nor documented, so the role failed with an undefined variable unless the caller invented it. It is now a documented role argument defaulting to ``present``.
+- ``pve`` - cluster-wide firewall rules were rendered from a misspelled, nonexistent variable, so ``pve_proxmox_fw_cluster_rules`` entries were silently omitted from ``/etc/pve/firewall/cluster.fw``.
+- ``pve`` - only the first vdev of a ZFS pool was validated, so invalid disk counts in later vdevs reached pool creation.
+- ``pve`` - the NFS reachability warning was shown for every server (including reachable ones) instead of only when ``showmount`` failed.
+- ``pve`` - the interfaces template failed on datasets without a ``sections`` key and ignored ``auto: false`` (an ``auto`` directive was rendered for every interface).
+- ``pve`` - the role no longer renders ``/etc/network/interfaces`` and ``/etc/network/interfaces.d/10-host`` when the respective ``pve_proxmox_net_ifaces_*`` datasets are empty (the default). Replacing a working network configuration with an effectively empty file and restarting the network would have locked the host out.
+- ``pve`` role - Platform-specific task files are now guaranteed to run before the shared default tasks. The former single include loop did not preserve that order with several platforms in one play: Ansible batches the includes across hosts and the insertion order depends on when results arrive (non-deterministic), so default tasks could run before platform-specific ones. The includes are now two sequential tasks, which is a hard ordering barrier.
+- the collection now declares its ``community.general`` dependency (ZFS pool, dataset and facts modules).
+
 v1.0.0
 ======
 
