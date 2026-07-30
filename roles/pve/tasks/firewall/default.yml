@@ -83,7 +83,7 @@
     tpl_fw_aliases: "{{ pve_proxmox_fw_cluster_aliases | ansible.builtin.default([], true) }}"
     tpl_fw_ipsets: "{{ pve_proxmox_fw_cluster_ipsets | ansible.builtin.default([], true) }}"
     tpl_fw_securitygroups: "{{ pve_proxmox_fw_cluster_securitygroups | ansible.builtin.default([], true) }}"
-    tpl_fw_rules: "{{ pve_fw_cluster_rules | ansible.builtin.default([], true) }}"
+    tpl_fw_rules: "{{ pve_proxmox_fw_cluster_rules | ansible.builtin.default([], true) }}"
   notify:
     - "pve_proxmox: reload pve-firewall"
 

@@ -1,0 +1,7 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - cluster-wide firewall rules were rendered from a misspelled,
+    nonexistent variable, so ``pve_proxmox_fw_cluster_rules`` entries were
+    silently omitted from ``/etc/pve/firewall/cluster.fw``.
