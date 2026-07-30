@@ -1,0 +1,127 @@
+# Check collection role "pve" outcomes: services up and reachable, rendered
+# configuration in place.
+
+
+- name: "Molecule | Verify | pve | Gather facts needed for the checks"
+  ansible.builtin.setup:
+    gather_subset:
+      - "network"
+
+
+- name: "Molecule | Verify | pve | Set pve_proxmox_* and __testing_* parameters as facts from __testing_state"
+  ansible.builtin.set_fact:
+    "{{ item['key'] }}": "{{ item['value'] }}"
+  loop: >-
+    {{
+      (__testing_state | ansible.builtin.default({}, true))
+      | ansible.builtin.dict2items
+      | ansible.builtin.selectattr('key', 'ansible.builtin.match', '^(pve_proxmox_|__testing_)')
+      | ansible.builtin.list
+    }}
+
+
+- name: "Molecule | Verify | pve | Gather service facts"
+  ansible.builtin.service_facts:
+
+
+- name: "Molecule | Verify | pve | Assert the Proxmox VE services are running"
+  ansible.builtin.assert:
+    that:
+      - __testing_pve_service in ansible_facts['services']
+      - ansible_facts['services'][__testing_pve_service]['state'] == 'running'
+    fail_msg: >-
+      Service '{{ __testing_pve_service }}' is missing or not running:
+      {{ ansible_facts['services'][__testing_pve_service] | ansible.builtin.default('not found') }}
+    success_msg: "Service '{{ __testing_pve_service }}' is running."
+  loop:
+    - "pve-cluster.service" # pmxcfs, provides /etc/pve
+    - "pvedaemon.service"
+    - "pveproxy.service"
+    - "pvestatd.service"
+    - "proxmox-firewall.service" # nftables-based firewall managed by the role
+  loop_control:
+    loop_var: "__testing_pve_service"
+
+
+- name: "Molecule | Verify | pve | Get information about /etc/pve/local (pmxcfs is mounted and knows the node)"
+  ansible.builtin.stat:
+    path: "/etc/pve/local"
+  register: __testing_pve_pmxcfs_local
+
+
+- name: "Molecule | Verify | pve | Assert /etc/pve/local exists"
+  ansible.builtin.assert:
+    that:
+      - __testing_pve_pmxcfs_local['stat']['exists']
+    fail_msg: "/etc/pve/local does not exist, pmxcfs (pve-cluster) seems broken."
+    success_msg: "/etc/pve/local exists, pmxcfs is functional."
+
+
+- name: "Molecule | Verify | pve | Check the web UI answers on https://127.0.0.1:8006"
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:8006/"
+    validate_certs: false # self-signed certificate on a fresh installation
+    return_content: true
+  register: __testing_pve_webui
+  retries: 3
+  delay: 5
+  until:
+    - __testing_pve_webui is ansible.builtin.success
+
+
+- name: "Molecule | Verify | pve | Assert the web UI response looks like Proxmox VE"
+  ansible.builtin.assert:
+    that:
+      - __testing_pve_webui['status'] == 200
+      - "'Proxmox' in __testing_pve_webui['content']"
+    fail_msg: "The pveproxy answer on port 8006 does not look like the Proxmox VE web UI."
+    success_msg: "The Proxmox VE web UI is reachable on port 8006."
+
+
+- name: "Molecule | Verify | pve | Read the rendered configuration files"
+  ansible.builtin.slurp:
+    src: "{{ item['value'] }}"
+  register: __testing_pve_configs
+  loop: >-
+    {{
+      {
+        'interfaces': '/etc/network/interfaces',
+        'datacenter': '/etc/pve/datacenter.cfg',
+        'cluster_fw': '/etc/pve/firewall/cluster.fw',
+        'host_fw': '/etc/pve/nodes/' ~ ansible_hostname ~ '/host.fw',
+      } | ansible.builtin.dict2items
+    }}
+  loop_control:
+    label: "{{ item['value'] }}"
+
+
+- name: "Molecule | Verify | pve | Assert the rendered configuration files contain the managed values"
+  ansible.builtin.assert:
+    that:
+      # /etc/network/interfaces: golden image networking reproduced by the role
+      - "'auto vmbr0' in __testing_pve_cfg['interfaces']"
+      - "'iface vmbr0 inet dhcp' in __testing_pve_cfg['interfaces']"
+      - "'bridge-ports ' ~ __testing_pve_uplink_iface in __testing_pve_cfg['interfaces']"
+      - "'source /etc/network/interfaces.d/*' in __testing_pve_cfg['interfaces']"
+      # /etc/pve/datacenter.cfg incl. the nested key=value,key2=value2 rendering
+      - "'keyboard: en-us' in __testing_pve_cfg['datacenter']"
+      - "'console: html5' in __testing_pve_cfg['datacenter']"
+      - "'next-id: lower=100,upper=999999' in __testing_pve_cfg['datacenter']"
+      # /etc/pve/firewall/cluster.fw
+      - "'enable: 0' in __testing_pve_cfg['cluster_fw']"
+      - "'molecule-mgmt 203.0.113.10' in __testing_pve_cfg['cluster_fw']"
+      - "'[IPSET molecule_trusted]' in __testing_pve_cfg['cluster_fw']"
+      - "'[group molecule_mgmt_in]' in __testing_pve_cfg['cluster_fw']"
+      - "'IN SSH(ACCEPT) -source +dc/molecule_trusted' in __testing_pve_cfg['cluster_fw']"
+      # /etc/pve/nodes/<hostname>/host.fw
+      - "'enable: 0' in __testing_pve_cfg['host_fw']"
+      - "'IN Ping(ACCEPT) # Molecule ICMP' in __testing_pve_cfg['host_fw']"
+    fail_msg: "At least one rendered configuration file does not contain the expected managed values."
+    success_msg: "All rendered configuration files contain the expected managed values."
+  vars:
+    __testing_pve_cfg: >-
+      {%- set __ns = namespace(cfg={}) -%}
+      {%- for __result in __testing_pve_configs['results'] -%}
+      {%-   set _ = __ns.cfg.update({__result['item']['key']: (__result['content'] | ansible.builtin.b64decode)}) -%}
+      {%- endfor -%}
+      {{ __ns.cfg }}

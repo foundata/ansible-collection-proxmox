@@ -1,0 +1,124 @@
+# Execute the collection role "pve" against all driver-created instances.
+
+
+- name: "Molecule | Converge | pve | Gather network facts (to determine the NIC enslaved by vmbr0)"
+  ansible.builtin.setup:
+    gather_subset:
+      - "network"
+
+
+- name: "Molecule | Converge | pve | Determine the uplink NIC of the golden image's vmbr0 bridge"
+  ansible.builtin.set_fact:
+    __testing_pve_uplink_iface: "{{ ansible_facts['vmbr0']['interfaces'] | ansible.builtin.first }}"
+
+
+- name: "Molecule | Converge | pve | Store pve_proxmox_* role parameters in __testing_state"
+  ansible.builtin.include_tasks:
+    file: "../tasks/state_update.yml"
+  vars:
+    __testing_state_update:
+      # Persisted for the verify stage (runs as a separate play without the
+      # converge facts).
+      __testing_pve_uplink_iface: "{{ __testing_pve_uplink_iface }}"
+      # The role's tasks/main.yml gates every section on this variable but the
+      # role does not define a default for it (yet), so the scenario has to
+      # provide it explicitly.
+      pve_proxmox_state: "present"
+      # ansible.builtin.tempfile reports "changed" on every run, so the
+      # disaster-safeguard backups would break the idempotence stage.
+      pve_proxmox_tmpbackupfiles: false
+      # Reproduce the golden image networking (vmbr0 bridging the single NIC
+      # via DHCP): the role authoritatively rewrites /etc/network/interfaces
+      # and notifies a network restart, and only a functionally identical
+      # configuration keeps ifupdown2 from bouncing the bridge and cutting the
+      # Molecule SSH connection.
+      pve_proxmox_net_ifaces_workload_shared:
+        sections:
+          - title: "Proxmox VE (PVE) management bridge (Molecule)"
+            interfaces:
+              - name: "lo"
+                method: "loopback"
+              - name: "{{ __testing_pve_uplink_iface }}"
+                method: "manual"
+              - name: "vmbr0"
+                method: "dhcp"
+                iface_properties:
+                  bridge-ports: "{{ __testing_pve_uplink_iface }}"
+                  bridge-stp: "off"
+                  bridge-fd: 0
+        options_after: |
+          source /etc/network/interfaces.d/*
+      # The interfaces template expects the "sections" key in every dataset;
+      # there are no hidden backend interfaces on the single-NIC test VM.
+      pve_proxmox_net_ifaces_host_specific:
+        sections: []
+      pve_proxmox_net_ifaces_host_shared:
+        sections: []
+      pve_proxmox_net_ifaces_workload_specific:
+        sections: []
+      # Keep the firewall disabled (enable: 0): activating it on the throwaway
+      # single-node instance could cut the SSH port forward. Rendering,
+      # validation and the service reload are still exercised.
+      pve_proxmox_fw_cluster_options:
+        enable: 0
+      pve_proxmox_fw_cluster_aliases:
+        - name: "molecule-mgmt"
+          ip: "203.0.113.10"
+          comment: "Molecule test alias"
+      pve_proxmox_fw_cluster_ipsets:
+        - name: "molecule_trusted"
+          comment: "Molecule test IP set"
+          entries:
+            - ip: "dc/molecule-mgmt"
+            - ip: "198.51.100.0/24"
+              comment: "Documentation range"
+      pve_proxmox_fw_cluster_securitygroups:
+        - name: "molecule_mgmt_in"
+          comment: "Molecule test security group"
+          rules:
+            - direction: "IN"
+              action: "SSH(ACCEPT)"
+              source: "+dc/molecule_trusted"
+              comment: "SSH from trusted networks"
+      pve_proxmox_fw_cluster_rules:
+        - action: "GROUP"
+          security_group: "molecule_mgmt_in"
+        - direction: "IN"
+          action: "ACCEPT"
+          proto: "tcp"
+          dport: "8006"
+          source: "+dc/molecule_trusted"
+          comment: "PVE web UI"
+      pve_proxmox_fw_node_options:
+        enable: 0
+      pve_proxmox_fw_node_rules:
+        - direction: "IN"
+          action: "Ping(ACCEPT)"
+          comment: "Molecule ICMP"
+      pve_proxmox_datacentercfg:
+        keyboard: "en-us"
+        console: "html5"
+        # Nested dict on purpose: exercises the key=value,key2=value2 rendering.
+        next-id:
+          lower: 100
+          upper: 999999
+
+
+- name: "Molecule | Converge | pve | Set pve_proxmox_* parameters as facts from __testing_state"
+  ansible.builtin.set_fact:
+    "{{ item['key'] }}": "{{ item['value'] }}"
+  loop: >-
+    {{
+      (__testing_state | ansible.builtin.default({}, true))
+      | ansible.builtin.dict2items
+      | ansible.builtin.selectattr('key', 'ansible.builtin.match', '^pve_proxmox_')
+      | ansible.builtin.list
+    }}
+
+
+- name: "Molecule | Converge | pve | Include the foundata.proxmox.pve role"
+  ansible.builtin.include_role:
+    name: "foundata.proxmox.pve"
+  # vars: All pve_proxmox_* variables are set as facts and passed this way to
+  #       the role, so they can be persisted in __testing_state and restored in
+  #       later stages (e.g. verify) without duplicating data across playbooks.
