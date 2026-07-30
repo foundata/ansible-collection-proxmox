@@ -50,6 +50,7 @@ The resource in this collection to configure and maintain Proxmox Virtual Enviro
   - [Example playbooks, using this role](roles/pve/README.md#examples)
   - [Supported tags](roles/pve/README.md#tags)
   - [Role variables](roles/pve/README.md#variables)
+    - [`pve_proxmox_state`](roles/pve/README.md#variable-pve_proxmox_state)
     - [`pve_proxmox_tmpbackupfiles`](roles/pve/README.md#variable-pve_proxmox_tmpbackupfiles)
     - [`pve_proxmox_iommu_manage`](roles/pve/README.md#variable-pve_proxmox_iommu_manage)
     - [`pve_proxmox_net_altnames`](roles/pve/README.md#variable-pve_proxmox_net_altnames)

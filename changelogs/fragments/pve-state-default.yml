@@ -1,0 +1,8 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - ``pve_proxmox_state`` gated every configuration section but was
+    neither defined nor documented, so the role failed with an undefined
+    variable unless the caller invented it. It is now a documented role
+    argument defaulting to ``present``.

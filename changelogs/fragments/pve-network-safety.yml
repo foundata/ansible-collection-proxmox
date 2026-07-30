@@ -1,0 +1,17 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - the role no longer renders ``/etc/network/interfaces`` and
+    ``/etc/network/interfaces.d/10-host`` when the respective
+    ``pve_proxmox_net_ifaces_*`` datasets are empty (the default). Replacing a
+    working network configuration with an effectively empty file and
+    restarting the network would have locked the host out.
+  - >
+    ``pve`` - the interfaces template failed on datasets without a
+    ``sections`` key and ignored ``auto: false`` (an ``auto`` directive was
+    rendered for every interface).
+  - >
+    ``pve`` - ``pve_proxmox_net_altnames`` entries were gated on the first
+    list entry instead of the entry at hand, so a defective first entry
+    skipped all remaining (valid) ones.

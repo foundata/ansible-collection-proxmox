@@ -51,7 +51,7 @@
 
 
 {% for dataset in datasets %}
-{%   for section in dataset['sections'] %}
+{%   for section in dataset.get('sections', []) %}
 ### {{ section['title'] }}
 
 {%     if section.get('comment') %}
@@ -66,7 +66,9 @@
 # {{ line }}
 {%         endfor %}
 {%       endif %}
+{%       if interface.get('auto', true) %}
 auto {{ interface['name'] }}
+{%       endif %}
 iface {{ interface['name'] }} inet {{ interface['method'] }}
 {%       if interface.get('iface_properties') %}
 {%         for key, value in interface['iface_properties'].items() %}
@@ -79,7 +81,7 @@ iface {{ interface['name'] }} inet {{ interface['method'] }}
 
 {%       endif %}
 {%     endfor %}
-{%     if not (loop['last'] and (loop['index'] == (dataset['sections'] | ansible.builtin.length)) and (loop['index0'] == (datasets | ansible.builtin.length - 1))) %}
+{%     if not (loop['last'] and (loop['index'] == (dataset.get('sections', []) | ansible.builtin.length)) and (loop['index0'] == (datasets | ansible.builtin.length - 1))) %}
 
 
 {%     endif %}

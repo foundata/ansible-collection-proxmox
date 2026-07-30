@@ -10,6 +10,7 @@ The `foundata.proxmox.pve` Ansible role (part of the `foundata.proxmox` Ansible 
 - [Example playbooks, using this role](#examples)
 - [Supported tags](#tags)<!-- ANSIBLE DOCSMITH TOC START -->
 - [Role variables](#variables)
+  - [`pve_proxmox_state`](#variable-pve_proxmox_state)
   - [`pve_proxmox_tmpbackupfiles`](#variable-pve_proxmox_tmpbackupfiles)
   - [`pve_proxmox_iommu_manage`](#variable-pve_proxmox_iommu_manage)
   - [`pve_proxmox_net_altnames`](#variable-pve_proxmox_net_altnames)
@@ -357,6 +358,7 @@ The following variables can be configured for this role:
 
 | Variable | Type | Required | Default | Description (abstract) |
 |----------|------|----------|---------|------------------------|
+| `pve_proxmox_state` | `str` | No | `"present"` | Determines whether the managed configuration should be applied (`present`) or not.<br><br>`absent` currently only skips all configuration management, nothing gets removed or reverted: a Proxmox VE host stripped of its network, firewall or storage […](#variable-pve_proxmox_state) |
 | `pve_proxmox_tmpbackupfiles` | `bool` | No | `true` | Switch to control whether temporary disaster-safeguard backups of important configuration files should be created before re-writing them via Ansible.<br><br>When set to `true` (which is the default), the role will:<br><br>1. Create a temporary […](#variable-pve_proxmox_tmpbackupfiles) |
 | `pve_proxmox_iommu_manage` | `bool` | No | `true` | Switch to control if the role should manage input–output memory management unit (IOMMU) related operating system configuration. IOMMU support is needed for PCI and/or GPU passthrough.<br><br>When set to `true` (which is the default), the role […](#variable-pve_proxmox_iommu_manage) |
 | `pve_proxmox_net_altnames` | `list` | No | `[]` | List of network interface alternative name definitions for systemd link files (`/etc/systemd/network/10-*.link`).<br><br>Instead of renaming kernel network devices, this approach assigns alternative names (altnames). This preserves the original […](#variable-pve_proxmox_net_altnames) |
@@ -375,6 +377,25 @@ The following variables can be configured for this role:
 | `pve_proxmox_storage` | `list` | No | `[]` | List of storage definitions for the PVE host.<br><br>This variable manages operating system-level storage configuration including ZFS pools, ZFS datasets, and NFS mounts. Each entry defines a storage resource with its type-specific […](#variable-pve_proxmox_storage) |
 | `pve_proxmox_storage_force_cleanup` | `bool` | No | `false` | Allow automatic cleanup of existing data on disks for ZFS pool creation.<br><br>DESTRUCTIVE OPERATION WARNING: When set to `true`, the role will automatically wipe filesystem signatures and ZFS labels from disks that have existing data but whose […](#variable-pve_proxmox_storage_force_cleanup) |
 | `pve_proxmox_sm` | `list` | No | `[]` | Proxmox VE Storage Manager (pvesm) configuration.<br><br>This variable defines storage resources visible in the PVE web UI and available for VM/container disk allocation, backups, ISO storage, and container templates.<br><br>These entries configure […](#variable-pve_proxmox_sm) |
+
+### `pve_proxmox_state`<a id="variable-pve_proxmox_state"></a>
+
+[*⇑ Back to ToC ⇑*](#toc)
+
+Determines whether the managed configuration should be applied
+(`present`) or not.
+
+`absent` currently only skips all configuration management, nothing
+gets removed or reverted: a Proxmox VE host stripped of its network,
+firewall or storage configuration would be unusable or even
+unreachable, so there is no automatic rollback.
+
+- **Type**: `str`
+- **Required**: No
+- **Default**: `"present"`
+- **Choices**: `present`, `absent`
+
+
 
 ### `pve_proxmox_tmpbackupfiles`<a id="variable-pve_proxmox_tmpbackupfiles"></a>
 
@@ -583,6 +604,10 @@ Typically defined in `group_vars/` and merged with
 `pve_proxmox_net_ifaces_host_specific` during template rendering. The
 shared definitions are processed after host-specific ones.
 
+The file is only rendered when this variable or
+`pve_proxmox_net_ifaces_host_specific` defines content; with both
+empty (the default), an existing file is left untouched.
+
 See `pve_proxmox_net_ifaces_host_specific` for the data structure
 documentation.
 
@@ -783,6 +808,10 @@ subinterfaces that should remain hidden from VMs.
 Typically defined in `host_vars/` and merged with
 `pve_proxmox_net_ifaces_host_shared` during template rendering. The
 host-specific definitions are processed before shared ones.
+
+The file is only rendered when this variable or
+`pve_proxmox_net_ifaces_host_shared` defines content; with both
+empty (the default), an existing file is left untouched.
 
 Data structure (identical for all `pve_proxmox_net_ifaces_*` variables):
 
@@ -1005,6 +1034,13 @@ The `options_before` value typically includes
 `source /etc/network/interfaces.d/*` to include host-specific
 configurations.
 
+The file is only rendered when this variable or
+`pve_proxmox_net_ifaces_workload_specific` defines content; with
+both empty (the default), the existing `/etc/network/interfaces` is
+left untouched (the role never replaces a working network
+configuration with an effectively empty file, which would lock the
+host out on the next network restart).
+
 See `pve_proxmox_net_ifaces_host_specific` for the data structure
 documentation.
 
@@ -1200,6 +1236,11 @@ special-purpose bridges, or interfaces unique to a particular node.
 Typically defined in `host_vars/` and merged with
 `pve_proxmox_net_ifaces_workload_shared` during template rendering. The
 host-specific definitions are processed before shared ones.
+
+The file is only rendered when this variable or
+`pve_proxmox_net_ifaces_workload_shared` defines content; with both
+empty (the default), the existing `/etc/network/interfaces` is left
+untouched.
 
 See `pve_proxmox_net_ifaces_host_specific` for the data structure
 documentation.

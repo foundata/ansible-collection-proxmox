@@ -17,6 +17,21 @@ argument_specs:
       configurations as well as the storage, firewall and datacenter settings.
     options:
 
+      pve_proxmox_state:
+        description: |
+          Determines whether the managed configuration should be applied
+          (`present`) or not.
+
+          `absent` currently only skips all configuration management, nothing
+          gets removed or reverted: a Proxmox VE host stripped of its network,
+          firewall or storage configuration would be unusable or even
+          unreachable, so there is no automatic rollback.
+        type: "str"
+        default: "present"
+        choices:
+          - "present"
+          - "absent"
+
       pve_proxmox_tmpbackupfiles:
         description: |
           Switch to control whether temporary disaster-safeguard backups of
@@ -194,6 +209,10 @@ argument_specs:
           `pve_proxmox_net_ifaces_host_specific` during template rendering. The
           shared definitions are processed after host-specific ones.
 
+          The file is only rendered when this variable or
+          `pve_proxmox_net_ifaces_host_specific` defines content; with both
+          empty (the default), an existing file is left untouched.
+
           See `pve_proxmox_net_ifaces_host_specific` for the data structure
           documentation.
         type: "dict"
@@ -348,6 +367,10 @@ argument_specs:
           Typically defined in `host_vars/` and merged with
           `pve_proxmox_net_ifaces_host_shared` during template rendering. The
           host-specific definitions are processed before shared ones.
+
+          The file is only rendered when this variable or
+          `pve_proxmox_net_ifaces_host_shared` defines content; with both
+          empty (the default), an existing file is left untouched.
 
           Data structure (identical for all `pve_proxmox_net_ifaces_*` variables):
 
@@ -524,6 +547,13 @@ argument_specs:
           `source /etc/network/interfaces.d/*` to include host-specific
           configurations.
 
+          The file is only rendered when this variable or
+          `pve_proxmox_net_ifaces_workload_specific` defines content; with
+          both empty (the default), the existing `/etc/network/interfaces` is
+          left untouched (the role never replaces a working network
+          configuration with an effectively empty file, which would lock the
+          host out on the next network restart).
+
           See `pve_proxmox_net_ifaces_host_specific` for the data structure
           documentation.
         type: "dict"
@@ -673,6 +703,11 @@ argument_specs:
           Typically defined in `host_vars/` and merged with
           `pve_proxmox_net_ifaces_workload_shared` during template rendering. The
           host-specific definitions are processed before shared ones.
+
+          The file is only rendered when this variable or
+          `pve_proxmox_net_ifaces_workload_shared` defines content; with both
+          empty (the default), the existing `/etc/network/interfaces` is left
+          untouched.
 
           See `pve_proxmox_net_ifaces_host_specific` for the data structure
           documentation.

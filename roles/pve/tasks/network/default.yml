@@ -22,16 +22,20 @@
       mac_address: "{{ item['mac_address'] | ansible.builtin.default('', true) }}"
       desc: "{{ item['desc'] | ansible.builtin.default('', true) }}"
       altnames: "{{ item['altnames'] | ansible.builtin.default([], true) }}"
+  # Checked per loop item on purpose: a defective first entry must not skip
+  # the remaining (valid) entries.
   when:
-    - pve_proxmox_net_altnames is ansible.builtin.defined
-    - pve_proxmox_net_altnames | ansible.builtin.length > 0
-    - pve_proxmox_net_altnames[0]['altnames'] is ansible.builtin.defined
-    - pve_proxmox_net_altnames[0]['altnames'] | ansible.builtin.length > 0
-  loop: "{{ pve_proxmox_net_altnames }}"
+    - item['altnames'] is ansible.builtin.defined
+    - (item['altnames'] | ansible.builtin.length) > 0
+  loop: "{{ pve_proxmox_net_altnames | ansible.builtin.default([], true) }}"
   notify:
     - "pve_proxmox: restart network"
 
 
+# Only rendered when at least one dataset defines something: with the
+# default-empty datasets, replacing a working network configuration with an
+# effectively empty file (followed by a network restart) would lock the host
+# out.
 - name: "Network | Render /etc/network/interfaces.d/10-host"
   ansible.builtin.template:
     src: "network/interfaces.j2"
@@ -44,6 +48,9 @@
       # Pass (and/or adjust) Ansible inventory group_vars / host_vars
       - "{{ pve_proxmox_net_ifaces_host_specific }}"
       - "{{ pve_proxmox_net_ifaces_host_shared }}"
+  when: >-
+    ((pve_proxmox_net_ifaces_host_specific | ansible.builtin.default({}, true) | ansible.builtin.length) > 0)
+    or ((pve_proxmox_net_ifaces_host_shared | ansible.builtin.default({}, true) | ansible.builtin.length) > 0)
   notify:
     - "pve_proxmox: restart network"
 
@@ -77,6 +84,8 @@
     - false
 
 
+# Only rendered when at least one dataset defines something, see the 10-host
+# comment above (an empty /etc/network/interfaces would lock the host out).
 - name: "Network | Render /etc/network/interfaces"
   ansible.builtin.template:
     src: "network/interfaces.j2"
@@ -89,5 +98,8 @@
     tpl_interface_datasets:
       - "{{ pve_proxmox_net_ifaces_workload_shared }}"
       - "{{ pve_proxmox_net_ifaces_workload_specific }}"
+  when: >-
+    ((pve_proxmox_net_ifaces_workload_shared | ansible.builtin.default({}, true) | ansible.builtin.length) > 0)
+    or ((pve_proxmox_net_ifaces_workload_specific | ansible.builtin.default({}, true) | ansible.builtin.length) > 0)
   notify:
     - "pve_proxmox: restart network"

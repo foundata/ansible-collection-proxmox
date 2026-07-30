@@ -7,6 +7,20 @@
 
 ---
 
+# Determines whether the managed configuration should be applied (`present`) or
+# not.
+#
+# `absent` currently only skips all configuration management, nothing gets
+# removed or reverted: a Proxmox VE host stripped of its network, firewall or
+# storage configuration would be unusable or even unreachable, so there is no
+# automatic rollback.
+#
+# - Type: str
+# - Required: No
+# - Default: present
+# - Choices: present, absent
+pve_proxmox_state: "present"
+
 # Switch to control whether temporary disaster-safeguard backups of important
 # configuration files should be created before re-writing them via Ansible.
 #
@@ -54,6 +68,10 @@ pve_proxmox_iommu_manage: true
 # Typically defined in `host_vars/` and merged with
 # `pve_proxmox_net_ifaces_host_shared` during template rendering. The
 # host-specific definitions are processed before shared ones.
+#
+# The file is only rendered when this variable or
+# `pve_proxmox_net_ifaces_host_shared` defines content; with both empty (the
+# default), an existing file is left untouched.
 #
 # Data structure (identical for all `pve_proxmox_net_ifaces_*` variables):
 #
@@ -205,6 +223,10 @@ pve_proxmox_net_ifaces_host_specific: {}
 # `pve_proxmox_net_ifaces_host_specific` during template rendering. The shared
 # definitions are processed after host-specific ones.
 #
+# The file is only rendered when this variable or
+# `pve_proxmox_net_ifaces_host_specific` defines content; with both empty (the
+# default), an existing file is left untouched.
+#
 # See `pve_proxmox_net_ifaces_host_specific` for the data structure
 # documentation.
 #
@@ -346,6 +368,12 @@ pve_proxmox_net_ifaces_host_shared: {}
 # The `options_before` value typically includes
 # `source /etc/network/interfaces.d/*` to include host-specific configurations.
 #
+# The file is only rendered when this variable or
+# `pve_proxmox_net_ifaces_workload_specific` defines content; with both empty
+# (the default), the existing `/etc/network/interfaces` is left untouched (the
+# role never replaces a working network configuration with an effectively empty
+# file, which would lock the host out on the next network restart).
+#
 # See `pve_proxmox_net_ifaces_host_specific` for the data structure
 # documentation.
 #
@@ -475,6 +503,10 @@ pve_proxmox_net_ifaces_workload_shared: {}
 # Typically defined in `host_vars/` and merged with
 # `pve_proxmox_net_ifaces_workload_shared` during template rendering. The
 # host-specific definitions are processed before shared ones.
+#
+# The file is only rendered when this variable or
+# `pve_proxmox_net_ifaces_workload_shared` defines content; with both empty (the
+# default), the existing `/etc/network/interfaces` is left untouched.
 #
 # See `pve_proxmox_net_ifaces_host_specific` for the data structure
 # documentation.
