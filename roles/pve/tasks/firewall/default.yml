@@ -24,6 +24,34 @@
     var: __pve_fw_service['status']
 
 
+# The PVE firewall parser is deliberately lenient: broken entries are skipped
+# with a message and "pve-firewall compile" still exits 0. A silently skipped
+# entry is a policy change, so the role validates the complete configuration
+# after rendering (the tooling can only parse the live pmxcfs paths, not a
+# candidate file) and restores these contents if the managed files carry
+# parse problems.
+- name: "Firewall | Capture the current managed configuration files (for the validation rollback)"
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  register: __pve_fw_previous
+  # tolerate files that do not exist yet (removed again on rollback)
+  failed_when:
+    - false
+  loop: "{{ __pve_fw_managed_files }}"
+  vars:
+    __pve_fw_managed_files: >-
+      {{
+        ['/etc/pve/firewall/cluster.fw',
+         '/etc/pve/nodes/' ~ ansible_hostname ~ '/host.fw']
+        + (pve_proxmox_managed_vms | ansible.builtin.default([], true)
+           | ansible.builtin.map(attribute='vmid')
+           | ansible.builtin.map('ansible.builtin.string')
+           | ansible.builtin.map('ansible.builtin.regex_replace', '^', '/etc/pve/firewall/')
+           | ansible.builtin.map('ansible.builtin.regex_replace', '$', '.fw')
+           | ansible.builtin.list)
+      }}
+
+
 - name: "Firewall | Cluster/Datacenter | Ensure needed directories exist"
   ansible.builtin.file:
     path: "{{ item }}"
@@ -207,3 +235,72 @@
   loop: "{{ pve_proxmox_managed_vms | ansible.builtin.default([], true) }}"
   notify:
     - "pve_proxmox: reload pve-firewall"
+
+
+- name: "Firewall | Validate the firewall configuration with the PVE tooling"
+  ansible.builtin.command:
+    argv: ["pve-firewall", "compile"]
+  register: __pve_fw_compile
+  changed_when:
+    - false
+  # the exit code is useless (0 even for parse problems); judged below
+  failed_when:
+    - false
+
+
+- name: "Firewall | Determine parse problems in the managed firewall files"
+  ansible.builtin.set_fact:
+    __pve_fw_compile_problems: >-
+      {%- set __pve_problems = [] -%}
+      {%- for __pve_line in ((__pve_fw_compile['stdout_lines'] | ansible.builtin.default([]))
+                             + (__pve_fw_compile['stderr_lines'] | ansible.builtin.default([]))) -%}
+      {%-   for __pve_path in (__pve_fw_previous['results'] | ansible.builtin.map(attribute='item') | ansible.builtin.list) -%}
+      {%-     if __pve_line.startswith(__pve_path ~ ' (line') -%}
+      {%-       set _ = __pve_problems.append(__pve_line) -%}
+      {%-     endif -%}
+      {%-   endfor -%}
+      {%- endfor -%}
+      {{ __pve_problems }}
+
+
+- name: "Firewall | Roll back managed firewall files (validation failed)"
+  ansible.builtin.copy:
+    content: "{{ item['content'] | ansible.builtin.b64decode }}"
+    dest: "{{ item['item'] }}"
+    owner: "root"
+    group: "www-data"
+    # noqa risky-file-permissions
+    #   /etc/pve is using pmxcfs (a FUSE-backed cluster filesystem with
+    #   Corosync). Setting the permissions will lead to a module failure:
+    #   "[Errno 1] Operation not permitted".
+    # mode: "u=rw,g=r,o=r" # 0640
+  loop: "{{ __pve_fw_previous['results'] }}"
+  loop_control:
+    label: "{{ item['item'] }}"
+  when:
+    - (__pve_fw_compile_problems | ansible.builtin.length) > 0
+    - item['content'] is ansible.builtin.defined
+
+
+- name: "Firewall | Remove managed firewall files that did not exist before (validation failed)"
+  ansible.builtin.file:
+    path: "{{ item['item'] }}"
+    state: "absent"
+  loop: "{{ __pve_fw_previous['results'] }}"
+  loop_control:
+    label: "{{ item['item'] }}"
+  when:
+    - (__pve_fw_compile_problems | ansible.builtin.length) > 0
+    - item['content'] is not ansible.builtin.defined
+
+
+- name: "Firewall | Fail on an invalid firewall configuration"
+  ansible.builtin.fail:
+    msg: >-
+      Refusing to keep the rendered firewall configuration: "pve-firewall compile"
+      reports parse problems in the managed files and the PVE firewall would
+      silently skip these entries, changing the effective policy
+      ({{ __pve_fw_compile_problems | ansible.builtin.join('; ') }}).
+      The previous file contents were restored.
+  when:
+    - (__pve_fw_compile_problems | ansible.builtin.length) > 0

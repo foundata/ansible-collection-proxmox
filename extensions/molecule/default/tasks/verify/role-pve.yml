@@ -385,6 +385,72 @@
         success_msg: "The live network configuration kept the working content."
 
 
+## Firewall validation (negative test)
+#
+# A cluster rule the templates cannot reject (free-form ports) but
+# "pve-firewall compile" flags must fail the run, restore the previous
+# cluster.fw content and leave the firewall service running.
+
+- name: "Molecule | Verify | pve | Firewall validation negative test"
+  block:
+
+    - name: "Molecule | Verify | pve | Render a firewall rule with an invalid port and expect the validation to abort"
+      ansible.builtin.include_role:
+        name: "foundata.proxmox.pve"
+      vars:
+        pve_proxmox_fw_cluster_rules:
+          - direction: "IN"
+            action: "ACCEPT"
+            proto: "tcp"
+            dport: "notaport"
+            source: "+dc/molecule_trusted"
+            comment: "Molecule invalid rule"
+
+    - name: "Molecule | Verify | pve | Fail the test because the firewall validation did NOT abort"
+      ansible.builtin.fail:
+        msg: >-
+          The firewall validation did not reject a rule with an invalid port
+          (the PVE firewall would silently skip it).
+
+  rescue:
+
+    - name: "Molecule | Verify | pve | Assert the run aborted at the firewall validation"
+      ansible.builtin.assert:
+        that:
+          - (ansible_failed_task['name'] | ansible.builtin.default('')) is ansible.builtin.search('Fail on an invalid firewall configuration')
+        fail_msg: >-
+          The role failed, but not at the firewall validation as expected
+          (failed task: '{{ ansible_failed_task['name'] | ansible.builtin.default('unknown') }}').
+        success_msg: "The invalid firewall rule was detected by the validation."
+
+    - name: "Molecule | Verify | pve | Read /etc/pve/firewall/cluster.fw after the rejection"
+      ansible.builtin.slurp:
+        src: "/etc/pve/firewall/cluster.fw"
+      register: __testing_pve_clusterfw_after
+
+    - name: "Molecule | Verify | pve | Assert the previous cluster.fw content was restored"
+      ansible.builtin.assert:
+        that:
+          - "'notaport' not in (__testing_pve_clusterfw_after['content'] | ansible.builtin.b64decode)"
+          - "'molecule-mgmt 203.0.113.10' in (__testing_pve_clusterfw_after['content'] | ansible.builtin.b64decode)"
+        fail_msg: "The invalid firewall configuration was not rolled back."
+        success_msg: "The previous cluster.fw content was restored."
+
+    - name: "Molecule | Verify | pve | Query the firewall service state after the rejection"
+      ansible.builtin.command:
+        argv: ["systemctl", "is-active", "proxmox-firewall.service"]
+      register: __testing_pve_fw_state
+      changed_when:
+        - false
+
+    - name: "Molecule | Verify | pve | Assert the firewall service is still running after the rejection"
+      ansible.builtin.assert:
+        that:
+          - __testing_pve_fw_state['stdout'] == 'active'
+        fail_msg: "The proxmox-firewall service is not active after the rejected configuration."
+        success_msg: "The proxmox-firewall service is still running."
+
+
 - name: "Molecule | Verify | pve | Unlock and mount the dataset with the rotated passphrase"
   ansible.builtin.command:
     argv: "{{ item['argv'] }}"

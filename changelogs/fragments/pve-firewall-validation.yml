@@ -1,0 +1,10 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - the firewall configuration is now checked with ``pve-firewall
+    compile`` after rendering. The PVE parser deliberately skips broken
+    entries with a message only (exit code 0), silently changing the
+    effective policy; parse problems in the managed files now restore the
+    previous file contents and fail the run before the firewall service is
+    restarted.
