@@ -29,12 +29,12 @@
     - (item['altnames'] | ansible.builtin.length) > 0
   loop: "{{ pve_proxmox_net_altnames | ansible.builtin.default([], true) }}"
   notify:
-    - "pve_proxmox: restart network"
+    - "pve_proxmox: reload network"
 
 
 # Only rendered when at least one dataset defines something: with the
 # default-empty datasets, replacing a working network configuration with an
-# effectively empty file (followed by a network restart) would lock the host
+# effectively empty file (followed by a network reload) would lock the host
 # out.
 - name: "Network | Render /etc/network/interfaces.d/10-host"
   ansible.builtin.template:
@@ -43,6 +43,14 @@
     owner: "root"
     group: "root"
     mode: "u=rw,g=r,o=r" # 0644
+    # Warning-tolerant on purpose: ifupdown2's parser exits non-zero for mere
+    # warnings too (e.g. "bridge-fd 0", the standard PVE bridge setting, is
+    # flagged as out of the documented range although it applies fine), so
+    # only "error:" lines (parse failures) reject the candidate file.
+    validate: >-
+      /bin/bash -c '__pve_out="$(/usr/sbin/ifup --all --syntax-check --interfaces %s 2>&1)";
+      printf "%%s\n" "${__pve_out}";
+      ! grep -q -e "^error:" -e "^Traceback" <<< "${__pve_out}"'
   vars:
     tpl_interface_datasets:
       # Pass (and/or adjust) Ansible inventory group_vars / host_vars
@@ -52,7 +60,7 @@
     ((pve_proxmox_net_ifaces_host_specific | ansible.builtin.default({}, true) | ansible.builtin.length) > 0)
     or ((pve_proxmox_net_ifaces_host_shared | ansible.builtin.default({}, true) | ansible.builtin.length) > 0)
   notify:
-    - "pve_proxmox: restart network"
+    - "pve_proxmox: reload network"
 
 
 - name: "Network | Ensure /etc/network/interfaces exists"
@@ -65,7 +73,7 @@
     modification_time: "preserve"
     access_time: "preserve"
   notify:
-    - "pve_proxmox: restart network"
+    - "pve_proxmox: reload network"
 
 
 - name: "Network | Backup existing /etc/network/interfaces (best effort)"
@@ -93,6 +101,14 @@
     owner: "root"
     group: "root"
     mode: "u=rw,g=r,o=r" # 0644
+    # Warning-tolerant on purpose: ifupdown2's parser exits non-zero for mere
+    # warnings too (e.g. "bridge-fd 0", the standard PVE bridge setting, is
+    # flagged as out of the documented range although it applies fine), so
+    # only "error:" lines (parse failures) reject the candidate file.
+    validate: >-
+      /bin/bash -c '__pve_out="$(/usr/sbin/ifup --all --syntax-check --interfaces %s 2>&1)";
+      printf "%%s\n" "${__pve_out}";
+      ! grep -q -e "^error:" -e "^Traceback" <<< "${__pve_out}"'
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
     tpl_interface_datasets:
@@ -102,4 +118,4 @@
     ((pve_proxmox_net_ifaces_workload_shared | ansible.builtin.default({}, true) | ansible.builtin.length) > 0)
     or ((pve_proxmox_net_ifaces_workload_specific | ansible.builtin.default({}, true) | ansible.builtin.length) > 0)
   notify:
-    - "pve_proxmox: restart network"
+    - "pve_proxmox: reload network"

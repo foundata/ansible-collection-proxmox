@@ -32,7 +32,7 @@
       pve_proxmox_tmpbackupfiles: "false"
       # Reproduce the golden image networking (vmbr0 bridging the single NIC
       # via DHCP): the role authoritatively rewrites /etc/network/interfaces
-      # and notifies a network restart, and only a functionally identical
+      # and notifies a network reload, and only a functionally identical
       # configuration keeps ifupdown2 from bouncing the bridge and cutting the
       # Molecule SSH connection.
       pve_proxmox_net_ifaces_workload_shared:

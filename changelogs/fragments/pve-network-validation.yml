@@ -1,0 +1,10 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - the rendered network interface files are now validated with the
+    ifupdown2 parser before installation (parse errors reject the candidate,
+    the live configuration stays untouched) and applied via a configuration
+    reload (``ifreload`` delta semantics) instead of a full networking
+    restart. A malformed value could previously replace a working
+    configuration and disconnect the host on the next restart or boot.

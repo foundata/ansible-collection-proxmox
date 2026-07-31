@@ -333,6 +333,58 @@
     - __testing_pve_oldpass_check['rc'] == 0
 
 
+## Network validation (negative test)
+#
+# A candidate /etc/network/interfaces that ifupdown2 cannot parse must be
+# rejected by the render task's validation before installation: the live file
+# keeps the working configuration and no reload fires.
+
+- name: "Molecule | Verify | pve | Network validation negative test"
+  block:
+
+    - name: "Molecule | Verify | pve | Render an unparseable network config and expect the validation to abort"
+      ansible.builtin.include_role:
+        name: "foundata.proxmox.pve"
+      vars:
+        pve_proxmox_net_ifaces_workload_shared:
+          options_before: "ifacx this-is-not-a-valid-interfaces-line"
+          sections:
+            - title: "Broken (Molecule)"
+              interfaces:
+                - name: "vmbr0"
+                  method: "dhcp"
+
+    - name: "Molecule | Verify | pve | Fail the test because the validation did NOT abort"
+      ansible.builtin.fail:
+        msg: >-
+          The network configuration validation did not reject an unparseable
+          candidate file.
+
+  rescue:
+
+    - name: "Molecule | Verify | pve | Assert the run aborted at the render task's validation"
+      ansible.builtin.assert:
+        that:
+          - (ansible_failed_task['name'] | ansible.builtin.default('')) is ansible.builtin.search('Render /etc/network/interfaces')
+        fail_msg: >-
+          The role failed, but not at the network render validation as expected
+          (failed task: '{{ ansible_failed_task['name'] | ansible.builtin.default('unknown') }}').
+        success_msg: "The unparseable candidate was rejected before installation."
+
+    - name: "Molecule | Verify | pve | Read the live /etc/network/interfaces after the rejection"
+      ansible.builtin.slurp:
+        src: "/etc/network/interfaces"
+      register: __testing_pve_ifaces_after
+
+    - name: "Molecule | Verify | pve | Assert the live configuration was left untouched"
+      ansible.builtin.assert:
+        that:
+          - "'ifacx' not in (__testing_pve_ifaces_after['content'] | ansible.builtin.b64decode)"
+          - "'auto vmbr0' in (__testing_pve_ifaces_after['content'] | ansible.builtin.b64decode)"
+        fail_msg: "The rejected candidate reached /etc/network/interfaces."
+        success_msg: "The live network configuration kept the working content."
+
+
 - name: "Molecule | Verify | pve | Unlock and mount the dataset with the rotated passphrase"
   ansible.builtin.command:
     argv: "{{ item['argv'] }}"

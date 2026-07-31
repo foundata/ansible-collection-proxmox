@@ -13,12 +13,16 @@
     - "pve_proxmox: update grub"
 
 
-- name: "Handlers | Restart network service"
+# "reloaded" on purpose: ifupdown2's networking service reload runs
+# "ifreload -a", which only applies configuration deltas and leaves unchanged
+# interfaces untouched. A restart (stop + start) would take every interface
+# down and up again, briefly disconnecting the host.
+- name: "Handlers | Reload network configuration"
   ansible.builtin.service:
     name: "{{ network_service_name | ansible.builtin.default('networking') }}"
-    state: "restarted"
+    state: "reloaded"
   listen:
-    - "pve_proxmox: restart network"
+    - "pve_proxmox: reload network"
 
 
 - name: "Handlers | Restart PVE firewall (nftables)"
