@@ -25,8 +25,11 @@
       # provide it explicitly.
       pve_proxmox_state: "present"
       # ansible.builtin.tempfile reports "changed" on every run, so the
-      # disaster-safeguard backups would break the idempotence stage.
-      pve_proxmox_tmpbackupfiles: false
+      # disaster-safeguard backups would break the idempotence stage. A string
+      # on purpose (as delivered by command line extra-vars): the role has to
+      # coerce boolean arguments, a truthiness evaluation would treat "false"
+      # as enabled (and fail exactly this idempotence guard).
+      pve_proxmox_tmpbackupfiles: "false"
       # Reproduce the golden image networking (vmbr0 bridging the single NIC
       # via DHCP): the role authoritatively rewrites /etc/network/interfaces
       # and notifies a network restart, and only a functionally identical

@@ -59,7 +59,7 @@
     group: "root"
     mode: "u=rw,g=r,o=" # 0640
   when:
-    - pve_proxmox_tmpbackupfiles
+    - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
   failed_when:
     - false
   changed_when:
@@ -109,7 +109,7 @@
     group: "www-data"
     mode: "u=rw,g=r,o=" # 0640
   when:
-    - pve_proxmox_tmpbackupfiles
+    - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
   failed_when:
     - false
   changed_when:
@@ -170,7 +170,7 @@
     group: "root"
     mode: "u=rw,g=r,o=" # 0640
   when:
-    - pve_proxmox_tmpbackupfiles
+    - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
     - pve_proxmox_managed_vms is ansible.builtin.defined
   loop: "{{ pve_proxmox_managed_vms | ansible.builtin.default([], true) }}"
   failed_when:

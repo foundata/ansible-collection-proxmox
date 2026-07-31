@@ -137,11 +137,11 @@
     prefix: "ansible_pve_backup_{{ ansible_date_time['epoch'] }}_"
   register: __pve_tmpdir_backup
   when:
-    - pve_proxmox_tmpbackupfiles
+    - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
 
 
 - name: "Init | Show temporary directory path"
   ansible.builtin.debug:
     msg: "Backup directory (best-effort for emergency config errors, usually kept until next reboot): {{ __pve_tmpdir_backup['path'] }}"
   when:
-    - pve_proxmox_tmpbackupfiles
+    - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
