@@ -186,6 +186,30 @@
     success_msg: "The moleculepool ZFS mirror is online."
 
 
+- name: "Molecule | Verify | pve | Query the encrypted dataset properties"
+  ansible.builtin.command:
+    argv: ["zfs", "get", "-H", "-o", "value", "{{ item }}", "moleculepool/secure"]
+  register: __testing_pve_secure_props
+  changed_when:
+    - false
+  loop:
+    - "encryption"
+    - "keystatus"
+    - "mounted"
+
+
+- name: "Molecule | Verify | pve | Assert the encrypted dataset is set up and unlocked"
+  ansible.builtin.assert:
+    that:
+      - __testing_pve_secure_props['results'][0]['stdout'] == 'aes-256-gcm'
+      - __testing_pve_secure_props['results'][1]['stdout'] == 'available'
+      - __testing_pve_secure_props['results'][2]['stdout'] == 'yes'
+    fail_msg: >-
+      The encrypted dataset moleculepool/secure is missing, locked or not
+      mounted ({{ __testing_pve_secure_props['results'] | ansible.builtin.map(attribute='stdout') | ansible.builtin.list }}).
+    success_msg: "The encrypted dataset is encrypted, unlocked and mounted."
+
+
 - name: "Molecule | Verify | pve | Query the PVE storage manager configuration"
   ansible.builtin.command:
     argv: ["pvesh", "get", "/storage/{{ item }}", "--output-format", "json"]
@@ -249,3 +273,75 @@
          | ansible.builtin.sort) == ['iso', 'vztmpl']
     fail_msg: "The role did not update the drifted content of the already configured storage."
     success_msg: "The drifted pvesm property was updated back to the declared value."
+
+
+## ZFS passphrase rotation
+#
+# Re-run the role with a new passphrase and the previous one in
+# passphrase_old (behind a wrong entry, so the old-passphrase iteration is
+# covered). Afterwards the dataset must only unlock with the new passphrase.
+
+- name: "Molecule | Verify | pve | Re-run the foundata.proxmox.pve role with a rotated passphrase"
+  ansible.builtin.include_role:
+    name: "foundata.proxmox.pve"
+  vars:
+    pve_proxmox_storage:
+      - name: "moleculepool"
+        type: "zpool"
+        attributes:
+          mountpoint: "/moleculepool"
+          vdevs:
+            - type: "mirror"
+              disks:
+                - "/dev/disk/by-id/virtio-molecule0"
+                - "/dev/disk/by-id/virtio-molecule1"
+          pool_properties:
+            ashift: "12"
+      - name: "moleculepool/secure"
+        type: "zfs_dataset"
+        attributes:
+          zfs_properties:
+            mountpoint: "/moleculepool/secure"
+            compression: "on"
+            encryption: "aes-256-gcm"
+            keyformat: "passphrase"
+            keylocation: "prompt"
+            passphrase: "molecule-test-passphrase-2"
+            passphrase_old:
+              - "molecule-wrong-old-passphrase"
+              - "molecule-test-passphrase-1"
+
+
+- name: "Molecule | Verify | pve | Lock the rotated dataset again"
+  ansible.builtin.command:
+    argv: ["zfs", "{{ item }}", "moleculepool/secure"]
+  changed_when:
+    - true
+  loop:
+    - "unmount"
+    - "unload-key"
+
+
+- name: "Molecule | Verify | pve | Check the old passphrase is rejected after the rotation"
+  ansible.builtin.command:
+    argv: ["zfs", "load-key", "-n", "moleculepool/secure"]
+    stdin: "molecule-test-passphrase-1"
+  register: __testing_pve_oldpass_check
+  changed_when:
+    - false
+  failed_when:
+    - __testing_pve_oldpass_check['rc'] == 0
+
+
+- name: "Molecule | Verify | pve | Unlock and mount the dataset with the rotated passphrase"
+  ansible.builtin.command:
+    argv: "{{ item['argv'] }}"
+    stdin: "{{ item['stdin'] | ansible.builtin.default(omit) }}"
+  changed_when:
+    - true
+  loop:
+    - argv: ["zfs", "load-key", "moleculepool/secure"]
+      stdin: "molecule-test-passphrase-2"
+    - argv: ["zfs", "mount", "moleculepool/secure"]
+  loop_control:
+    label: "{{ item['argv'] | ansible.builtin.join(' ') }}"

@@ -131,6 +131,20 @@
                   - "/dev/disk/by-id/virtio-molecule1"
             pool_properties:
               ashift: "12"
+        # Encrypted dataset with a prompt-based passphrase: covers the
+        # keylocation "prompt" creation and key loading paths (the passphrase
+        # must reach zfs via stdin, never via the command text). The verify
+        # stage rotates the passphrase afterwards.
+        - name: "moleculepool/secure"
+          type: "zfs_dataset"
+          attributes:
+            zfs_properties:
+              mountpoint: "/moleculepool/secure"
+              compression: "on"
+              encryption: "aes-256-gcm"
+              keyformat: "passphrase"
+              keylocation: "prompt"
+              passphrase: "molecule-test-passphrase-1"
       pve_proxmox_sm:
         - name: "molecule-guest1"
           type: "zfspool"
