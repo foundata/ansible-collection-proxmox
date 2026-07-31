@@ -31,6 +31,11 @@
     owner: "root"
     group: "www-data"
     mode: "u=rwx,g=rx,o=rx" # 0755
+  # cluster.fw lives on pmxcfs and is shared by the whole cluster: only the
+  # selected writer touches it (see "Cluster-wide file coordination" in
+  # tasks/init.yml). Same for the cluster.fw tasks below.
+  when:
+    - inventory_hostname == __pve_cluster_writer
   loop:
     - "/etc/pve/firewall"
 
@@ -48,6 +53,8 @@
     # mode: "u=rw,g=r,o=r" # 0640
     modification_time: "preserve"
     access_time: "preserve"
+  when:
+    - inventory_hostname == __pve_cluster_writer
 
 
 - name: "Firewall | Cluster/Datacenter | Backup existing /etc/pve/firewall/cluster.fw (best effort)"
@@ -60,6 +67,7 @@
     mode: "u=rw,g=r,o=" # 0640
   when:
     - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
+    - inventory_hostname == __pve_cluster_writer
   failed_when:
     - false
   changed_when:
@@ -84,6 +92,8 @@
     tpl_fw_ipsets: "{{ pve_proxmox_fw_cluster_ipsets | ansible.builtin.default([], true) }}"
     tpl_fw_securitygroups: "{{ pve_proxmox_fw_cluster_securitygroups | ansible.builtin.default([], true) }}"
     tpl_fw_rules: "{{ pve_proxmox_fw_cluster_rules | ansible.builtin.default([], true) }}"
+  when:
+    - inventory_hostname == __pve_cluster_writer
   notify:
     - "pve_proxmox: reload pve-firewall"
 

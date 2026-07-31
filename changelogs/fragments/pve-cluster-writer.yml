@@ -1,0 +1,10 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - the cluster-wide pmxcfs files (``/etc/pve/datacenter.cfg``,
+    ``/etc/pve/firewall/cluster.fw``) were written independently by every
+    play host; with differing host variables the last writer silently won.
+    One deterministically selected node per cluster now writes them and the
+    role fails when the cluster-scoped inputs differ between nodes of the
+    same cluster (standalone nodes are unaffected).

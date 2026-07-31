@@ -1420,6 +1420,12 @@ and values are rendered directly into the `[OPTIONS]` section of
 Nested dictionaries are automatically converted to the PVE
 `key=value,key2=value2` format (e.g., for `log_ratelimit`).
 
+Like all `pve_proxmox_fw_cluster_*` variables this is cluster-wide
+state on pmxcfs: when several nodes of one cluster are part of the
+play, only one deterministically selected node writes the file and
+the role fails if these values differ between the nodes of the
+cluster (define them in `group_vars`).
+
 Common options:
 
 - `enable`: Enable/disable the cluster firewall (`0` or `1`,
@@ -2199,7 +2205,10 @@ Proxmox VE datacenter-wide configuration settings.
 This variable defines cluster-wide defaults rendered to
 `/etc/pve/datacenter.cfg`. Since this file resides on pmxcfs (the
 FUSE-backed cluster filesystem synchronized via Corosync), settings
-apply to all nodes in the cluster.
+apply to all nodes in the cluster. When several nodes of one cluster
+are part of the play, only one deterministically selected node
+writes the file and the role fails if this value differs between
+the nodes of the cluster (define it in `group_vars`).
 
 This is a passthrough of original Proxmox VE datacenter options. Keys
 and values are rendered directly as `key: value` lines into

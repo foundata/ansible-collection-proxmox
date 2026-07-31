@@ -145,3 +145,82 @@
     msg: "Backup directory (best-effort for emergency config errors, usually kept until next reboot): {{ __pve_tmpdir_backup['path'] }}"
   when:
     - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
+
+
+### Cluster-wide file coordination
+
+# /etc/pve/datacenter.cfg and /etc/pve/firewall/cluster.fw live on pmxcfs and
+# are shared by the whole cluster. When several nodes of one cluster run this
+# role in the same play, each of them would rewrite these files and the last
+# writer would silently win (nondeterministic policy when host variables
+# differ). Therefore one deterministic writer per cluster is selected and the
+# cluster-scoped inputs of all its nodes have to be identical.
+
+- name: "Init | Check for a corosync cluster configuration"
+  ansible.builtin.stat:
+    path: "/etc/pve/corosync.conf"
+  register: __pve_corosync_conf_stat
+
+
+- name: "Init | Read the corosync cluster configuration (clustered setups)"
+  ansible.builtin.slurp:
+    src: "/etc/pve/corosync.conf"
+  register: __pve_corosync_conf_raw
+  when:
+    - __pve_corosync_conf_stat['stat']['exists']
+
+
+- name: "Init | Publish the cluster identity and the cluster-scoped inputs"
+  # set_fact on purpose: only facts are visible to the other play hosts via
+  # hostvars (role parameters and inventory variables resolved locally are
+  # not, reliably), and the writer selection plus the equality check below
+  # need exactly that visibility.
+  ansible.builtin.set_fact:
+    # A standalone node forms a "cluster" of its own (and stays its own writer).
+    __pve_cluster_name: >-
+      {{
+        (__pve_corosync_conf_raw['content'] | ansible.builtin.b64decode
+         | ansible.builtin.regex_search('cluster_name\s*:\s*(\S+)', '\1')
+         | ansible.builtin.first)
+        if (__pve_corosync_conf_stat['stat']['exists'])
+        else inventory_hostname
+      }}
+    __pve_cluster_scoped_inputs:
+      datacentercfg: "{{ pve_proxmox_datacentercfg }}"
+      fw_cluster_options: "{{ pve_proxmox_fw_cluster_options }}"
+      fw_cluster_aliases: "{{ pve_proxmox_fw_cluster_aliases }}"
+      fw_cluster_ipsets: "{{ pve_proxmox_fw_cluster_ipsets }}"
+      fw_cluster_securitygroups: "{{ pve_proxmox_fw_cluster_securitygroups }}"
+      fw_cluster_rules: "{{ pve_proxmox_fw_cluster_rules }}"
+
+
+- name: "Init | Select the writer of the cluster-wide files"
+  # With the (default) linear strategy every play host has published its
+  # cluster identity in the previous task before any host reaches this one.
+  # Sorted for determinism, independent of inventory or --limit ordering.
+  ansible.builtin.set_fact:
+    __pve_cluster_writer: >-
+      {%- set __pve_members = [] -%}
+      {%- for __pve_h in ansible_play_hosts -%}
+      {%-   if (hostvars[__pve_h]['__pve_cluster_name'] | ansible.builtin.default('')) == __pve_cluster_name -%}
+      {%-     set _ = __pve_members.append(__pve_h) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ (__pve_members | ansible.builtin.sort | ansible.builtin.first) if ((__pve_members | ansible.builtin.length) > 0) else inventory_hostname }}
+
+
+- name: "Init | Verify the cluster-scoped inputs are identical on all nodes of the cluster"
+  ansible.builtin.assert:
+    that:
+      - __pve_cluster_scoped_inputs == hostvars[__pve_cluster_writer]['__pve_cluster_scoped_inputs']
+    fail_msg: >-
+      The cluster-scoped inputs (pve_proxmox_datacentercfg, pve_proxmox_fw_cluster_*)
+      of {{ inventory_hostname }} differ from those of {{ __pve_cluster_writer }},
+      the node that writes the cluster-wide pmxcfs files (/etc/pve/datacenter.cfg,
+      /etc/pve/firewall/cluster.fw) of cluster "{{ __pve_cluster_name }}".
+      Cluster-wide settings have to be identical on every node, e.g. via group_vars.
+    success_msg: >-
+      Cluster-scoped inputs are consistent, {{ __pve_cluster_writer }} writes the
+      cluster-wide files of cluster "{{ __pve_cluster_name }}".
+  when:
+    - inventory_hostname != __pve_cluster_writer

@@ -160,8 +160,12 @@
         - "pve_proxmox_datacenter"
   vars:
     __pve_proxmox_task_file: "{{ role_path }}/tasks/datacenter/{{ __pve_proxmox_loop_item }}"
+  # datacenter.cfg lives on pmxcfs and is shared by the whole cluster: only
+  # the selected writer manages it (see "Cluster-wide file coordination" in
+  # tasks/init.yml).
   when:
     - pve_proxmox_state == 'present'
+    - inventory_hostname == __pve_cluster_writer
     - __pve_proxmox_task_file is ansible.builtin.file
   loop: "{{ __pve_proxmox_platform_filenames_most_specific_first }}"
   loop_control:
@@ -179,6 +183,7 @@
     __pve_proxmox_task_file: "{{ role_path }}/tasks/datacenter/default.yml"
   when:
     - pve_proxmox_state == 'present'
+    - inventory_hostname == __pve_cluster_writer
     - __pve_proxmox_task_file is ansible.builtin.file
   tags:
     - "pve_proxmox_datacenter"
