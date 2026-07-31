@@ -2525,7 +2525,10 @@ Encryption (native ZFS encryption):
     (string or list)
 
 Note: `passphrase` and `passphrase_old` are special keys
-handled by the role and not passed directly to ZFS.
+handled by the role and not passed directly to ZFS. Because
+of them, the whole dictionary is treated as sensitive
+(`no_log`): its values do not show up in Ansible logs or
+argument-validation output.
 
 Example (encrypted dataset):
 ```yaml
@@ -2556,6 +2559,7 @@ zfs_properties:
 
 - **Type**: `dict`
 - **Required**: No
+- **Sensitive**: Yes (`no_log`, values are masked in logs)
 
 ##### `pve_proxmox_storage['attributes']['storage_properties']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties"></a>
 

@@ -1,0 +1,10 @@
+---
+
+security_fixes:
+  - >
+    ``pve`` - ZFS passphrases were embedded in the text of the executed
+    shell commands, making them world-readable in the process list of the
+    managed host while the commands ran. They are now passed via stdin
+    respectively the process environment, and the ``zfs_properties``
+    dictionary is marked ``no_log`` so Ansible logs and argument-validation
+    output cannot leak the ``passphrase``/``passphrase_old`` values.

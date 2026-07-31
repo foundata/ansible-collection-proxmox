@@ -761,23 +761,26 @@
 
 
     - name: "Storage | ZFS | zfs_dataset | Create encrypted ZFS volumes with prompt-based passphrase"
-      # ansible.builtin.shell is used because community.general.zfs cannot handle
-      # keylocation: "prompt" and piping passphrases to stdin for encryption
-      ansible.builtin.shell: |
-        set -o pipefail
-        echo {{ item['attributes']['zfs_properties']['passphrase'] | ansible.builtin.quote }} | \
-        zfs create \
-          -o encryption={{ item['attributes']['zfs_properties']['encryption'] | ansible.builtin.quote }} \
-          -o keyformat={{ item['attributes']['zfs_properties']['keyformat'] | ansible.builtin.quote }} \
-          -o keylocation=prompt \
-        {% for key, value in item['attributes']['zfs_properties'].items() %}
-        {% if key not in ['encryption', 'keyformat', 'keylocation', 'passphrase', 'passphrase_old'] %}
-          -o {{ key }}={{ value | ansible.builtin.quote }} \
-        {% endif %}
-        {% endfor %}
-        {{ item['name'] | ansible.builtin.quote }}
-      args:
-        executable: "/bin/bash"
+      # community.general.zfs cannot handle keylocation "prompt". The
+      # passphrase is passed via stdin on purpose (zfs reads the key from
+      # stdin without a confirmation prompt when it is not a TTY): embedded
+      # in the command text it would be world-readable in the process list
+      # (/proc/<pid>/cmdline) of the host while the command runs.
+      ansible.builtin.command:
+        argv: >-
+          {%- set __pve_zfs_create_args = ['zfs', 'create',
+                '-o', 'encryption=' ~ item['attributes']['zfs_properties']['encryption'],
+                '-o', 'keyformat=' ~ item['attributes']['zfs_properties']['keyformat'],
+                '-o', 'keylocation=prompt'] -%}
+          {%- for key, value in item['attributes']['zfs_properties'].items() -%}
+          {%-   if key not in ['encryption', 'keyformat', 'keylocation', 'passphrase', 'passphrase_old'] -%}
+          {%-     set _ = __pve_zfs_create_args.append('-o') -%}
+          {%-     set _ = __pve_zfs_create_args.append(key ~ '=' ~ value) -%}
+          {%-   endif -%}
+          {%- endfor -%}
+          {%- set _ = __pve_zfs_create_args.append(item['name']) -%}
+          {{ __pve_zfs_create_args }}
+        stdin: "{{ item['attributes']['zfs_properties']['passphrase'] }}"
       loop: >-
         {{
           pve_proxmox_storage | ansible.builtin.default([], true)
@@ -914,79 +917,83 @@
 
 
     - name: "Storage | ZFS | zfs_dataset | Manage encryption key changes"
+      # The dataset name and the passphrases are passed via the environment on
+      # purpose: embedded in the command text they would be world-readable in
+      # the process list (/proc/<pid>/cmdline) of the host while the command
+      # runs (the environment is only readable for the process owner and root).
       ansible.builtin.shell:
         cmd: |
           set -u # Fail on unset vars
           set -o pipefail # Fail if any pipe cmd fail
 
-          __pve_dataset={{ item['name'] | ansible.builtin.quote }}
-          __pve_new_pass={{ item['attributes']['zfs_properties']['passphrase'] | ansible.builtin.quote }}
-
-          # Parse old passphrase(s) into an array
-          {% if item['attributes']['zfs_properties']['passphrase_old'] is ansible.builtin.defined
-                and item['attributes']['zfs_properties']['passphrase_old'] is not ansible.builtin.none %}
-          {%   if item['attributes']['zfs_properties']['passphrase_old'] is ansible.builtin.string %}
-          __pve_old_passes=( {{ item['attributes']['zfs_properties']['passphrase_old'] | ansible.builtin.quote }} )
-          {%   else %}
-          __pve_old_passes=( {% for old_pass in item['attributes']['zfs_properties']['passphrase_old'] %}{{ old_pass | ansible.builtin.quote }} {% endfor %})
-          {%   endif %}
-          {% else %}
-          __pve_old_passes=()
-          {% endif %}
-
           # If no old passphrases provided: nothing to do
-          {% raw %}if [ ${#__pve_old_passes[@]} -eq 0 ]; then{% endraw %}
+          if [ -z "${__PVE_ZFS_PASSES_OLD}" ]; then
             exit 0
           fi
 
           # If new passphrase is already set: nothing to do
-          if printf '%s\n' "${__pve_new_pass}" | zfs load-key -n "${__pve_dataset}" 2>/dev/null; then
+          if printf '%s\n' "${__PVE_ZFS_PASS_NEW}" | zfs load-key -n "${__PVE_ZFS_DATASET}" 2>/dev/null; then
             exit 0
           fi
 
           # Try to verify each old passphrase with -n (test mode)
           __pve_old_pass_working=""
-          for __pve_pass in "${__pve_old_passes[@]}"; do
-            if printf '%s\n' "${__pve_pass}" | zfs load-key -n "${__pve_dataset}" 2>/dev/null; then
+          while IFS= read -r __pve_pass; do
+            [ -n "${__pve_pass}" ] || continue
+            if printf '%s\n' "${__pve_pass}" | zfs load-key -n "${__PVE_ZFS_DATASET}" 2>/dev/null; then
               __pve_old_pass_working="${__pve_pass}"
-              unset __pve_pass
               break
             fi
-            unset __pve_pass
-          done
+          done <<< "${__PVE_ZFS_PASSES_OLD}"
+          unset __pve_pass
 
           # Fail if none of the old passphrases worked
           if [ -z "${__pve_old_pass_working}" ]; then
-            printf '%s\n' "ERROR - None of the old passphrases for '${__pve_dataset}' worked" >&2
+            printf '%s\n' "ERROR - None of the old passphrases for '${__PVE_ZFS_DATASET}' worked" >&2
             exit 1
           fi
 
           # Try to load the key with old passphrase (providing the old one is a prerequisite for changing it)
-          __pve_load_key_error=$(printf '%s\n' "${__pve_old_pass_working}" | zfs load-key "${__pve_dataset}" 2>&1)
+          __pve_load_key_error=$(printf '%s\n' "${__pve_old_pass_working}" | zfs load-key "${__PVE_ZFS_DATASET}" 2>&1)
           __pve_load_key_status=$?
           if [ ${__pve_load_key_status} -ne 0 ]; then
             # Check if the error is because the key is already loaded (which is fine)
             if ! printf '%s\n' "${__pve_load_key_error}" | grep -q -i "key already loaded"; then
-              printf '%s\n' "ERROR - Failed to load key for '${__pve_dataset}': ${__pve_load_key_error}" >&2
+              printf '%s\n' "ERROR - Failed to load key for '${__PVE_ZFS_DATASET}': ${__pve_load_key_error}" >&2
               exit 1
             fi
           fi
 
           # Change the passphrase
-          if printf '%s\n%s\n%s\n' "${__pve_new_pass}" "${__pve_new_pass}" | zfs change-key "${__pve_dataset}" 2>&1; then
+          if printf '%s\n%s\n%s\n' "${__PVE_ZFS_PASS_NEW}" "${__PVE_ZFS_PASS_NEW}" | zfs change-key "${__PVE_ZFS_DATASET}" 2>&1; then
             # Verify the new passphrase was set correctly
-            if printf '%s\n' "${__pve_new_pass}" | zfs load-key -n "${__pve_dataset}" 2>/dev/null; then
-              printf '%s\n' "SUCCESS - Passphrase for '${__pve_dataset}' changed and verified"
+            if printf '%s\n' "${__PVE_ZFS_PASS_NEW}" | zfs load-key -n "${__PVE_ZFS_DATASET}" 2>/dev/null; then
+              printf '%s\n' "SUCCESS - Passphrase for '${__PVE_ZFS_DATASET}' changed and verified"
               exit 0
             else
-              printf '%s\n' "ERROR - Passphrase changed but verification failed for '${__pve_dataset}'" >&2
+              printf '%s\n' "ERROR - Passphrase changed but verification failed for '${__PVE_ZFS_DATASET}'" >&2
               exit 1
             fi
           else
-            printf '%s\n' "ERROR - Failed to change passphrase for '${__pve_dataset}'" >&2
+            printf '%s\n' "ERROR - Failed to change passphrase for '${__PVE_ZFS_DATASET}'" >&2
             exit 1
           fi
         executable: "/bin/bash"
+      environment:
+        __PVE_ZFS_DATASET: "{{ item['name'] }}"
+        __PVE_ZFS_PASS_NEW: "{{ item['attributes']['zfs_properties']['passphrase'] }}"
+        # Newline-joined (a passphrase cannot contain a newline); empty when
+        # no old passphrases are given.
+        __PVE_ZFS_PASSES_OLD: >-
+          {{
+            ([__pve_zfs_passes_old_raw] if (__pve_zfs_passes_old_raw is ansible.builtin.string)
+             else (__pve_zfs_passes_old_raw | ansible.builtin.default([], true)))
+            | ansible.builtin.join(__pve_zfs_newline)
+          }}
+      vars:
+        __pve_zfs_passes_old_raw: "{{ item['attributes']['zfs_properties']['passphrase_old'] | ansible.builtin.default('') }}"
+        # YAML (not Jinja) escape processing yields the real newline character.
+        __pve_zfs_newline: "\n"
       loop: >-
         {{
           pve_proxmox_storage | ansible.builtin.default([], true)
@@ -1032,14 +1039,13 @@
 
 
     - name: "Storage | ZFS | zfs_dataset | Load encryption keys for volumes with prompt-based passphrase"
-      # ansible.builtin.shell is used because key loading requires piping
-      # the passphrase to stdin for keylocation: prompt
-      ansible.builtin.shell: |
-        set -o pipefail
-        echo {{ item['item']['attributes']['zfs_properties']['passphrase'] | ansible.builtin.quote }} | \
-        zfs load-key "{{ item['item']['name'] }}"
-      args:
-        executable: "/bin/bash"
+      # The passphrase is passed via stdin on purpose (zfs reads the key from
+      # stdin when it is not a TTY): embedded in the command text it would be
+      # world-readable in the process list (/proc/<pid>/cmdline) of the host
+      # while the command runs.
+      ansible.builtin.command:
+        argv: ["zfs", "load-key", "{{ item['item']['name'] }}"]
+        stdin: "{{ item['item']['attributes']['zfs_properties']['passphrase'] }}"
       loop: "{{ __pve_zfs_dataset_keystatus['results'] | ansible.builtin.default([]) }}"
       loop_control:
         label: "{{ item['item']['name'] }}"

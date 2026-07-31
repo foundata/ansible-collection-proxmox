@@ -1552,7 +1552,9 @@ pve_proxmox_datacentercfg: {}
 #           list)
 #
 #         Note: `passphrase` and `passphrase_old` are special keys handled by
-#         the role and not passed directly to ZFS.
+#         the role and not passed directly to ZFS. Because of them, the whole
+#         dictionary is treated as sensitive (`no_log`): its values do not show
+#         up in Ansible logs or argument-validation output.
 #
 #         Example (encrypted dataset):
 #
@@ -1584,6 +1586,7 @@ pve_proxmox_datacentercfg: {}
 #         ```
 #         - Type: dict
 #         - Required: No
+#         - Sensitive: Yes (no_log, values are masked in logs)
 #       - storage_properties: NFS mount properties (for `nfs` type).
 #
 #         Configures NFS client mounts. The role validates server reachability

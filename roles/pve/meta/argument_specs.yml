@@ -1715,6 +1715,7 @@ argument_specs:
 
               # ZFS Dataset attributes
               zfs_properties:
+                no_log: true
                 description: |
                   ZFS dataset properties (for `zfs_dataset` type).
 
@@ -1753,7 +1754,10 @@ argument_specs:
                       (string or list)
 
                   Note: `passphrase` and `passphrase_old` are special keys
-                  handled by the role and not passed directly to ZFS.
+                  handled by the role and not passed directly to ZFS. Because
+                  of them, the whole dictionary is treated as sensitive
+                  (`no_log`): its values do not show up in Ansible logs or
+                  argument-validation output.
 
                   Example (encrypted dataset):
                   ```yaml
