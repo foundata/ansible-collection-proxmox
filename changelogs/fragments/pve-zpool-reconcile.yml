@@ -1,0 +1,8 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - property reconciliation for existing ZFS pools was dead code:
+    it was gated on the NFS-only ``storage_properties`` field which zpool
+    items never carry. It now triggers on ``zfs_properties`` and excludes the
+    creation-only encryption keys that ``zfs set`` cannot change.

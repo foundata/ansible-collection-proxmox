@@ -735,7 +735,15 @@
       community.general.zfs:
         name: "{{ item['name'] }}"
         state: "present"
-        extra_zfs_properties: "{{ item['attributes']['zfs_properties'] | ansible.builtin.default({}) }}"
+        # creation-only keys are excluded: they cannot be changed with
+        # "zfs set" on an existing pool root dataset
+        extra_zfs_properties: >-
+          {{
+            item['attributes']['zfs_properties'] | ansible.builtin.default({})
+            | ansible.builtin.dict2items
+            | ansible.builtin.rejectattr('key', 'ansible.builtin.in', ['encryption', 'keyformat', 'keylocation', 'passphrase', 'passphrase_old'])
+            | ansible.builtin.items2dict
+          }}
       loop: >-
         {{
           __pve_storage_sanitized
