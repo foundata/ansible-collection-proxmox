@@ -26,6 +26,9 @@
     state: "present"
 
 
+# The whole IOMMU block below is gated on pve_proxmox_iommu_manage: with the
+# switch off, the role neither probes nor rewrites the GRUB command line and
+# existing iommu parameters are left exactly as they are.
 - name: "OS | Default | IOMMU | Check for IOMMU support in dmesg"
   # The command or shell module is used here. This approach is justified:
   #
@@ -35,17 +38,23 @@
     argv: ["dmesg"]
   changed_when:
     - false
+  when:
+    - pve_proxmox_iommu_manage | ansible.builtin.bool
   register: __pve_dmesg_output
 
 
 - name: "OS | Default | IOMMU | Set IOMMU support fact"
   ansible.builtin.set_fact:
     __pve_iommu_supported: "{{ __pve_dmesg_output['stdout'] is ansible.builtin.search('DMAR|IOMMU|AMD-Vi') }}"
+  when:
+    - pve_proxmox_iommu_manage | ansible.builtin.bool
 
 
 - name: "OS | Default | IOMMU | Read current GRUB configuration"
   ansible.builtin.slurp:
     src: "/etc/default/grub"
+  when:
+    - pve_proxmox_iommu_manage | ansible.builtin.bool
   register: __pve_grub_config
 
 
@@ -90,5 +99,7 @@
         | ansible.builtin.regex_replace(' +', ' ')
         | ansible.builtin.trim
       }}
+  when:
+    - pve_proxmox_iommu_manage | ansible.builtin.bool
   notify:
     - "pve_proxmox: update grub"

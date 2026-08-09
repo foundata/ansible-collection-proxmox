@@ -1,0 +1,9 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - ``pve_proxmox_iommu_manage`` was accepted but never evaluated:
+    even with the switch set to ``false`` the role probed IOMMU support,
+    rewrote ``GRUB_CMDLINE_LINUX_DEFAULT`` and triggered ``update-grub``.
+    The whole IOMMU block is now gated on the option, leaving existing
+    kernel command line parameters untouched when it is disabled.
