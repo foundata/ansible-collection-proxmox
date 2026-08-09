@@ -7,4 +7,14 @@ bugfixes:
     play host; with differing host variables the last writer silently won.
     One deterministically selected node per cluster now writes them and the
     role fails when the cluster-scoped inputs differ between nodes of the
-    same cluster (standalone nodes are unaffected).
+    same cluster (standalone nodes are unaffected). Automatic selection is
+    refused in plays where it would be wrong (``serial`` batching, the
+    ``free`` strategy or hosts lost before the selection); use the new
+    ``pve_proxmox_cluster_writer`` option there.
+
+minor_changes:
+  - >
+    ``pve`` - new option ``pve_proxmox_cluster_writer`` to pin the node that
+    writes the cluster-wide pmxcfs files (per cluster, e.g. via group_vars),
+    for rolling plays with ``serial`` batching or the ``free`` strategy where
+    automatic writer selection cannot work.

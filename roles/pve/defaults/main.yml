@@ -43,6 +43,26 @@ pve_proxmox_state: "present"
 # - Default: true
 pve_proxmox_tmpbackupfiles: true
 
+# Inventory hostname of the node that writes the cluster-wide pmxcfs files
+# (`/etc/pve/datacenter.cfg`, `/etc/pve/firewall/cluster.fw`) of its cluster.
+#
+# When empty (the default), the role selects the writer automatically: the first
+# play host of the cluster in sorted order. Automatic selection requires that
+# all nodes of the cluster run in one linear batch; the role refuses to continue
+# in plays using `serial` batching or the `free` strategy, where each batch or
+# host could elect a different writer and overwrite the shared policy.
+#
+# Set it (per cluster, e.g. via group_vars) to run the role in such plays. If
+# the configured writer is not part of the current batch, the cluster-wide files
+# are left untouched by that batch; the equality check of the cluster-scoped
+# inputs runs whenever the writer's published inputs are visible.
+#
+# - Type: str
+# - Required: No
+# - Default: ""
+pve_proxmox_cluster_writer: ""
+
+
 # Switch to control if the role should manage input–output memory management
 # unit (IOMMU) related operating system configuration. IOMMU support is needed
 # for PCI and/or GPU passthrough.

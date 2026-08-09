@@ -194,12 +194,50 @@
       fw_cluster_rules: "{{ pve_proxmox_fw_cluster_rules }}"
 
 
+# Automatic writer selection needs every host of the play to have published
+# its cluster identity in the previous task. Only the default linear strategy
+# guarantees that: under "serial" each batch sees just itself (and would
+# elect one writer per batch, each overwriting the shared policy), under the
+# "free" strategy hosts race ahead of the publication. Both cases are
+# detected and rejected instead of silently electing a wrong writer;
+# configuring pve_proxmox_cluster_writer removes the play-population
+# dependency entirely.
+- name: "Init | Check the play is compatible with automatic writer selection"
+  ansible.builtin.assert:
+    that:
+      - (ansible_play_hosts | ansible.builtin.sort) == (ansible_play_hosts_all | ansible.builtin.sort)
+      - >-
+        ansible_play_hosts
+        | ansible.builtin.select('ansible.builtin.in', hostvars.keys() | ansible.builtin.list)
+        | ansible.builtin.map('ansible.builtin.extract', hostvars, '__pve_cluster_name')
+        | ansible.builtin.select('ansible.builtin.defined')
+        | ansible.builtin.length == (ansible_play_hosts | ansible.builtin.length)
+    fail_msg: >-
+      Automatic selection of the cluster-wide file writer is only safe when
+      every host of the play runs this task in one linear batch. This play
+      uses "serial" batching, the "free" strategy, or hosts dropped out
+      before this point. Set 'pve_proxmox_cluster_writer' to the inventory
+      hostname of the node that should write the cluster-wide pmxcfs files
+      (per cluster, e.g. via group_vars) to run this role in such plays.
+    quiet: true
+  when:
+    - (pve_proxmox_cluster_writer | ansible.builtin.length) == 0
+
+
 - name: "Init | Select the writer of the cluster-wide files"
-  # With the (default) linear strategy every play host has published its
-  # cluster identity in the previous task before any host reaches this one.
-  # Sorted for determinism, independent of inventory or --limit ordering.
+  # Sorted for determinism, independent of inventory or --limit ordering. A
+  # configured pve_proxmox_cluster_writer wins; it may be absent from the
+  # current play (e.g. in another serial batch), in which case no host of
+  # this play writes the cluster-wide files.
   ansible.builtin.set_fact:
     __pve_cluster_writer: >-
+      {{
+        pve_proxmox_cluster_writer
+        if ((pve_proxmox_cluster_writer | ansible.builtin.length) > 0)
+        else __pve_cluster_writer_auto
+      }}
+  vars:
+    __pve_cluster_writer_auto: >-
       {%- set __pve_members = [] -%}
       {%- for __pve_h in ansible_play_hosts -%}
       {%-   if (hostvars[__pve_h]['__pve_cluster_name'] | ansible.builtin.default('')) == __pve_cluster_name -%}
@@ -207,6 +245,35 @@
       {%-   endif -%}
       {%- endfor -%}
       {{ (__pve_members | ansible.builtin.sort | ansible.builtin.first) if ((__pve_members | ansible.builtin.length) > 0) else inventory_hostname }}
+
+
+- name: "Init | Verify the configured writer is a known inventory host"
+  ansible.builtin.assert:
+    that:
+      - pve_proxmox_cluster_writer in hostvars
+    fail_msg: >-
+      'pve_proxmox_cluster_writer' ({{ pve_proxmox_cluster_writer }}) is not
+      an inventory hostname known to this play.
+    quiet: true
+  when:
+    - (pve_proxmox_cluster_writer | ansible.builtin.length) > 0
+
+
+- name: "Init | Verify the configured writer belongs to this cluster (when its identity is visible)"
+  ansible.builtin.assert:
+    that:
+      - hostvars[__pve_cluster_writer]['__pve_cluster_name'] == __pve_cluster_name
+    fail_msg: >-
+      'pve_proxmox_cluster_writer' ({{ __pve_cluster_writer }}) belongs to
+      cluster "{{ hostvars[__pve_cluster_writer]['__pve_cluster_name'] }}",
+      but {{ inventory_hostname }} is a member of cluster
+      "{{ __pve_cluster_name }}". Configure the writer per cluster (e.g. via
+      group_vars).
+    quiet: true
+  when:
+    - (pve_proxmox_cluster_writer | ansible.builtin.length) > 0
+    - __pve_cluster_writer in hostvars
+    - hostvars[__pve_cluster_writer]['__pve_cluster_name'] is ansible.builtin.defined
 
 
 - name: "Init | Verify the cluster-scoped inputs are identical on all nodes of the cluster"
@@ -224,3 +291,7 @@
       cluster-wide files of cluster "{{ __pve_cluster_name }}".
   when:
     - inventory_hostname != __pve_cluster_writer
+    # With a configured writer from another serial batch its inputs may not
+    # be visible (yet); the check then runs on the batch containing it.
+    - __pve_cluster_writer in hostvars
+    - hostvars[__pve_cluster_writer]['__pve_cluster_scoped_inputs'] is ansible.builtin.defined

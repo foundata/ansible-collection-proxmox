@@ -12,6 +12,7 @@ The `foundata.proxmox.pve` Ansible role (part of the `foundata.proxmox` Ansible 
 - [Role variables](#variables)
   - [`pve_proxmox_state`](#variable-pve_proxmox_state)
   - [`pve_proxmox_tmpbackupfiles`](#variable-pve_proxmox_tmpbackupfiles)
+  - [`pve_proxmox_cluster_writer`](#variable-pve_proxmox_cluster_writer)
   - [`pve_proxmox_iommu_manage`](#variable-pve_proxmox_iommu_manage)
   - [`pve_proxmox_net_altnames`](#variable-pve_proxmox_net_altnames)
     - [`pve_proxmox_net_altnames['type']`](#variable-pve_proxmox_net_altnames-sub-type)
@@ -360,6 +361,7 @@ The following variables can be configured for this role:
 |----------|------|----------|---------|------------------------|
 | `pve_proxmox_state` | `str` | No | `"present"` | Determines whether the managed configuration should be applied (`present`) or not.<br><br>`absent` currently only skips all configuration management, nothing gets removed or reverted: a Proxmox VE host stripped of its network, firewall or storage […](#variable-pve_proxmox_state) |
 | `pve_proxmox_tmpbackupfiles` | `bool` | No | `true` | Switch to control whether temporary disaster-safeguard backups of important configuration files should be created before re-writing them via Ansible.<br><br>When set to `true` (which is the default), the role will:<br><br>1. Create a temporary […](#variable-pve_proxmox_tmpbackupfiles) |
+| `pve_proxmox_cluster_writer` | `str` | No | `""` | Inventory hostname of the node that writes the cluster-wide pmxcfs files (`/etc/pve/datacenter.cfg`, `/etc/pve/firewall/cluster.fw`) of its cluster.<br><br>When empty (the default), the role selects the writer automatically: the first play host of […](#variable-pve_proxmox_cluster_writer) |
 | `pve_proxmox_iommu_manage` | `bool` | No | `true` | Switch to control if the role should manage input–output memory management unit (IOMMU) related operating system configuration. IOMMU support is needed for PCI and/or GPU passthrough.<br><br>When set to `true` (which is the default), the role […](#variable-pve_proxmox_iommu_manage) |
 | `pve_proxmox_net_altnames` | `list` | No | `[]` | List of network interface alternative name definitions for systemd link files (`/etc/systemd/network/10-*.link`).<br><br>Instead of renaming kernel network devices, this approach assigns alternative names (altnames). This preserves the original […](#variable-pve_proxmox_net_altnames) |
 | `pve_proxmox_net_ifaces_host_shared` | `dict` | No | `{}` | Network interface definitions for `/etc/network/interfaces.d/10-host` shared across all hosts in the inventory group.<br><br>These interfaces are NOT visible in the PVE web UI and are intended for backend networking configurations. Use this variable […](#variable-pve_proxmox_net_ifaces_host_shared) |
@@ -424,6 +426,33 @@ issue.
 - **Type**: `bool`
 - **Required**: No
 - **Default**: `true`
+
+
+
+### `pve_proxmox_cluster_writer`<a id="variable-pve_proxmox_cluster_writer"></a>
+
+[*⇑ Back to ToC ⇑*](#toc)
+
+Inventory hostname of the node that writes the cluster-wide pmxcfs
+files (`/etc/pve/datacenter.cfg`, `/etc/pve/firewall/cluster.fw`)
+of its cluster.
+
+When empty (the default), the role selects the writer
+automatically: the first play host of the cluster in sorted order.
+Automatic selection requires that all nodes of the cluster run in
+one linear batch; the role refuses to continue in plays using
+`serial` batching or the `free` strategy, where each batch or host
+could elect a different writer and overwrite the shared policy.
+
+Set it (per cluster, e.g. via group_vars) to run the role in such
+plays. If the configured writer is not part of the current batch,
+the cluster-wide files are left untouched by that batch; the
+equality check of the cluster-scoped inputs runs whenever the
+writer's published inputs are visible.
+
+- **Type**: `str`
+- **Required**: No
+- **Default**: `""`
 
 
 
