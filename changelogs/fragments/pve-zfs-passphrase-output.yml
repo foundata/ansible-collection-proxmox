@@ -1,0 +1,12 @@
+---
+
+security_fixes:
+  - >
+    ``pve`` - ZFS passphrases could appear in normal callback output: many
+    storage tasks looped over the complete storage items, so loop labels and
+    skipped-item lines printed ``passphrase``/``passphrase_old`` values.
+    Storage loops now iterate a sanitized copy of ``pve_proxmox_storage``
+    with the secret keys stripped; only the tasks that genuinely need the
+    passphrase (encrypted dataset creation, key loading, key rotation) read
+    the original data and each of them is protected by ``no_log`` or a
+    sanitized loop label.

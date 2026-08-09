@@ -83,6 +83,27 @@ __pve_proxmox_packages_removal: []
 __pve_proxmox_paths_removal: []
 
 
+# pve_proxmox_storage with the secret keys stripped out of zfs_properties.
+# Storage loops iterate THIS list so passphrases cannot reach the callback
+# output through loop item labels, skipped-item lines or registered results.
+# Only the few tasks that actually need the secret (encrypted dataset
+# creation, key loading, key rotation) iterate pve_proxmox_storage itself and
+# every one of them is protected by no_log or a sanitized loop label.
+__pve_storage_sanitized: >-
+  {%- set __ns = namespace(items=[]) -%}
+  {%- for __item in (pve_proxmox_storage | ansible.builtin.default([], true)) -%}
+  {%-   set __attrs = __item['attributes'] | ansible.builtin.default({}) -%}
+  {%-   if 'zfs_properties' in __attrs -%}
+  {%-     set __attrs = __attrs | ansible.builtin.combine({'zfs_properties':
+            (__attrs['zfs_properties'] | ansible.builtin.dict2items
+             | ansible.builtin.rejectattr('key', 'ansible.builtin.in', ['passphrase', 'passphrase_old'])
+             | ansible.builtin.items2dict)}) -%}
+  {%-   endif -%}
+  {%-   set _ = __ns.items.append(__item | ansible.builtin.combine({'attributes': __attrs})) -%}
+  {%- endfor -%}
+  {{ __ns.items }}
+
+
 ### Override defaults of dependencies used by this role (if any).
 
 # nothing right now

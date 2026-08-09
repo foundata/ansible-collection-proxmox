@@ -32,7 +32,7 @@
           Storage type '{{ item['type'] }}' for '{{ item['name'] }}' is not implemented yet.
           Supported types: 'zpool', 'zfs_dataset'
         success_msg: "Storage type '{{ item['type'] }}' for '{{ item['name'] }}' is supported"
-      loop: "{{ pve_proxmox_storage | ansible.builtin.default([], true) }}"
+      loop: "{{ __pve_storage_sanitized }}"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -52,7 +52,7 @@
           }}
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -81,7 +81,7 @@
       # just the first one.
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
           | ansible.builtin.subelements('attributes.vdevs', skip_missing=true)
@@ -184,7 +184,7 @@
           }}
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -216,7 +216,7 @@
           }}
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -230,7 +230,7 @@
         argv: ["zpool", "status", "{{ item['name'] }}", "-P"]
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -484,7 +484,7 @@
         success_msg: "Pool '{{ item['name'] }}' exists with correct disk configuration"
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -616,7 +616,7 @@
           Only use this if you are CERTAIN the data is not needed.
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -679,7 +679,7 @@
         - __pve_zfs_mountpoint != 'none'
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -697,7 +697,7 @@
         disable_new_features: "{{ item['attributes']['disable_new_features'] | ansible.builtin.default(false) | ansible.builtin.bool }}"
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -714,7 +714,7 @@
         extra_zfs_properties: "{{ item['attributes']['zfs_properties'] | ansible.builtin.default({}) }}"
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
           | ansible.builtin.list
         }}
@@ -731,7 +731,7 @@
         type: "all"
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
@@ -817,7 +817,7 @@
         executable: "/bin/bash"
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
@@ -848,7 +848,7 @@
         - __pve_zfs_mountpoint != 'none'
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
@@ -861,7 +861,7 @@
         extra_zfs_properties: "{{ item['attributes']['zfs_properties'] | ansible.builtin.default({}) }}"
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
@@ -885,7 +885,7 @@
           }}
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
@@ -900,7 +900,7 @@
         argv: ["zfs", "get", "-H", "-o", "value", "encryption", "{{ item['name'] }}"]
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
@@ -1026,6 +1026,11 @@
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
+      loop_control:
+        # The loop keeps the full items on purpose (the load-key tasks below
+        # read the passphrase from the registered results); the label must
+        # not print them.
+        label: "{{ item['name'] }}"
       register: __pve_zfs_dataset_keystatus
       changed_when:
         - false
@@ -1097,7 +1102,7 @@
         type: "filesystem"
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
@@ -1124,7 +1129,7 @@
             use "zfs unmount" followed by "zfs unload-key".
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
@@ -1158,7 +1163,7 @@
           Required: 'src' (NFS server and export) and 'path' (local mountpoint)
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'nfs')
           | ansible.builtin.list
         }}
@@ -1176,7 +1181,7 @@
         mode: "u=rwx,g=rx,o=rx"  # 0755
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'nfs')
           | ansible.builtin.list
         }}
@@ -1190,7 +1195,7 @@
         argv: ["showmount", "-e", "{{ item['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}"]
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'nfs')
           | ansible.builtin.list
         }}
@@ -1228,7 +1233,7 @@
         argv: ["findmnt", "-n", "-o", "SOURCE", "{{ item['attributes']['storage_properties']['path'] }}"]
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'nfs')
           | ansible.builtin.list
         }}
@@ -1268,7 +1273,7 @@
         backup: false
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'nfs')
           | ansible.builtin.list
         }}
@@ -1282,7 +1287,7 @@
         argv: ["mountpoint", "-q", "{{ item['attributes']['storage_properties']['path'] }}"]
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'nfs')
           | ansible.builtin.list
         }}

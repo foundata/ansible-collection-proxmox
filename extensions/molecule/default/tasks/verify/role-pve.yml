@@ -18,6 +18,10 @@
       | ansible.builtin.selectattr('key', 'ansible.builtin.match', '^(pve_proxmox_|__testing_)')
       | ansible.builtin.list
     }}
+  loop_control:
+    # keys only: the values contain the ZFS test passphrases, which must not
+    # land in the log (grepping the molecule log for them must stay clean)
+    label: "{{ item['key'] }}"
 
 
 - name: "Molecule | Verify | pve | Gather service facts"
