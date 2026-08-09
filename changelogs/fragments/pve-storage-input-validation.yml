@@ -1,0 +1,12 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - a mixed ``pve_proxmox_storage`` declaration of ZFS and NFS
+    items failed: the type check inside the ZFS section looped over the whole
+    list and rejected every ``nfs`` item as soon as any ZFS item existed. The
+    validation now runs once for all items, checks the full supported type
+    set and also enforces the attributes each type dereferences
+    unconditionally (``vdevs`` for ``zpool``, ``src``/``path`` for ``nfs``, a
+    ``passphrase`` for prompt-encrypted datasets, ``path``/``pool`` for the
+    ``pve_proxmox_sm`` types).

@@ -3,6 +3,44 @@
 
 ---
 
+# All declared storage items are validated up front: the supported type set
+# spans the ZFS and NFS sections (a mixed declaration is legitimate and used
+# to be wrongly rejected by a type check inside the ZFS section), and the
+# attributes each type dereferences unconditionally have to exist before any
+# section starts changing state. The passphrase-presence check reads the
+# UNSANITIZED item via the loop index on purpose; only the check itself does,
+# nothing of it is printed.
+- name: "Storage | Validate the declared storage items"
+  ansible.builtin.assert:
+    that:
+      - item['type'] in ['zpool', 'zfs_dataset', 'nfs']
+      - >-
+        (item['type'] != 'zpool')
+        or ((item['attributes']['vdevs'] | ansible.builtin.default([]) | ansible.builtin.length) > 0)
+      - >-
+        (item['type'] != 'nfs')
+        or ((item['attributes']['storage_properties']['src'] is ansible.builtin.defined)
+            and (item['attributes']['storage_properties']['path'] is ansible.builtin.defined))
+      - >-
+        (item['type'] != 'zfs_dataset')
+        or (item['attributes']['zfs_properties']['encryption'] is not ansible.builtin.defined)
+        or ((item['attributes']['zfs_properties']['keylocation'] | ansible.builtin.default('prompt')) != 'prompt')
+        or (pve_proxmox_storage[__pve_storage_validate_index]['attributes']['zfs_properties']['passphrase'] is ansible.builtin.defined)
+    fail_msg: |
+      Storage item '{{ item['name'] }}' is invalid. The type has to be one of
+      'zpool', 'zfs_dataset' or 'nfs'; a 'zpool' item needs a non-empty
+      'attributes.vdevs' list, an 'nfs' item needs 'storage_properties.src'
+      and 'storage_properties.path', and an encrypted 'zfs_dataset' with
+      keylocation 'prompt' needs a 'passphrase'.
+    quiet: true
+  loop: "{{ __pve_storage_sanitized }}"
+  loop_control:
+    index_var: "__pve_storage_validate_index"
+  when:
+    - pve_proxmox_storage is ansible.builtin.defined
+    - pve_proxmox_storage | ansible.builtin.length > 0
+
+
 ### ZFS configuration
 - name: "Storage | ZFS"
   when:
@@ -22,20 +60,6 @@
 
     - name: "Storage | ZFS | Gather existing ZFS pools"
       community.general.zpool_facts:
-
-
-    - name: "Storage | ZFS | Validate all storage types are supported"
-      ansible.builtin.assert:
-        that:
-          - item['type'] in ['zpool', 'zfs_dataset']
-        fail_msg: |
-          Storage type '{{ item['type'] }}' for '{{ item['name'] }}' is not implemented yet.
-          Supported types: 'zpool', 'zfs_dataset'
-        success_msg: "Storage type '{{ item['type'] }}' for '{{ item['name'] }}' is supported"
-      loop: "{{ __pve_storage_sanitized }}"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
 
 
     # ZFS Pool Management
@@ -722,7 +746,9 @@
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
         - __pve_storage_pool_data_status[item['name']]['exists'] | ansible.builtin.default(false) | ansible.builtin.bool
-        - item['attributes']['storage_properties'] is ansible.builtin.defined
+        # zfs_properties on purpose: storage_properties is the pvesm/NFS
+        # field, gating on it made this reconciliation dead code
+        - item['attributes']['zfs_properties'] is ansible.builtin.defined
 
 
     - name: "Storage | ZFS | zfs_dataset | Gather existing ZFS datasets"
@@ -1361,9 +1387,16 @@
       ansible.builtin.assert:
         that:
           - pve_storage_item['type'] in ['dir', 'zfspool']
+          - >-
+            (pve_storage_item['type'] != 'dir')
+            or (pve_storage_item['storage_properties']['path'] is ansible.builtin.defined)
+          - >-
+            (pve_storage_item['type'] != 'zfspool')
+            or (pve_storage_item['storage_properties']['pool'] is ansible.builtin.defined)
         fail_msg: |
-          Proxmox storage type '{{ pve_storage_item['type'] }}' is not implemented yet.
-          Supported types: 'dir', 'zfspool'
+          Proxmox storage '{{ pve_storage_item['name'] }}' is invalid: the type has to
+          be 'dir' (requires 'storage_properties.path') or 'zfspool' (requires
+          'storage_properties.pool').
       loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
       loop_control:
         loop_var: pve_storage_item

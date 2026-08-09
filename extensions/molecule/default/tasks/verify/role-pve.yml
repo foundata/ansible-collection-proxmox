@@ -279,6 +279,28 @@
     success_msg: "The drifted pvesm property was updated back to the declared value."
 
 
+## NFS storage (mixed ZFS+NFS declaration)
+
+- name: "Molecule | Verify | pve | NFS: query the mount"
+  ansible.builtin.command:
+    argv: ["findmnt", "-n", "-o", "SOURCE,FSTYPE", "/mnt/molecule-nfs"]
+  register: __testing_pve_nfs_mount
+  changed_when:
+    - false
+
+
+- name: "Molecule | Verify | pve | NFS: assert the loopback export is mounted"
+  ansible.builtin.assert:
+    that:
+      - "'127.0.0.1:/srv/molecule-nfs-export' in __testing_pve_nfs_mount['stdout']"
+      - "'nfs' in __testing_pve_nfs_mount['stdout']"
+    fail_msg: >-
+      The declared NFS storage was not mounted
+      ({{ __testing_pve_nfs_mount['stdout'] | ansible.builtin.default('no output') }});
+      the mixed ZFS+NFS declaration regressed.
+    success_msg: "The NFS item of the mixed declaration is mounted."
+
+
 ## ZFS passphrase rotation
 #
 # Re-run the role with a new passphrase and the previous one in

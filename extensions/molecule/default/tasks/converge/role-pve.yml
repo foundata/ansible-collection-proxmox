@@ -12,6 +12,43 @@
     __testing_pve_uplink_iface: "{{ ansible_facts['vmbr0']['interfaces'] | ansible.builtin.first }}"
 
 
+# A real NFS export served by the VM itself, so the role's nfs storage type
+# can be exercised without external infrastructure.
+- name: "Molecule | Converge | pve | Install the NFS server for the loopback export"
+  ansible.builtin.package:
+    name:
+      - "nfs-kernel-server"
+    state: "present"
+
+
+- name: "Molecule | Converge | pve | Create the NFS export directory"
+  ansible.builtin.file:
+    path: "/srv/molecule-nfs-export"
+    state: "directory"
+    owner: "root"
+    group: "root"
+    mode: "u=rwx,g=rx,o=rx" # 0755
+
+
+- name: "Molecule | Converge | pve | Export the directory via NFS"
+  ansible.builtin.lineinfile:
+    path: "/etc/exports"
+    line: "/srv/molecule-nfs-export 127.0.0.1(rw,sync,no_subtree_check,no_root_squash)"
+    create: true
+    owner: "root"
+    group: "root"
+    mode: "u=rw,g=r,o=r" # 0644
+
+
+# exportfs -ra is idempotent; unconditional re-export keeps this test
+# scaffolding simple (it is not part of the system under test)
+- name: "Molecule | Converge | pve | Apply the NFS exports"
+  ansible.builtin.command:
+    argv: ["exportfs", "-ra"]
+  changed_when:
+    - false
+
+
 - name: "Molecule | Converge | pve | Store pve_proxmox_* role parameters in __testing_state"
   ansible.builtin.include_tasks:
     file: "../tasks/state_update.yml"
@@ -145,6 +182,16 @@
               keyformat: "passphrase"
               keylocation: "prompt"
               passphrase: "molecule-test-passphrase-1"
+        # Mixed declaration on purpose: ZFS and NFS items in ONE list
+        # (regression: a type check inside the ZFS section rejected every
+        # nfs item as soon as any ZFS item existed). The export is served by
+        # the VM itself (see the NFS server setup above the role include).
+        - name: "molecule-nfs1"
+          type: "nfs"
+          attributes:
+            storage_properties:
+              src: "127.0.0.1:/srv/molecule-nfs-export"
+              path: "/mnt/molecule-nfs"
       pve_proxmox_sm:
         - name: "molecule-guest1"
           type: "zfspool"
