@@ -1,0 +1,9 @@
+---
+
+bugfixes:
+  - >
+    ``pve`` - the disaster-safeguard backup directory
+    (``pve_proxmox_tmpbackupfiles``) reported a change on every run (breaking
+    idempotence) and made ``--check`` runs fail on the missing path. It no
+    longer counts as a change and is created in check mode too; the backups
+    themselves still honor check mode.

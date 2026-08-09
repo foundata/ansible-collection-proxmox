@@ -61,12 +61,11 @@
       # role does not define a default for it (yet), so the scenario has to
       # provide it explicitly.
       pve_proxmox_state: "present"
-      # ansible.builtin.tempfile reports "changed" on every run, so the
-      # disaster-safeguard backups would break the idempotence stage. A string
-      # on purpose (as delivered by command line extra-vars): the role has to
-      # coerce boolean arguments, a truthiness evaluation would treat "false"
-      # as enabled (and fail exactly this idempotence guard).
-      pve_proxmox_tmpbackupfiles: "false"
+      # Enabled on purpose: the safeguard directory creation is housekeeping
+      # (changed_when false) and must not break the idempotence stage, which
+      # this guards. A string on purpose (as delivered by command line
+      # extra-vars): the role has to coerce boolean arguments.
+      pve_proxmox_tmpbackupfiles: "true"
       # Reproduce the golden image networking (vmbr0 bridging the single NIC
       # via DHCP): the role authoritatively rewrites /etc/network/interfaces
       # and notifies a network reload, and only a functionally identical

@@ -136,6 +136,14 @@
     state: "directory"
     prefix: "ansible_pve_backup_{{ ansible_date_time['epoch'] }}_"
   register: __pve_tmpdir_backup
+  # An ephemeral safeguard directory, not managed configuration state: a new
+  # directory per run is by design, so it does not count as a change (the
+  # role stays idempotent with backups enabled). It is also created under
+  # "--check" (the module would otherwise skip and the later path
+  # dereferences fail); the backups themselves still honor check mode.
+  changed_when:
+    - false
+  check_mode: false
   when:
     - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
 
