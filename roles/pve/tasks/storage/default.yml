@@ -1449,6 +1449,62 @@
         - pve_proxmox_sm | ansible.builtin.length > 0
 
 
+    - name: "Storage | pvesm | Read the storage configuration for identity checks"
+      ansible.builtin.slurp:
+        src: "/etc/pve/storage.cfg"
+      register: __pve_storage_cfg_slurp
+
+
+    - name: "Storage | pvesm | Parse the existing storage identities"
+      ansible.builtin.set_fact:
+        __pve_storage_identities: >-
+          {%- set __ns = namespace(map={}, current='') -%}
+          {%- for __line in (__pve_storage_cfg_slurp['content'] | ansible.builtin.default('') | ansible.builtin.b64decode).splitlines() -%}
+          {%-   if __line is ansible.builtin.match('^[a-z]+:') -%}
+          {%-     set __ns.current = __line.split(':', 1) | ansible.builtin.last | ansible.builtin.trim -%}
+          {%-     set _ = __ns.map.update({__ns.current: {'type': (__line.split(':', 1) | ansible.builtin.first)}}) -%}
+          {%-   elif ((__ns.current | ansible.builtin.length) > 0) and (__line is ansible.builtin.match('^\s+(path|pool)\s')) -%}
+          {%-     set __kv = __line | ansible.builtin.trim -%}
+          {%-     set __key = __kv.split(' ', 1) | ansible.builtin.first -%}
+          {%-     set __val = __kv.split(' ', 1) | ansible.builtin.last | ansible.builtin.trim -%}
+          {%-     set _ = __ns.map[__ns.current].update({__key: __val}) -%}
+          {%-   endif -%}
+          {%- endfor -%}
+          {{ __ns.map }}
+
+
+    # An existing storage ID is only "the same storage" when its type and
+    # backing (path or pool) match the declaration; reconciling mutable
+    # settings onto a different backend would corrupt it. Matching by name
+    # alone is not an identity.
+    - name: "Storage | pvesm | Check existing storage identities match the declaration"
+      ansible.builtin.assert:
+        that:
+          - (__pve_storage_identities[pve_storage_item['name']]['type'] | ansible.builtin.default('')) == pve_storage_item['type']
+          - >-
+            (pve_storage_item['type'] != 'dir')
+            or ((__pve_storage_identities[pve_storage_item['name']]['path'] | ansible.builtin.default(''))
+                == pve_storage_item['storage_properties']['path'])
+          - >-
+            (pve_storage_item['type'] != 'zfspool')
+            or ((__pve_storage_identities[pve_storage_item['name']]['pool'] | ansible.builtin.default(''))
+                == pve_storage_item['storage_properties']['pool'])
+        fail_msg: |
+          The existing Proxmox storage '{{ pve_storage_item['name'] }}'
+          ({{ __pve_storage_identities[pve_storage_item['name']] | ansible.builtin.default({}) }})
+          does not match the declaration (type '{{ pve_storage_item['type'] }}',
+          {{ pve_storage_item['storage_properties'] | ansible.builtin.default({}) }}).
+          Refusing to reconcile settings onto a different storage backend;
+          rename the declared storage or remove the existing one.
+        quiet: true
+      loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
+      loop_control:
+        loop_var: pve_storage_item
+      when:
+        - __pve_storage_is_configured[pve_storage_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+        - pve_storage_item['name'] in (__pve_storage_identities | ansible.builtin.default({}))
+
+
     - name: 'PVE | Storage | pvesm | Directory | Add directory storage'
       ansible.builtin.command:
         argv: >-

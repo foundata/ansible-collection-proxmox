@@ -1,0 +1,7 @@
+---
+
+minor_changes:
+  - >
+    ``pve`` - existing ``pvesm`` storage IDs are no longer accepted by name
+    alone: the type and backing (``path`` or ``pool``) of an existing storage
+    have to match the declaration before any settings are reconciled onto it.
