@@ -1,6 +1,118 @@
 ---
 ancestor: null
 releases:
+  1.1.1:
+    changes:
+      bugfixes:
+        - '``pve`` - ``pve_proxmox_iommu_manage`` was accepted but never evaluated:
+          even with the switch set to ``false`` the role probed IOMMU support, rewrote
+          ``GRUB_CMDLINE_LINUX_DEFAULT`` and triggered ``update-grub``. The whole
+          IOMMU block is now gated on the option, leaving existing kernel command
+          line parameters untouched when it is disabled.
+
+          '
+        - '``pve`` - a mixed ``pve_proxmox_storage`` declaration of ZFS and NFS items
+          failed: the type check inside the ZFS section looped over the whole list
+          and rejected every ``nfs`` item as soon as any ZFS item existed. The validation
+          now runs once for all items, checks the full supported type set and also
+          enforces the attributes each type dereferences unconditionally (``vdevs``
+          for ``zpool``, ``src``/``path`` for ``nfs``, a ``passphrase`` for prompt-encrypted
+          datasets, ``path``/``pool`` for the ``pve_proxmox_sm`` types).
+
+          '
+        - '``pve`` - property reconciliation for existing ZFS pools was dead code:
+          it was gated on the NFS-only ``storage_properties`` field which zpool items
+          never carry. It now triggers on ``zfs_properties`` and excludes the creation-only
+          encryption keys that ``zfs set`` cannot change.
+
+          '
+        - '``pve`` - the cluster-wide pmxcfs files (``/etc/pve/datacenter.cfg``, ``/etc/pve/firewall/cluster.fw``)
+          were written independently by every play host; with differing host variables
+          the last writer silently won. One deterministically selected node per cluster
+          now writes them and the role fails when the cluster-scoped inputs differ
+          between nodes of the same cluster (standalone nodes are unaffected). Automatic
+          selection is refused in plays where it would be wrong (``serial`` batching,
+          the ``free`` strategy or hosts lost before the selection); use the new ``pve_proxmox_cluster_writer``
+          option there.
+
+          '
+        - '``pve`` - the disaster-safeguard backup directory (``pve_proxmox_tmpbackupfiles``)
+          reported a change on every run (breaking idempotence) and made ``--check``
+          runs fail on the missing path. It no longer counts as a change and is created
+          in check mode too; the backups themselves still honor check mode.
+
+          '
+        - '``pve`` - the firewall configuration is now checked with ``pve-firewall
+          compile`` after rendering. The PVE parser deliberately skips broken entries
+          with a message only (exit code 0), silently changing the effective policy;
+          parse problems in the managed files now restore the previous file contents
+          and fail the run before the firewall service is restarted.
+
+          '
+        - '``pve`` - the rendered network interface files are now validated with the
+          ifupdown2 parser before installation (parse errors reject the candidate,
+          the live configuration stays untouched) and applied via a configuration
+          reload (``ifreload`` delta semantics) instead of a full networking restart.
+          A malformed value could previously replace a working configuration and disconnect
+          the host on the next restart or boot.
+
+          '
+        - 'boolean role arguments are now coerced with ``ansible.builtin.bool`` in
+          every conditional. String values, as delivered by ``-e var=false`` command
+          line extra-vars, were evaluated by truthiness before, so ``"false"`` enabled
+          the gated behavior instead of disabling it.
+
+          '
+      minor_changes:
+        - '``pve`` - existing ``pvesm`` storage IDs are no longer accepted by name
+          alone: the type and backing (``path`` or ``pool``) of an existing storage
+          have to match the declaration before any settings are reconciled onto it.
+
+          '
+        - '``pve`` - new option ``pve_proxmox_cluster_writer`` to pin the node that
+          writes the cluster-wide pmxcfs files (per cluster, e.g. via group_vars),
+          for rolling plays with ``serial`` batching or the ``free`` strategy where
+          automatic writer selection cannot work.
+
+          '
+      release_summary: 'Release Date: 2026-08-13
+
+
+        Bugfix release.
+
+        '
+      security_fixes:
+        - '``pve`` - ZFS passphrases could appear in normal callback output: many
+          storage tasks looped over the complete storage items, so loop labels and
+          skipped-item lines printed ``passphrase``/``passphrase_old`` values. Storage
+          loops now iterate a sanitized copy of ``pve_proxmox_storage`` with the secret
+          keys stripped; only the tasks that genuinely need the passphrase (encrypted
+          dataset creation, key loading, key rotation) read the original data and
+          each of them is protected by ``no_log`` or a sanitized loop label.
+
+          '
+        - '``pve`` - ZFS passphrases were embedded in the text of the executed shell
+          commands, making them world-readable in the process list of the managed
+          host while the commands ran. They are now passed via stdin respectively
+          the process environment, and the ``zfs_properties`` dictionary is marked
+          ``no_log`` so Ansible logs and argument-validation output cannot leak the
+          ``passphrase``/``passphrase_old`` values.
+
+          '
+    fragments:
+      - 1.1.1-release.yaml
+      - bool-coercion.yml
+      - pve-backup-tempfile.yml
+      - pve-cluster-writer.yml
+      - pve-firewall-validation.yml
+      - pve-iommu-manage.yml
+      - pve-network-validation.yml
+      - pve-pvesm-identity.yml
+      - pve-storage-input-validation.yml
+      - pve-zfs-passphrase-output.yml
+      - pve-zfs-passphrase-protection.yml
+      - pve-zpool-reconcile.yml
+    release_date: '2026-08-13'
   1.1.0:
     changes:
       bugfixes:
