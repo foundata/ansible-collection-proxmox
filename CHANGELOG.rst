@@ -4,6 +4,21 @@ foundata.proxmox Ansible collection Release Notes
 
 .. contents:: Topics
 
+v1.2.0
+======
+
+Release Summary
+---------------
+
+Release Date: 2026-08-28
+
+Maintenance release.
+
+Minor Changes
+-------------
+
+- ``pve`` - Improve Ansible compatibility for roles and collections used in the wild by giving every loop in the role a private, purpose-specific loop variable derived from the role's public variable prefix (``__pve_proxmox_*_item``) instead of ``item``. This avoids rebinding a caller's ``item`` when role parameters reference it, such as when the role itself is included from a loop, and makes the role behave more robustly across common Ansible usage patterns.
+
 v1.1.1
 ======
 
