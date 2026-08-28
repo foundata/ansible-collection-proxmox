@@ -11,23 +11,25 @@
 - name: "Network | Create systemd link files: altnames for used interfaces / NICs"
   ansible.builtin.template:
     src: "network/systemd_iface_altnames.link.j2"
-    dest: "/etc/systemd/network/10-{{ item['altnames'][0] }}.link"
+    dest: "/etc/systemd/network/10-{{ __pve_proxmox_nic_item['altnames'][0] }}.link"
     owner: "root"
     group: "root"
     mode: "u=rw,g=r,o=r" # 0644
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
     tpl_iface_item:
-      type: "{{ item['type'] | ansible.builtin.default('', true) }}"
-      mac_address: "{{ item['mac_address'] | ansible.builtin.default('', true) }}"
-      desc: "{{ item['desc'] | ansible.builtin.default('', true) }}"
-      altnames: "{{ item['altnames'] | ansible.builtin.default([], true) }}"
+      type: "{{ __pve_proxmox_nic_item['type'] | ansible.builtin.default('', true) }}"
+      mac_address: "{{ __pve_proxmox_nic_item['mac_address'] | ansible.builtin.default('', true) }}"
+      desc: "{{ __pve_proxmox_nic_item['desc'] | ansible.builtin.default('', true) }}"
+      altnames: "{{ __pve_proxmox_nic_item['altnames'] | ansible.builtin.default([], true) }}"
   # Checked per loop item on purpose: a defective first entry must not skip
   # the remaining (valid) entries.
   when:
-    - item['altnames'] is ansible.builtin.defined
-    - (item['altnames'] | ansible.builtin.length) > 0
+    - __pve_proxmox_nic_item['altnames'] is ansible.builtin.defined
+    - (__pve_proxmox_nic_item['altnames'] | ansible.builtin.length) > 0
   loop: "{{ pve_proxmox_net_altnames | ansible.builtin.default([], true) }}"
+  loop_control:
+    loop_var: "__pve_proxmox_nic_item"
   notify:
     - "pve_proxmox: reload network"
 

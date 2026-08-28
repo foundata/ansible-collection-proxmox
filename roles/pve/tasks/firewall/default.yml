@@ -32,12 +32,14 @@
 # parse problems.
 - name: "Firewall | Capture the current managed configuration files (for the validation rollback)"
   ansible.builtin.slurp:
-    src: "{{ item }}"
+    src: "{{ __pve_proxmox_fw_capture_item }}"
   register: __pve_fw_previous
   # tolerate files that do not exist yet (removed again on rollback)
   failed_when:
     - false
   loop: "{{ __pve_fw_managed_files }}"
+  loop_control:
+    loop_var: "__pve_proxmox_fw_capture_item"
   vars:
     __pve_fw_managed_files: >-
       {{
@@ -54,7 +56,7 @@
 
 - name: "Firewall | Cluster/Datacenter | Ensure needed directories exist"
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ __pve_proxmox_fw_cluster_dir_item }}"
     state: "directory"
     owner: "root"
     group: "www-data"
@@ -66,6 +68,8 @@
     - inventory_hostname == __pve_cluster_writer
   loop:
     - "/etc/pve/firewall"
+  loop_control:
+    loop_var: "__pve_proxmox_fw_cluster_dir_item"
 
 
 - name: "Firewall | Node | Ensure /etc/pve/firewall/cluster.fw exists"
@@ -128,7 +132,7 @@
 
 - name: "Firewall | Node | Ensure needed directories exist"
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ __pve_proxmox_fw_node_dir_item }}"
     state: "directory"
     owner: "root"
     group: "www-data"
@@ -136,6 +140,8 @@
   loop:
     - "/etc/pve/firewall"
     - "/etc/pve/nodes/{{ ansible_hostname }}"
+  loop_control:
+    loop_var: "__pve_proxmox_fw_node_dir_item"
 
 
 - name: "Firewall | Node | Backup existing /etc/pve/nodes/<hostname>/host.fw (best effort)"
@@ -190,19 +196,21 @@
 
 - name: "Firewall | VM/Container | Ensure needed directories exist"
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ __pve_proxmox_fw_guest_dir_item }}"
     state: "directory"
     owner: "root"
     group: "www-data"
     mode: "u=rwx,g=rx,o=rx" # 0755
   loop:
     - "/etc/pve/firewall"
+  loop_control:
+    loop_var: "__pve_proxmox_fw_guest_dir_item"
 
 
 - name: "Firewall | VM/Container | Backup existing /etc/pve/firewall/<vmid>.fw files (best effort)"
   ansible.builtin.copy:
-    src: "/etc/pve/firewall/{{ item['vmid'] }}.fw"
-    dest: "{{ __pve_tmpdir_backup['path'] }}/{{ item['vmid'] }}.fw"
+    src: "/etc/pve/firewall/{{ __pve_proxmox_fw_backup_item['vmid'] }}.fw"
+    dest: "{{ __pve_tmpdir_backup['path'] }}/{{ __pve_proxmox_fw_backup_item['vmid'] }}.fw"
     remote_src: true
     owner: "root"
     group: "root"
@@ -211,6 +219,8 @@
     - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
     - pve_proxmox_managed_vms is ansible.builtin.defined
   loop: "{{ pve_proxmox_managed_vms | ansible.builtin.default([], true) }}"
+  loop_control:
+    loop_var: "__pve_proxmox_fw_backup_item"
   failed_when:
     - false
   changed_when:
@@ -220,19 +230,21 @@
 - name: "Firewall | VM/Container | Generate firewall configuration"
   ansible.builtin.template:
     src: "firewall/vm.fw.j2"
-    dest: "/etc/pve/firewall/{{ item['vmid'] }}.fw"
+    dest: "/etc/pve/firewall/{{ __pve_proxmox_fw_guest_item['vmid'] }}.fw"
     owner: "root"
     group: "www-data"
     mode: "u=rw,g=r,o=" # 0640
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
-    vmid: "{{ item['vmid'] }}"
-    vm_options: "{{ item['options'] | ansible.builtin.default({}, true) }}"
-    vm_rules: "{{ item['rules'] | ansible.builtin.default([], true) }}"
-    vm_ipsets: "{{ item['ipsets'] | ansible.builtin.default([], true) }}"
+    vmid: "{{ __pve_proxmox_fw_guest_item['vmid'] }}"
+    vm_options: "{{ __pve_proxmox_fw_guest_item['options'] | ansible.builtin.default({}, true) }}"
+    vm_rules: "{{ __pve_proxmox_fw_guest_item['rules'] | ansible.builtin.default([], true) }}"
+    vm_ipsets: "{{ __pve_proxmox_fw_guest_item['ipsets'] | ansible.builtin.default([], true) }}"
   when:
     - pve_proxmox_managed_vms is ansible.builtin.defined
   loop: "{{ pve_proxmox_managed_vms | ansible.builtin.default([], true) }}"
+  loop_control:
+    loop_var: "__pve_proxmox_fw_guest_item"
   notify:
     - "pve_proxmox: reload pve-firewall"
 
@@ -254,7 +266,7 @@
       {%- set __pve_problems = [] -%}
       {%- for __pve_line in ((__pve_fw_compile['stdout_lines'] | ansible.builtin.default([]))
                              + (__pve_fw_compile['stderr_lines'] | ansible.builtin.default([]))) -%}
-      {%-   for __pve_path in (__pve_fw_previous['results'] | ansible.builtin.map(attribute='item') | ansible.builtin.list) -%}
+      {%-   for __pve_path in (__pve_fw_previous['results'] | ansible.builtin.map(attribute='__pve_proxmox_fw_capture_item') | ansible.builtin.list) -%}
       {%-     if __pve_line.startswith(__pve_path ~ ' (line') -%}
       {%-       set _ = __pve_problems.append(__pve_line) -%}
       {%-     endif -%}
@@ -265,8 +277,8 @@
 
 - name: "Firewall | Roll back managed firewall files (validation failed)"
   ansible.builtin.copy:
-    content: "{{ item['content'] | ansible.builtin.b64decode }}"
-    dest: "{{ item['item'] }}"
+    content: "{{ __pve_proxmox_fw_rollback_item['content'] | ansible.builtin.b64decode }}"
+    dest: "{{ __pve_proxmox_fw_rollback_item['__pve_proxmox_fw_capture_item'] }}"
     owner: "root"
     group: "www-data"
     # noqa risky-file-permissions
@@ -276,22 +288,24 @@
     # mode: "u=rw,g=r,o=r" # 0640
   loop: "{{ __pve_fw_previous['results'] }}"
   loop_control:
-    label: "{{ item['item'] }}"
+    loop_var: "__pve_proxmox_fw_rollback_item"
+    label: "{{ __pve_proxmox_fw_rollback_item['__pve_proxmox_fw_capture_item'] }}"
   when:
     - (__pve_fw_compile_problems | ansible.builtin.length) > 0
-    - item['content'] is ansible.builtin.defined
+    - __pve_proxmox_fw_rollback_item['content'] is ansible.builtin.defined
 
 
 - name: "Firewall | Remove managed firewall files that did not exist before (validation failed)"
   ansible.builtin.file:
-    path: "{{ item['item'] }}"
+    path: "{{ __pve_proxmox_fw_removal_item['__pve_proxmox_fw_capture_item'] }}"
     state: "absent"
   loop: "{{ __pve_fw_previous['results'] }}"
   loop_control:
-    label: "{{ item['item'] }}"
+    loop_var: "__pve_proxmox_fw_removal_item"
+    label: "{{ __pve_proxmox_fw_removal_item['__pve_proxmox_fw_capture_item'] }}"
   when:
     - (__pve_fw_compile_problems | ansible.builtin.length) > 0
-    - item['content'] is not ansible.builtin.defined
+    - __pve_proxmox_fw_removal_item['content'] is not ansible.builtin.defined
 
 
 - name: "Firewall | Fail on an invalid firewall configuration"

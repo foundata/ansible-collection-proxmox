@@ -122,10 +122,12 @@
   ansible.builtin.include_vars:
     file: "{{ __pve_proxmox_vars_file }}"
   vars:
-    __pve_proxmox_vars_file: "{{ role_path }}/vars/{{ item }}"
+    __pve_proxmox_vars_file: "{{ role_path }}/vars/{{ __pve_proxmox_varsfile_item }}"
   when:
     - __pve_proxmox_vars_file is ansible.builtin.file
   loop: "{{ __pve_proxmox_platform_filenames_most_specific_last }}"
+  loop_control:
+    loop_var: "__pve_proxmox_varsfile_item"
 
 
 ### PVE specific
