@@ -4,13 +4,22 @@ This repository contains the `foundata.proxmox` Ansible Collection.
 
 It provides resources to manage and different Proxmox products:
 
-* [Proxmox Virtual Environment (PVE)](https://www.proxmox.com/en/products/proxmox-virtual-environment/overview)
-* [Proxmox Backup Server (PBS)](https://www.proxmox.com/en/products/proxmox-backup-server/overview)
-* [Proxmox Datacenter Manager (PDM)](https://www.proxmox.com/en/products/proxmox-datacenter-manager/overview)
-* [Proxmox Mail Gateway (PMG)](https://www.proxmox.com/en/products/proxmox-mail-gateway/overview)
+- [Proxmox Virtual Environment (PVE)](https://www.proxmox.com/en/products/proxmox-virtual-environment/overview)
+- [Proxmox Backup Server (PBS)](https://www.proxmox.com/en/products/proxmox-backup-server/overview)
+- [Proxmox Datacenter Manager (PDM)](https://www.proxmox.com/en/products/proxmox-datacenter-manager/overview)
+- [Proxmox Mail Gateway (PMG)](https://www.proxmox.com/en/products/proxmox-mail-gateway/overview)
 
-⚠ Please note: The features, roles, and modules in this collection are stable and tested, but the **collection is still evolving and not yet fully feature-complete**. We recommend checking that the features and products you need are currently supported before use.<br> We decided to release this collection earlier than usual because we think the available functionality is already useful and worth sharing with the community.
+⚠ Please note: The features, roles, and modules in this collection are stable
+and tested, but the
+**collection is still evolving and not yet fully feature-complete**. We
+recommend checking that the features and products you need are currently
+supported before use.<br> We decided to release this collection earlier than
+usual because we think the available functionality is already useful and worth
+sharing with the community.
 
+
+<!-- Preserve the existing centered project banner. -->
+<!-- rumdl-disable MD033 -->
 
 <div align="center" id="project-readme-header">
 <br>
@@ -22,6 +31,8 @@ It provides resources to manage and different Proxmox products:
 
 <br>
 </div>
+
+<!-- rumdl-enable MD033 -->
 
 
 ## Table of contents<a id="toc"></a>
@@ -41,7 +52,10 @@ It provides resources to manage and different Proxmox products:
 
 ### Role: `foundata.proxmox.pve` (Proxmox Virtual Environment)<a id="content-role-pve"></a>
 
-The resource in this collection to configure and maintain Proxmox Virtual Environment (PVE) nodes, including network, firewall, storage, and related settings. [Its `README.md`](./roles/pve/README.md) covers configuration, usage examples, and more:
+The resource in this collection to configure and maintain Proxmox Virtual
+Environment (PVE) nodes, including network, firewall, storage, and related
+settings. [Its `README.md`](./roles/pve/README.md) covers configuration, usage
+examples, and more:
 
 <!-- ANSIBLE DOCSMITH TOC-FULL pve START -->
 - [Ansible role: `foundata.proxmox.pve`](roles/pve/README.md#ansible-role-foundataproxmoxpve)
@@ -217,9 +231,19 @@ Copyright (c) 2025, 2026, [foundata GmbH](https://foundata.com/)
 (https://foundata.com)
 <!-- rumdl-enable MD034 -->
 
-This project is licensed under the GNU General Public License v3.0 or later (SPDX-License-Identifier: `GPL-3.0-or-later`), see [`LICENSES/GPL-3.0-or-later.txt`](LICENSES/GPL-3.0-or-later.txt) for the full text.
+This project is licensed under the GNU General Public License v3.0 or later
+(SPDX-License-Identifier: `GPL-3.0-or-later`), see
+[`LICENSES/GPL-3.0-or-later.txt`](LICENSES/GPL-3.0-or-later.txt) for the full
+text.
 
-The [`REUSE.toml`](REUSE.toml) file provides detailed licensing and copyright information in a human- and machine-readable format. This includes parts that may be subject to different licensing or usage terms, such as third-party components. The repository conforms to the [REUSE specification](https://reuse.software/spec/). You can use [`reuse spdx`](https://reuse.readthedocs.io/en/latest/readme.html#cli) to create a [SPDX software bill of materials (SBOM)](https://en.wikipedia.org/wiki/Software_Package_Data_Exchange).
+The [`REUSE.toml`](REUSE.toml) file provides detailed licensing and copyright
+information in a human- and machine-readable format. This includes parts that
+may be subject to different licensing or usage terms, such as third-party
+components. The repository conforms to the
+[REUSE specification](https://reuse.software/spec/). You can use
+[`reuse spdx`](https://reuse.readthedocs.io/en/latest/readme.html#cli) to create
+a
+[SPDX software bill of materials (SBOM)](https://en.wikipedia.org/wiki/Software_Package_Data_Exchange).
 <!--REUSE-IgnoreEnd-->
 
 [![REUSE status](https://api.reuse.software/badge/github.com/foundata/ansible-collection-proxmox)](https://api.reuse.software/info/github.com/foundata/ansible-collection-proxmox)
@@ -231,4 +255,6 @@ The [`REUSE.toml`](REUSE.toml) file provides detailed licensing and copyright in
 This [project](https://foundata.com/en/projects/) was created and is maintained
 by [foundata](https://foundata.com/).
 
-Initially based on an [Ansible skeleton](https://foundata.com/en/projects/ansible-skeletons/) developed by [foundata](https://foundata.com/).
+Initially based on an
+[Ansible skeleton](https://foundata.com/en/projects/ansible-skeletons/)
+developed by [foundata](https://foundata.com/).
