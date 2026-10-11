@@ -3,6 +3,9 @@
   from other templates files: {% include 'firewall/_options_block.j2' %}
 
   Expects an 'fw_options' variable.
+
+SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+SPDX-License-Identifier: GPL-3.0-or-later
 -#}
 {%- from '_render_cfg_value.j2' import render_cfg_value -%}
 {% if fw_options is ansible.builtin.defined and fw_options | ansible.builtin.length > 0 %}

@@ -3,6 +3,9 @@
   from other templates files: {% include 'firewall/_aliases_block.j2' %}
 
   Expects an 'fw_aliases' variable.
+
+SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+SPDX-License-Identifier: GPL-3.0-or-later
 -#}
 {% if fw_aliases is ansible.builtin.defined and fw_aliases | ansible.builtin.length > 0 %}
 [ALIASES]

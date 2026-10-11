@@ -1,5 +1,8 @@
 # OS: Manage basic operating system configuration influencing
 # Proxmox Virtual Environment (PVE)
+#
+# SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
 

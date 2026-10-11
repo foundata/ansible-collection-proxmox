@@ -1,5 +1,8 @@
 # Storage: Manage basic operating system storage configuration as well as the
 # storage manager of Proxmox Virtual Environment (PVE)
+#
+# SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
 

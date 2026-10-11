@@ -3,6 +3,9 @@
   from other templates files: {% include 'firewall/_groups_block.j2' %}
 
   Expects an 'fw_securitygroups' variable.
+
+SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+SPDX-License-Identifier: GPL-3.0-or-later
 -#}
 {% if fw_securitygroups is ansible.builtin.defined and fw_securitygroups | ansible.builtin.length > 0 %}
 {%   for group in fw_securitygroups %}

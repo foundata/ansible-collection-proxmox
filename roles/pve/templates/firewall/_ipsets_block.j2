@@ -3,6 +3,9 @@
   from other templates files: {% include 'firewall/_ipsets_block.j2' %}
 
   Expects an 'fw_ipsets' variable.
+
+SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+SPDX-License-Identifier: GPL-3.0-or-later
 -#}
 {% if fw_ipsets is ansible.builtin.defined and fw_ipsets | ansible.builtin.length > 0 %}
 {%   for ipset in fw_ipsets %}

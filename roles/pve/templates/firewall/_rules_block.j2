@@ -3,6 +3,9 @@
   from other templates files: {% include 'firewall/_rules_block.j2' %}
 
   Expects an 'fw_rules' variable.
+
+SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+SPDX-License-Identifier: GPL-3.0-or-later
 -#}
 {% if fw_rules is ansible.builtin.defined and fw_rules | ansible.builtin.length > 0 %}
 [RULES]

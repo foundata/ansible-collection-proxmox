@@ -1,5 +1,8 @@
 # Check collection role "pve" outcomes: services up and reachable, rendered
 # configuration in place.
+#
+# SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 
 - name: "Molecule | Verify | pve | Gather facts needed for the checks"

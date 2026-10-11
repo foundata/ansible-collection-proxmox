@@ -1,5 +1,10 @@
 # Ansible role: `foundata.proxmox.pve`
 
+<!--
+SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 The `foundata.proxmox.pve` Ansible role (part of the `foundata.proxmox` Ansible collection).
 
 

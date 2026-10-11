@@ -1,5 +1,10 @@
 # Ansible collection: `foundata.proxmox`
 
+<!--
+SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 This repository contains the `foundata.proxmox` Ansible Collection.
 
 It provides resources to manage and different Proxmox products:

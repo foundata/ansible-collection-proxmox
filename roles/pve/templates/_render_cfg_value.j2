@@ -1,6 +1,9 @@
 {#-
   Render helper: dict -> "k=v,k2=v2", only-mapping value as-is
   Import once from other templates files: {% from '_render_cfg_value.j2' import render_cfg_value %}
+
+SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+SPDX-License-Identifier: GPL-3.0-or-later
 -#}
 {%- macro render_cfg_value(value) -%}
 {%-   if value is ansible.builtin.mapping -%}
