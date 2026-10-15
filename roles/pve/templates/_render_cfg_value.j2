@@ -6,6 +6,7 @@ SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
 SPDX-License-Identifier: GPL-3.0-or-later
 -#}
 {%- macro render_cfg_value(value) -%}
+{%- set pairs = [] -%}
 {%-   if value is ansible.builtin.mapping -%}
 {%-     set pairs = [] -%}
 {%-     for kv in value | ansible.builtin.dict2items -%}

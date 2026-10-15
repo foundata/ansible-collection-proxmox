@@ -5,18 +5,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
-
 - name: "OS | Default | Gather CPU vendor information"
   ansible.builtin.setup:
     gather_subset:
       - "hardware"
 
-
 - name: "OS | Default | Set CPU vendor fact"
   ansible.builtin.set_fact:
     __pve_cpu_vendor: >-
-      {{      'intel' if 'GenuineIntel' in ansible_processor | ansible.builtin.join(' ')
-        else ('amd' if 'AuthenticAMD' in ansible_processor | ansible.builtin.join(' ')
+      {{      'intel' if 'GenuineIntel' in ansible_facts['processor'] | ansible.builtin.join(' ')
+        else ('amd' if 'AuthenticAMD' in ansible_facts['processor'] | ansible.builtin.join(' ')
         else  'unknown') }}
 
 
@@ -28,7 +26,6 @@
         else [] }}
     state: "present"
 
-
 # The whole IOMMU block below is gated on pve_proxmox_iommu_manage: with the
 # switch off, the role neither probes nor rewrites the GRUB command line and
 # existing iommu parameters are left exactly as they are.
@@ -38,20 +35,19 @@
   # - No built-in Ansible module to read kernel ring buffer.
   # - The dmesg output is easy te evaluate via Jinja2 search filter.
   ansible.builtin.command:
-    argv: ["dmesg"]
-  changed_when:
-    - false
+    argv:
+      - "dmesg"
   when:
     - pve_proxmox_iommu_manage | ansible.builtin.bool
+  changed_when:
+    - false
   register: __pve_dmesg_output
-
 
 - name: "OS | Default | IOMMU | Set IOMMU support fact"
   ansible.builtin.set_fact:
     __pve_iommu_supported: "{{ __pve_dmesg_output['stdout'] is ansible.builtin.search('DMAR|IOMMU|AMD-Vi') }}"
   when:
     - pve_proxmox_iommu_manage | ansible.builtin.bool
-
 
 - name: "OS | Default | IOMMU | Read current GRUB configuration"
   ansible.builtin.slurp:
@@ -60,11 +56,10 @@
     - pve_proxmox_iommu_manage | ansible.builtin.bool
   register: __pve_grub_config
 
-
 - name: "OS | Default | IOMMU | Set GRUB parameters based on CPU vendor and IOMMU support"
   ansible.builtin.lineinfile:
     path: "/etc/default/grub"
-    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+    regexp: "^GRUB_CMDLINE_LINUX_DEFAULT="
     line: 'GRUB_CMDLINE_LINUX_DEFAULT="{{ __pve_grub_cmdline_final }}"'
     backrefs: false
   vars:
@@ -105,4 +100,4 @@
   when:
     - pve_proxmox_iommu_manage | ansible.builtin.bool
   notify:
-    - "pve_proxmox: update grub"
+    - "pve_proxmox_update_grub"

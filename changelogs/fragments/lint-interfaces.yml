@@ -1,0 +1,20 @@
+---
+minor_changes:
+  - >-
+    pve role - Add pve_proxmox_update_grub, pve_proxmox_reload_network and
+    pve_proxmox_restart_firewall handler topics. Retain the previous update
+    grub, reload network, restart pve-firewall and reload pve-firewall topics
+    as migration aliases until version 2.0.0.
+bugfixes:
+  - >-
+    pve role - Gather the hostname and timestamp facts used by configuration
+    and backup tasks explicitly, without relying on injected fact variables.
+  - >-
+    pve role - Read existing ZFS pools from the registered module result so
+    disabling fact injection does not misclassify existing pools as missing.
+  - >-
+    pve role - Pass managed guest firewall options, aliases, IP sets and rules
+    into the configuration template instead of leaving its section inputs unset.
+  - >-
+    pve role - Reject invalid template inputs without depending on an ambient
+    undefined variable, and identify invalid network interfaces in diagnostics.

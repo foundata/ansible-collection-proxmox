@@ -4,17 +4,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
-
 - name: "Handlers | Update grub"
   ansible.builtin.command:
-    argv: ["update-grub"]
+    argv:
+      - "update-grub"
   changed_when:
     - __pve_grub_update is ansible.builtin.success
     - __pve_grub_update['stdout'] is ansible.builtin.search('(?i)Generating')
   register: __pve_grub_update
   listen:
+    - "pve_proxmox_update_grub"
+    # Migration alias; remove in 2.0.0.
     - "pve_proxmox: update grub"
-
 
 # "reloaded" on purpose: ifupdown2's networking service reload runs
 # "ifreload -a", which only applies configuration deltas and leaves unchanged
@@ -25,13 +26,16 @@
     name: "{{ network_service_name | ansible.builtin.default('networking') }}"
     state: "reloaded"
   listen:
+    - "pve_proxmox_reload_network"
+    # Migration alias; remove in 2.0.0.
     - "pve_proxmox: reload network"
-
-
 - name: "Handlers | Restart PVE firewall (nftables)"
   ansible.builtin.service:
     name: "proxmox-firewall"
     state: "restarted"
   listen:
+    - "pve_proxmox_restart_firewall"
+    # Migration alias; remove in 2.0.0.
     - "pve_proxmox: restart pve-firewall"
-    - "pve_proxmox: reload pve-firewall" # reload is currently not applicable for unit proxmox-firewall.service
+    # Migration alias; remove in 2.0.0.
+    - "pve_proxmox: reload pve-firewall" # Migration alias; remove in 2.0.0. Reload is unavailable for proxmox-firewall.service.

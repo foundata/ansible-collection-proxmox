@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
-
 # All declared storage items are validated up front: the supported type set
 # spans the ZFS and NFS sections (a mixed declaration is legitimate and used
 # to be wrongly rejected by a type check inside the ZFS section), and the
@@ -36,16 +35,15 @@
       and 'storage_properties.path', and an encrypted 'zfs_dataset' with
       keylocation 'prompt' needs a 'passphrase'.
     quiet: true
-  loop: "{{ __pve_storage_sanitized }}"
-  loop_control:
-    loop_var: "__pve_proxmox_storage_item"
-    index_var: "__pve_storage_validate_index"
   when:
     - pve_proxmox_storage is ansible.builtin.defined
     - pve_proxmox_storage | ansible.builtin.length > 0
 
-
-### ZFS configuration
+  ### ZFS configuration
+  loop: "{{ __pve_storage_sanitized }}"
+  loop_control:
+    loop_var: "__pve_proxmox_storage_item"
+    index_var: "__pve_storage_validate_index"
 - name: "Storage | ZFS"
   when:
     - pve_proxmox_storage is ansible.builtin.defined
@@ -54,16 +52,15 @@
       | ansible.builtin.selectattr('type', 'ansible.builtin.in', ['zpool', 'zfs_dataset'])
       | ansible.builtin.list | ansible.builtin.length > 0
   block:
-
     - name: "Storage | ZFS | Ensure ZFS utilities are installed"
       ansible.builtin.package:
         name:
           - "zfsutils-linux"
         state: "present"
 
-
     - name: "Storage | ZFS | Gather existing ZFS pools"
       community.general.zpool_facts:
+      register: __pve_zpool_facts
 
 
     # ZFS Pool Management
@@ -78,6 +75,10 @@
                 | ansible.builtin.list
             })
           }}
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -86,19 +87,13 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_vdev_item"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zpool | Validate disk count for vdev types"
       ansible.builtin.assert:
         that:
-          - (vdev_item['type'] == 'stripe' and (vdev_item['disks'] | ansible.builtin.length) == 1) or
-            (vdev_item['type'] == 'mirror' and (vdev_item['disks'] | ansible.builtin.length) >= 2) or
-            (vdev_item['type'] == 'raidz1' and (vdev_item['disks'] | ansible.builtin.length) >= 2) or
-            (vdev_item['type'] == 'raidz2' and (vdev_item['disks'] | ansible.builtin.length) >= 3) or
-            (vdev_item['type'] == 'raidz3' and (vdev_item['disks'] | ansible.builtin.length) >= 4)
+          - (vdev_item['type'] == 'stripe' and (vdev_item['disks'] | ansible.builtin.length) == 1) or (vdev_item['type'] == 'mirror' and (vdev_item['disks'] |
+            ansible.builtin.length) >= 2) or (vdev_item['type'] == 'raidz1' and (vdev_item['disks'] | ansible.builtin.length) >= 2) or (vdev_item['type'] ==
+            'raidz2' and (vdev_item['disks'] | ansible.builtin.length) >= 3) or (vdev_item['type'] == 'raidz3' and (vdev_item['disks'] | ansible.builtin.length)
+            >= 4)
         fail_msg: |
           Invalid disk count for pool '{{ item['name'] }}' vdev type '{{ vdev_item['type'] }}':
           - 'stripe' requires exactly 1 disk
@@ -109,6 +104,13 @@
           You specified {{ vdev_item['disks'] | ansible.builtin.length }} disk(s)
       # subelements on purpose: every vdev of a pool has to be validated, not
       # just the first one.
+      vars:
+        item: "{{ __pve_proxmox_zpool_item[0] }}"
+        vdev_item: "{{ __pve_proxmox_zpool_item[1] }}"
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -119,14 +121,6 @@
       loop_control:
         loop_var: "__pve_proxmox_zpool_item"
         label: "{{ __pve_proxmox_zpool_item[0]['name'] }}: {{ __pve_proxmox_zpool_item[1]['type'] }}"
-      vars:
-        item: "{{ __pve_proxmox_zpool_item[0] }}"
-        vdev_item: "{{ __pve_proxmox_zpool_item[1] }}"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-
-
     - name: "Storage |  ZFS | Pool | Build disk check list"
       ansible.builtin.set_fact:
         __pve_disk_check_list: >-
@@ -138,27 +132,25 @@
               }
             ]
           }}
-      loop: "{{ __pve_zpool_all_disks | ansible.builtin.default({}) | ansible.builtin.dict2items | ansible.builtin.subelements('value') }}"
-      loop_control:
-        loop_var: "__pve_proxmox_checklist_item"
       when:
         - __pve_zpool_all_disks is ansible.builtin.defined
         - __pve_zpool_all_disks | ansible.builtin.length > 0
 
-
+      loop: "{{ __pve_zpool_all_disks | ansible.builtin.default({}) | ansible.builtin.dict2items | ansible.builtin.subelements('value') }}"
+      loop_control:
+        loop_var: "__pve_proxmox_checklist_item"
     - name: "Storage | ZFS | zpool | Check disk existence"
       ansible.builtin.stat:
         path: "{{ __pve_proxmox_disk_check_item['disk'] }}"
+      when:
+        - __pve_disk_check_list is ansible.builtin.defined
+        - __pve_disk_check_list | ansible.builtin.length > 0
+
       loop: "{{ __pve_disk_check_list | ansible.builtin.default([]) }}"
       loop_control:
         loop_var: "__pve_proxmox_disk_check_item"
         label: "{{ __pve_proxmox_disk_check_item['pool'] }}: {{ __pve_proxmox_disk_check_item['disk'] }}"
       register: __pve_storage_device_check
-      when:
-        - __pve_disk_check_list is ansible.builtin.defined
-        - __pve_disk_check_list | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zpool | Assert all disks exist"
       ansible.builtin.assert:
         that:
@@ -166,64 +158,67 @@
         fail_msg: >-
           Disk {{ __pve_proxmox_disk_assert_item['__pve_proxmox_disk_check_item']['disk'] }} does not exist
           for pool '{{ __pve_proxmox_disk_assert_item['__pve_proxmox_disk_check_item']['pool'] }}'
+      when:
+        - __pve_storage_device_check is ansible.builtin.defined
+        - __pve_storage_device_check['results'] is ansible.builtin.defined
+
       loop: "{{ __pve_storage_device_check['results'] | ansible.builtin.default([]) }}"
       loop_control:
         loop_var: "__pve_proxmox_disk_assert_item"
         label: >-
           {{ __pve_proxmox_disk_assert_item['__pve_proxmox_disk_check_item']['pool'] }}:
           {{ __pve_proxmox_disk_assert_item['__pve_proxmox_disk_check_item']['disk'] }}
-      when:
-        - __pve_storage_device_check is ansible.builtin.defined
-        - __pve_storage_device_check['results'] is ansible.builtin.defined
-
-
     - name: "Storage | ZFS | zpool | Check for existing data on disks (blkid)"
       ansible.builtin.command:
-        argv: ["blkid", "{{ __pve_proxmox_blkid_item['disk'] }}"]
+        argv:
+          - "blkid"
+          - "{{ __pve_proxmox_blkid_item['disk'] }}"
+      when:
+        - __pve_disk_check_list is ansible.builtin.defined
+        - __pve_disk_check_list | ansible.builtin.length > 0
+
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: "{{ __pve_disk_check_list | ansible.builtin.default([]) }}"
       loop_control:
         loop_var: "__pve_proxmox_blkid_item"
         label: "{{ __pve_proxmox_blkid_item['pool'] }}: {{ __pve_proxmox_blkid_item['disk'] }}"
       register: __pve_storage_blkid_check
-      failed_when:
-        - false
-      changed_when:
-        - false
-      when:
-        - __pve_disk_check_list is ansible.builtin.defined
-        - __pve_disk_check_list | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zpool | Check for ZFS labels on disks"
       ansible.builtin.shell: |
         set -o pipefail
         zdb -l {{ __pve_proxmox_zfs_label_item['disk'] | ansible.builtin.quote }} 2>/dev/null | grep -q 'name:' || exit 1
       args:
         executable: "/bin/bash"
+      when:
+        - __pve_disk_check_list is ansible.builtin.defined
+        - __pve_disk_check_list | ansible.builtin.length > 0
+
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: "{{ __pve_disk_check_list | ansible.builtin.default([]) }}"
       loop_control:
         loop_var: "__pve_proxmox_zfs_label_item"
         label: "{{ __pve_proxmox_zfs_label_item['pool'] }}: {{ __pve_proxmox_zfs_label_item['disk'] }}"
       register: __pve_storage_zfs_label_check
-      failed_when:
-        - false
-      changed_when:
-        - false
-      when:
-        - __pve_disk_check_list is ansible.builtin.defined
-        - __pve_disk_check_list | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zpool | Build pool status dictionary"
       ansible.builtin.set_fact:
         __pve_pool_exists: >-
           {{
             __pve_pool_exists | ansible.builtin.default({}) | ansible.builtin.combine({
               __pve_proxmox_pool_status_item['name']: __pve_proxmox_pool_status_item['name'] in
-                (ansible_zfs_pools | ansible.builtin.default([])
+                (__pve_zpool_facts['ansible_facts']['ansible_zfs_pools'] | ansible.builtin.default([])
                  | ansible.builtin.map(attribute='name') | ansible.builtin.list)
             })
           }}
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -232,11 +227,6 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_pool_status_item"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zpool | Analyze disk data status per pool"
       ansible.builtin.set_fact:
         __pve_storage_pool_data_status: >-
@@ -258,6 +248,10 @@
               }
             })
           }}
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -266,14 +260,22 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_pool_analyze_item"
+    - name: "Storage | ZFS | zpool | Get device details for existing pools (still needs zpool status)"
+      ansible.builtin.command:
+        argv:
+          - "zpool"
+          - "status"
+          - "{{ __pve_proxmox_zpool_status_item['name'] }}"
+          - "-P"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
+        - __pve_pool_exists[__pve_proxmox_zpool_status_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
 
-
-    - name: "Storage | ZFS | zpool | Get device details for existing pools (still needs zpool status)"
-      ansible.builtin.command:
-        argv: ["zpool", "status", "{{ __pve_proxmox_zpool_status_item['name'] }}", "-P"]
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: >-
         {{
           __pve_storage_sanitized
@@ -283,16 +285,6 @@
       loop_control:
         loop_var: "__pve_proxmox_zpool_status_item"
       register: __pve_zpool_status_detail
-      failed_when:
-        - false
-      changed_when:
-        - false
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-        - __pve_pool_exists[__pve_proxmox_zpool_status_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-
-
     - name: "Storage | ZFS | zpool | Extract device paths from zpool status"
       ansible.builtin.set_fact:
         __pve_zpool_status_devices: >-
@@ -304,16 +296,15 @@
                 | ansible.builtin.list
             })
           }}
-      loop: "{{ __pve_zpool_status_detail['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_zpool_devices_item"
       when:
         - __pve_zpool_status_detail is ansible.builtin.defined
         - __pve_zpool_status_detail['results'] is ansible.builtin.defined
         - not __pve_proxmox_zpool_devices_item['skipped'] | ansible.builtin.default(false)
         - __pve_proxmox_zpool_devices_item is ansible.builtin.success
 
-
+      loop: "{{ __pve_zpool_status_detail['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_zpool_devices_item"
     - name: "Storage | ZFS | zpool | Resolve zpool status device paths to base devices"
       # ansible.builtin.shell is used because we need to resolve symlinks and
       # strip partition suffixes in a reliable way across different device types
@@ -334,31 +325,29 @@
       vars:
         pool_name: "{{ __pve_proxmox_zpool_devpath_item[0]['key'] }}"
         zpool_device: "{{ __pve_proxmox_zpool_devpath_item[1] }}"
+      when:
+        - __pve_zpool_status_devices is ansible.builtin.defined
+        - __pve_zpool_status_devices | ansible.builtin.length > 0
+
+      changed_when:
+        - false
       loop: "{{ __pve_zpool_status_devices | ansible.builtin.default({}) | ansible.builtin.dict2items | ansible.builtin.subelements('value') }}"
       loop_control:
         loop_var: "__pve_proxmox_zpool_devpath_item"
         label: "{{ pool_name }}: {{ zpool_device }}"
       register: __pve_zpool_status_devices_resolved
-      changed_when:
-        - false
-      when:
-        - __pve_zpool_status_devices is ansible.builtin.defined
-        - __pve_zpool_status_devices | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zpool | Resolve by-id paths to actual disk paths"
       ansible.builtin.stat:
         path: "{{ __pve_proxmox_disk_resolve_item['disk'] }}"
+      when:
+        - __pve_disk_check_list is ansible.builtin.defined
+        - __pve_disk_check_list | ansible.builtin.length > 0
+
       loop: "{{ __pve_disk_check_list | ansible.builtin.default([]) }}"
       loop_control:
         loop_var: "__pve_proxmox_disk_resolve_item"
         label: "{{ __pve_proxmox_disk_resolve_item['pool'] }}: {{ __pve_proxmox_disk_resolve_item['disk'] }}"
       register: __pve_zpool_device_resolution
-      when:
-        - __pve_disk_check_list is ansible.builtin.defined
-        - __pve_disk_check_list | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zpool | Build disk mapping for each pool"
       ansible.builtin.set_fact:
         __pve_zpool_device_map: >-
@@ -383,13 +372,12 @@
               ]
             })
           }}
-      loop: "{{ __pve_zpool_device_resolution['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_diskmap_item"
       when:
         - __pve_zpool_device_resolution is ansible.builtin.defined
 
-
+      loop: "{{ __pve_zpool_device_resolution['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_diskmap_item"
     - name: "Storage | ZFS | zpool | Build actual devices dictionary"
       ansible.builtin.set_fact:
         __pve_zpool_actual_devices: >-
@@ -412,15 +400,14 @@
           }}
       vars:
         pool_name: "{{ __pve_proxmox_actualdev_item['key'] }}"
-      loop: "{{ __pve_zpool_status_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
-      loop_control:
-        loop_var: "__pve_proxmox_actualdev_item"
-        label: "{{ pool_name }}"
       when:
         - __pve_zpool_status_devices is ansible.builtin.defined
         - __pve_zpool_status_devices_resolved is ansible.builtin.defined
 
-
+      loop: "{{ __pve_zpool_status_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
+      loop_control:
+        loop_var: "__pve_proxmox_actualdev_item"
+        label: "{{ pool_name }}"
     - name: "Storage | ZFS | zpool | Check for non-existent disks"
       ansible.builtin.set_fact:
         __pve_zpool_missing_devices: >-
@@ -432,10 +419,6 @@
                 | ansible.builtin.list)
             })
           }}
-      loop: "{{ __pve_zpool_device_map | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
-      loop_control:
-        loop_var: "__pve_proxmox_zpool_item"
-        label: "{{ __pve_proxmox_zpool_item['key'] }}"
       vars:
         pool_name: "{{ __pve_proxmox_zpool_item['key'] }}"
         device_map: "{{ __pve_proxmox_zpool_item['value'] }}"
@@ -448,6 +431,10 @@
           | ansible.builtin.list | ansible.builtin.length > 0
 
 
+      loop: "{{ __pve_zpool_device_map | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
+      loop_control:
+        loop_var: "__pve_proxmox_zpool_item"
+        label: "{{ __pve_proxmox_zpool_item['key'] }}"
     - name: "Storage | ZFS | zpool | Fail if configured disks don't exist"
       ansible.builtin.fail:
         msg: |
@@ -479,14 +466,13 @@
           4. Update Ansible variables with correct paths
 
           Cannot proceed with pool creation until disks are available.
-      loop: "{{ __pve_zpool_missing_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
-      loop_control:
-        loop_var: "__pve_proxmox_missingdisk_item"
       when:
         - __pve_zpool_missing_devices is ansible.builtin.defined
         - __pve_zpool_missing_devices | ansible.builtin.length > 0
 
-
+      loop: "{{ __pve_zpool_missing_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
+      loop_control:
+        loop_var: "__pve_proxmox_missingdisk_item"
     - name: "Storage | ZFS | zpool | Validate existing pool configuration matches expectations"
       ansible.builtin.assert:
         that:
@@ -545,14 +531,6 @@
               {% endfor %}
               # Then re-run this playbook
         success_msg: "Pool '{{ __pve_proxmox_poolvalidate_item['name'] }}' exists with correct disk configuration"
-      loop: >-
-        {{
-          __pve_storage_sanitized
-          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
-          | ansible.builtin.list
-        }}
-      loop_control:
-        loop_var: "__pve_proxmox_poolvalidate_item"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -564,26 +542,33 @@
           | ansible.builtin.list | ansible.builtin.length > 0
 
 
+      loop: >-
+        {{
+          __pve_storage_sanitized
+          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
+          | ansible.builtin.list
+        }}
+      loop_control:
+        loop_var: "__pve_proxmox_poolvalidate_item"
     - name: "Storage | ZFS | zpool | Check which pool owns disks with ZFS labels"
       ansible.builtin.shell: |
         set -o pipefail
         zdb -l {{ __pve_proxmox_pool_owner_item['disk'] | ansible.builtin.quote }} 2>/dev/null | grep -oP '(?<=name: '\'')[^'\'']+' || echo "none"
       args:
         executable: "/bin/bash"
+      when:
+        - __pve_disk_check_list is ansible.builtin.defined
+        - __pve_disk_check_list | ansible.builtin.length > 0
+
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: "{{ __pve_disk_check_list | ansible.builtin.default([]) }}"
       loop_control:
         loop_var: "__pve_proxmox_pool_owner_item"
         label: "{{ __pve_proxmox_pool_owner_item['pool'] }}: {{ __pve_proxmox_pool_owner_item['disk'] }}"
       register: __pve_storage_zfs_pool_owner
-      failed_when:
-        - false
-      changed_when:
-        - false
-      when:
-        - __pve_disk_check_list is ansible.builtin.defined
-        - __pve_disk_check_list | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zpool | Detect disks belonging to different pools"
       ansible.builtin.set_fact:
         __pve_storage_wrong_pool_devices: >-
@@ -600,15 +585,14 @@
               ]
             })
           }}
-      loop: "{{ __pve_storage_zfs_pool_owner['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_wrong_pool_item"
       when:
         - __pve_proxmox_wrong_pool_item['stdout'] is ansible.builtin.defined
         - __pve_proxmox_wrong_pool_item['stdout'] | ansible.builtin.trim != 'none'
         - __pve_proxmox_wrong_pool_item['stdout'] | ansible.builtin.trim != __pve_proxmox_wrong_pool_item['__pve_proxmox_pool_owner_item']['pool']
 
-
+      loop: "{{ __pve_storage_zfs_pool_owner['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_wrong_pool_item"
     - name: "Storage | ZFS | zpool | Fail if disks belong to different pools"
       ansible.builtin.fail:
         msg: |
@@ -636,14 +620,13 @@
 
           DO NOT set pve_proxmox_storage_force_cleanup=true to bypass this check!
           This requires manual verification to prevent data loss.
-      loop: "{{ __pve_storage_wrong_pool_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
-      loop_control:
-        loop_var: "__pve_proxmox_wrong_pool_fail_item"
       when:
         - __pve_storage_wrong_pool_devices is ansible.builtin.defined
         - __pve_storage_wrong_pool_devices | ansible.builtin.length > 0
 
-
+      loop: "{{ __pve_storage_wrong_pool_devices | ansible.builtin.default({}) | ansible.builtin.dict2items }}"
+      loop_control:
+        loop_var: "__pve_proxmox_wrong_pool_fail_item"
     - name: "Storage | ZFS | zpool | Fail if disks have data but pool doesn't exist as expected"
       ansible.builtin.fail:
         msg: |
@@ -684,14 +667,6 @@
           ALTERNATIVE: Set 'pve_proxmox_storage_force_cleanup: true' to automatically wipe disks.
           WARNING: This will DESTROY ALL DATA on these disks!
           Only use this if you are CERTAIN the data is not needed.
-      loop: >-
-        {{
-          __pve_storage_sanitized
-          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
-          | ansible.builtin.list
-        }}
-      loop_control:
-        loop_var: "__pve_proxmox_pool_data_fail_item"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -700,14 +675,20 @@
         - not (pve_proxmox_storage_force_cleanup | ansible.builtin.default(false) | ansible.builtin.bool)
         - __pve_proxmox_pool_data_fail_item['name'] not in (__pve_storage_wrong_pool_devices | ansible.builtin.default({}) | ansible.builtin.list)
 
-
+      loop: >-
+        {{
+          __pve_storage_sanitized
+          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
+          | ansible.builtin.list
+        }}
+      loop_control:
+        loop_var: "__pve_proxmox_pool_data_fail_item"
     - name: "Storage | ZFS | zpool | Clean disks - wipe filesystem signatures (DESTRUCTIVE)"
       ansible.builtin.command:
-        argv: ["wipefs", "-a", "{{ __pve_proxmox_wipe_item['disk'] }}"]
-      loop: "{{ __pve_disk_check_list | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_wipe_item"
-        label: "{{ __pve_proxmox_wipe_item['pool'] }}: wipefs {{ __pve_proxmox_wipe_item['disk'] }}"
+        argv:
+          - "wipefs"
+          - "-a"
+          - "{{ __pve_proxmox_wipe_item['disk'] }}"
       when:
         - __pve_disk_check_list is ansible.builtin.defined
         - __pve_disk_check_list | ansible.builtin.length > 0
@@ -717,14 +698,17 @@
       changed_when:
         - true
 
-
-    - name: "Storage | ZFS | zpool | Clean disks - clear ZFS labels (best effort) (DESTRUCTIVE)"
-      ansible.builtin.command:
-        argv: ["zpool", "labelclear", "-f", "{{ __pve_proxmox_zfs_label_clear_item['disk'] }}"]
       loop: "{{ __pve_disk_check_list | ansible.builtin.default([]) }}"
       loop_control:
-        loop_var: "__pve_proxmox_zfs_label_clear_item"
-        label: "{{ __pve_proxmox_zfs_label_clear_item['pool'] }}: labelclear {{ __pve_proxmox_zfs_label_clear_item['disk'] }}"
+        loop_var: "__pve_proxmox_wipe_item"
+        label: "{{ __pve_proxmox_wipe_item['pool'] }}: wipefs {{ __pve_proxmox_wipe_item['disk'] }}"
+    - name: "Storage | ZFS | zpool | Clean disks - clear ZFS labels (best effort) (DESTRUCTIVE)"
+      ansible.builtin.command:
+        argv:
+          - "zpool"
+          - "labelclear"
+          - "-f"
+          - "{{ __pve_proxmox_zfs_label_clear_item['disk'] }}"
       when:
         - __pve_disk_check_list is ansible.builtin.defined
         - __pve_disk_check_list | ansible.builtin.length > 0
@@ -736,14 +720,17 @@
       failed_when:
         - false
 
-
+      loop: "{{ __pve_disk_check_list | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_zfs_label_clear_item"
+        label: "{{ __pve_proxmox_zfs_label_clear_item['pool'] }}: labelclear {{ __pve_proxmox_zfs_label_clear_item['disk'] }}"
     - name: "Storage | ZFS | zpool | Ensure mountpoint directories"
       ansible.builtin.file:
         path: "{{ __pve_zfs_mountpoint }}"
         state: "directory"
         owner: "root"
         group: "root"
-        mode: "u=rwx,g=rx,o=rx"  # 0755
+        mode: "u=rwx,g=rx,o=rx" # 0755
       vars:
         __pve_zfs_mountpoint: "{{ __pve_proxmox_pool_mountdir_item['attributes']['zfs_properties']['mountpoint'] | ansible.builtin.default('') }}"
       when:
@@ -760,7 +747,6 @@
       loop_control:
         loop_var: "__pve_proxmox_pool_mountdir_item"
 
-
     - name: "Storage | ZFS | zpool | Create ZFS pools"
       community.general.zpool:
         name: "{{ __pve_proxmox_pool_create_item['name'] }}"
@@ -773,6 +759,11 @@
         disable_new_features: >-
           {{ __pve_proxmox_pool_create_item['attributes']['disable_new_features']
              | ansible.builtin.default(false) | ansible.builtin.bool }}
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+        - not __pve_storage_pool_data_status[__pve_proxmox_pool_create_item['name']]['exists'] | ansible.builtin.default(false) | ansible.builtin.bool
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -781,12 +772,6 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_pool_create_item"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-        - not __pve_storage_pool_data_status[__pve_proxmox_pool_create_item['name']]['exists'] | ansible.builtin.default(false) | ansible.builtin.bool
-
-
     - name: "Storage | ZFS | zpool | Update pool properties if pool exists"
       community.general.zfs:
         name: "{{ __pve_proxmox_pool_update_item['name'] }}"
@@ -800,14 +785,6 @@
             | ansible.builtin.rejectattr('key', 'ansible.builtin.in', ['encryption', 'keyformat', 'keylocation', 'passphrase', 'passphrase_old'])
             | ansible.builtin.items2dict
           }}
-      loop: >-
-        {{
-          __pve_storage_sanitized
-          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
-          | ansible.builtin.list
-        }}
-      loop_control:
-        loop_var: "__pve_proxmox_pool_update_item"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -816,11 +793,26 @@
         # field, gating on it made this reconciliation dead code
         - __pve_proxmox_pool_update_item['attributes']['zfs_properties'] is ansible.builtin.defined
 
-
+      loop: >-
+        {{
+          __pve_storage_sanitized
+          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zpool')
+          | ansible.builtin.list
+        }}
+      loop_control:
+        loop_var: "__pve_proxmox_pool_update_item"
     - name: "Storage | ZFS | zfs_dataset | Gather existing ZFS datasets"
       community.general.zfs_facts:
         name: "{{ __pve_proxmox_dataset_facts_item['name'] }}"
         type: "all"
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: >-
         {{
           __pve_storage_sanitized
@@ -830,15 +822,6 @@
       loop_control:
         loop_var: "__pve_proxmox_dataset_facts_item"
       register: __pve_zfs_dataset_facts
-      failed_when:
-        - false
-      changed_when:
-        - false
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zfs_dataset | Build zfs_dataset existence map"
       ansible.builtin.set_fact:
         __pve_zfs_dataset_exists: >-
@@ -849,13 +832,12 @@
                  | ansible.builtin.default([]) | ansible.builtin.length > 0)
             })
           }}
-      loop: "{{ __pve_zfs_dataset_facts['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_dataset_map_item"
       when:
         - __pve_zfs_dataset_facts is ansible.builtin.defined
 
-
+      loop: "{{ __pve_zfs_dataset_facts['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_dataset_map_item"
     - name: "Storage | ZFS | zfs_dataset | Create encrypted ZFS volumes with prompt-based passphrase"
       # community.general.zfs cannot handle keylocation "prompt". The
       # passphrase is passed via stdin on purpose (zfs reads the key from
@@ -877,14 +859,6 @@
           {%- set _ = __pve_zfs_create_args.append(__pve_proxmox_dataset_enc_prompt_item['name']) -%}
           {{ __pve_zfs_create_args }}
         stdin: "{{ __pve_proxmox_dataset_enc_prompt_item['attributes']['zfs_properties']['passphrase'] }}"
-      loop: >-
-        {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
-          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
-          | ansible.builtin.list
-        }}
-      loop_control:
-        loop_var: "__pve_proxmox_dataset_enc_prompt_item"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -893,8 +867,15 @@
         - __pve_proxmox_dataset_enc_prompt_item['attributes']['zfs_properties']['keylocation'] | ansible.builtin.default('prompt') == 'prompt'
       changed_when:
         - true
+      loop: >-
+        {{
+          pve_proxmox_storage | ansible.builtin.default([], true)
+          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
+          | ansible.builtin.list
+        }}
+      loop_control:
+        loop_var: "__pve_proxmox_dataset_enc_prompt_item"
       no_log: true
-
 
     - name: "Storage | ZFS | zfs_dataset | Create encrypted ZFS volumes with non-prompt-based key (like file://)"
       # ansible.builtin.shell is used because community.general.zfs cannot handle
@@ -913,14 +894,6 @@
         {{ __pve_proxmox_dataset_enc_key_item['name'] | ansible.builtin.quote }}
       args:
         executable: "/bin/bash"
-      loop: >-
-        {{
-          __pve_storage_sanitized
-          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
-          | ansible.builtin.list
-        }}
-      loop_control:
-        loop_var: "__pve_proxmox_dataset_enc_key_item"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -931,7 +904,14 @@
       changed_when:
         - true
 
-
+      loop: >-
+        {{
+          __pve_storage_sanitized
+          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
+          | ansible.builtin.list
+        }}
+      loop_control:
+        loop_var: "__pve_proxmox_dataset_enc_key_item"
     - name: "Storage | ZFS | zfs_dataset | Ensure mountpoint directories"
       ansible.builtin.file:
         path: "{{ __pve_zfs_mountpoint }}"
@@ -955,12 +935,17 @@
       loop_control:
         loop_var: "__pve_proxmox_dataset_mountdir_item"
 
-
     - name: "Storage | ZFS | zfs_dataset | Create non-encrypted ZFS volumes"
       community.general.zfs:
         name: "{{ __pve_proxmox_dataset_plain_item['name'] }}"
         state: "present"
         extra_zfs_properties: "{{ __pve_proxmox_dataset_plain_item['attributes']['zfs_properties'] | ansible.builtin.default({}) }}"
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+        - not __pve_zfs_dataset_exists[__pve_proxmox_dataset_plain_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+        - __pve_proxmox_dataset_plain_item['attributes']['zfs_properties']['encryption'] is not ansible.builtin.defined
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -969,13 +954,6 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_dataset_plain_item"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-        - not __pve_zfs_dataset_exists[__pve_proxmox_dataset_plain_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-        - __pve_proxmox_dataset_plain_item['attributes']['zfs_properties']['encryption'] is not ansible.builtin.defined
-
-
     - name: "Storage | ZFS | zfs_dataset | Update properties on existing non-encrypted ZFS volumes"
       community.general.zfs:
         name: "{{ __pve_proxmox_dataset_update_item['name'] }}"
@@ -987,6 +965,11 @@
             | ansible.builtin.rejectattr('key', 'ansible.builtin.in', ['encryption', 'keyformat', 'keylocation', 'passphrase', 'passphrase_old'])
             | ansible.builtin.items2dict
           }}
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+        - __pve_zfs_dataset_exists[__pve_proxmox_dataset_update_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -995,15 +978,26 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_dataset_update_item"
+    - name: "Storage | ZFS | zfs_dataset | Check encryption status of existing volumes"
+      ansible.builtin.command:
+        argv:
+          - "zfs"
+          - "get"
+          - "-H"
+          - "-o"
+          - "value"
+          - "encryption"
+          - "{{ __pve_proxmox_dataset_enc_item['name'] }}"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
-        - __pve_zfs_dataset_exists[__pve_proxmox_dataset_update_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+        - __pve_zfs_dataset_exists[__pve_proxmox_dataset_enc_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+        - __pve_proxmox_dataset_enc_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
 
-
-    - name: "Storage | ZFS | zfs_dataset | Check encryption status of existing volumes"
-      ansible.builtin.command:
-        argv: ["zfs", "get", "-H", "-o", "value", "encryption", "{{ __pve_proxmox_dataset_enc_item['name'] }}"]
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1013,17 +1007,6 @@
       loop_control:
         loop_var: "__pve_proxmox_dataset_enc_item"
       register: __pve_zfs_dataset_encryption_check
-      changed_when:
-        - false
-      failed_when:
-        - false
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-        - __pve_zfs_dataset_exists[__pve_proxmox_dataset_enc_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-        - __pve_proxmox_dataset_enc_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
-
-
     - name: "Storage | ZFS | zfs_dataset | Manage encryption key changes"
       # The dataset name and the passphrases are passed via the environment on
       # purpose: embedded in the command text they would be world-readable in
@@ -1087,6 +1070,10 @@
             exit 1
           fi
         executable: "/bin/bash"
+      vars:
+        __pve_zfs_passes_old_raw: "{{ __pve_proxmox_passphrase_item['attributes']['zfs_properties']['passphrase_old'] | ansible.builtin.default('') }}"
+        # YAML (not Jinja) escape processing yields the real newline character.
+        __pve_zfs_newline: "\n"
       environment:
         __PVE_ZFS_DATASET: "{{ __pve_proxmox_passphrase_item['name'] }}"
         __PVE_ZFS_PASS_NEW: "{{ __pve_proxmox_passphrase_item['attributes']['zfs_properties']['passphrase'] }}"
@@ -1098,20 +1085,6 @@
              else (__pve_zfs_passes_old_raw | ansible.builtin.default([], true)))
             | ansible.builtin.join(__pve_zfs_newline)
           }}
-      vars:
-        __pve_zfs_passes_old_raw: "{{ __pve_proxmox_passphrase_item['attributes']['zfs_properties']['passphrase_old'] | ansible.builtin.default('') }}"
-        # YAML (not Jinja) escape processing yields the real newline character.
-        __pve_zfs_newline: "\n"
-      loop: >-
-        {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
-          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
-          | ansible.builtin.list
-        }}
-      loop_control:
-        loop_var: "__pve_proxmox_passphrase_item"
-        label: "{{ __pve_proxmox_passphrase_item['name'] }}"
-      register: __pve_zfs_passphrase_change
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -1123,12 +1096,38 @@
       changed_when:
         - __pve_zfs_passphrase_change is ansible.builtin.success
         - "'SUCCESS' in __pve_zfs_passphrase_change['stdout']"
+      loop: >-
+        {{
+          pve_proxmox_storage | ansible.builtin.default([], true)
+          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
+          | ansible.builtin.list
+        }}
+      loop_control:
+        loop_var: "__pve_proxmox_passphrase_item"
+        label: "{{ __pve_proxmox_passphrase_item['name'] }}"
+      register: __pve_zfs_passphrase_change
       no_log: true
-
 
     - name: "Storage | ZFS | zfs_dataset | Check if encryption keys are loaded"
       ansible.builtin.command:
-        argv: ["zfs", "get", "-H", "-o", "value", "keystatus", "{{ __pve_proxmox_keystatus_item['name'] }}"]
+        argv:
+          - "zfs"
+          - "get"
+          - "-H"
+          - "-o"
+          - "value"
+          - "keystatus"
+          - "{{ __pve_proxmox_keystatus_item['name'] }}"
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+        - __pve_zfs_dataset_exists[__pve_proxmox_keystatus_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+        - __pve_proxmox_keystatus_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
+
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: >-
         {{
           pve_proxmox_storage | ansible.builtin.default([], true)
@@ -1142,29 +1141,17 @@
         # not print them.
         label: "{{ __pve_proxmox_keystatus_item['name'] }}"
       register: __pve_zfs_dataset_keystatus
-      changed_when:
-        - false
-      failed_when:
-        - false
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-        - __pve_zfs_dataset_exists[__pve_proxmox_keystatus_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-        - __pve_proxmox_keystatus_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
-
-
     - name: "Storage | ZFS | zfs_dataset | Load encryption keys for volumes with prompt-based passphrase"
       # The passphrase is passed via stdin on purpose (zfs reads the key from
       # stdin when it is not a TTY): embedded in the command text it would be
       # world-readable in the process list (/proc/<pid>/cmdline) of the host
       # while the command runs.
       ansible.builtin.command:
-        argv: ["zfs", "load-key", "{{ __pve_proxmox_keyload_prompt_item['__pve_proxmox_keystatus_item']['name'] }}"]
+        argv:
+          - "zfs"
+          - "load-key"
+          - "{{ __pve_proxmox_keyload_prompt_item['__pve_proxmox_keystatus_item']['name'] }}"
         stdin: "{{ __pve_proxmox_keyload_prompt_item['__pve_proxmox_keystatus_item']['attributes']['zfs_properties']['passphrase'] }}"
-      loop: "{{ __pve_zfs_dataset_keystatus['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_keyload_prompt_item"
-        label: "{{ __pve_proxmox_keyload_prompt_item['__pve_proxmox_keystatus_item']['name'] }}"
       when:
         - __pve_zfs_dataset_keystatus is ansible.builtin.defined
         - not __pve_proxmox_keyload_prompt_item['skipped'] | ansible.builtin.default(false)
@@ -1174,16 +1161,18 @@
           | ansible.builtin.default('prompt') == 'prompt'
       changed_when:
         - true
+      loop: "{{ __pve_zfs_dataset_keystatus['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_keyload_prompt_item"
+        label: "{{ __pve_proxmox_keyload_prompt_item['__pve_proxmox_keystatus_item']['name'] }}"
       no_log: true
-
 
     - name: "Storage | ZFS | zfs_dataset | Load encryption keys for volumes with non-promt-based keys (like file://)"
       ansible.builtin.command:
-        argv: ["zfs", "load-key", "{{ __pve_proxmox_keyload_key_item['__pve_proxmox_keystatus_item']['name'] }}"]
-      loop: "{{ __pve_zfs_dataset_keystatus['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_keyload_key_item"
-        label: "{{ __pve_proxmox_keyload_key_item['__pve_proxmox_keystatus_item']['name'] }}"
+        argv:
+          - "zfs"
+          - "load-key"
+          - "{{ __pve_proxmox_keyload_key_item['__pve_proxmox_keystatus_item']['name'] }}"
       when:
         - __pve_zfs_dataset_keystatus is ansible.builtin.defined
         - not __pve_proxmox_keyload_key_item['skipped'] | ansible.builtin.default(false)
@@ -1193,14 +1182,16 @@
       changed_when:
         - true
 
-
-    - name: "Storage | ZFS | zfs_dataset | Mount encrypted volumes after key load"
-      ansible.builtin.command:
-        argv: ["zfs", "mount", "{{ __pve_proxmox_keymount_item['__pve_proxmox_keystatus_item']['name'] }}"]
       loop: "{{ __pve_zfs_dataset_keystatus['results'] | ansible.builtin.default([]) }}"
       loop_control:
-        loop_var: "__pve_proxmox_keymount_item"
-        label: "{{ __pve_proxmox_keymount_item['__pve_proxmox_keystatus_item']['name'] }}"
+        loop_var: "__pve_proxmox_keyload_key_item"
+        label: "{{ __pve_proxmox_keyload_key_item['__pve_proxmox_keystatus_item']['name'] }}"
+    - name: "Storage | ZFS | zfs_dataset | Mount encrypted volumes after key load"
+      ansible.builtin.command:
+        argv:
+          - "zfs"
+          - "mount"
+          - "{{ __pve_proxmox_keymount_item['__pve_proxmox_keystatus_item']['name'] }}"
       when:
         - __pve_zfs_dataset_keystatus is ansible.builtin.defined
         - not __pve_proxmox_keymount_item['skipped'] | ansible.builtin.default(false)
@@ -1210,11 +1201,20 @@
       failed_when:
         - false
 
-
+      loop: "{{ __pve_zfs_dataset_keystatus['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_keymount_item"
+        label: "{{ __pve_proxmox_keymount_item['__pve_proxmox_keystatus_item']['name'] }}"
     - name: "Storage | ZFS | zfs_dataset | Verify volume creation (by gathering facts)"
       community.general.zfs_facts:
         name: "{{ __pve_proxmox_dataset_verify_item['name'] }}"
         type: "filesystem"
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
+      changed_when:
+        - false
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1223,13 +1223,6 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_dataset_verify_item"
-      changed_when:
-        - false
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-
-
     - name: "Storage | ZFS | zfs_dataset | Encryption key notice"
       ansible.builtin.debug:
         msg: |
@@ -1244,6 +1237,13 @@
           - Use the -a option instead of the single item names to handle all at once.
           - To ensure the target cannot be accessed without a password during runtime,
             use "zfs unmount" followed by "zfs unload-key".
+        verbosity: 0
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+        - __pve_proxmox_dataset_notice_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
+
+      #### NFS Configuration
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1252,25 +1252,16 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_dataset_notice_item"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-        - __pve_proxmox_dataset_notice_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
-
-
-#### NFS Configuration
 - name: "Storage | NFS"
   when:
     - pve_proxmox_storage is ansible.builtin.defined
     - pve_proxmox_storage | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'nfs') | ansible.builtin.list | ansible.builtin.length > 0
   block:
-
     - name: "Storage | NFS | Ensure NFS client packages are installed"
       ansible.builtin.package:
         name:
           - "nfs-common"
         state: "present"
-
 
     - name: "Storage | NFS | Validate all NFS configurations"
       ansible.builtin.assert:
@@ -1280,6 +1271,10 @@
         fail_msg: |
           NFS mount '{{ __pve_proxmox_nfs_item['name'] }}' is missing required properties.
           Required: 'src' (NFS server and export) and 'path' (local mountpoint)
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1288,18 +1283,17 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_nfs_item"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-
-
     - name: "Storage | NFS | Ensure mountpoint directories"
       ansible.builtin.file:
         path: "{{ __pve_proxmox_nfs_mountdir_item['attributes']['storage_properties']['path'] }}"
         state: "directory"
         owner: "root"
         group: "root"
-        mode: "u=rwx,g=rx,o=rx"  # 0755
+        mode: "u=rwx,g=rx,o=rx" # 0755
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1308,14 +1302,20 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_nfs_mountdir_item"
+    - name: "Storage | NFS | Check if NFS server is reachable"
+      ansible.builtin.command:
+        argv:
+          - "showmount"
+          - "-e"
+          - "{{ __pve_proxmox_nfs_reach_item['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
 
-
-    - name: "Storage | NFS | Check if NFS server is reachable"
-      ansible.builtin.command:
-        argv: ["showmount", "-e", "{{ __pve_proxmox_nfs_reach_item['attributes']['storage_properties']['src'] | ansible.builtin.regex_replace(':.*$', '') }}"]
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1325,15 +1325,6 @@
       loop_control:
         loop_var: "__pve_proxmox_nfs_reach_item"
       register: __pve_nfs_server_check
-      changed_when:
-        - false
-      failed_when:
-        - false
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-
-
     - name: "Storage | NFS | Warn about unreachable NFS servers"
       ansible.builtin.debug:
         msg: |
@@ -1348,19 +1339,32 @@
              | ansible.builtin.regex_replace(':.*$', '') }}
             showmount -e {{ __pve_proxmox_nfs_warn_item['__pve_proxmox_nfs_reach_item']['attributes']['storage_properties']['src']
              | ansible.builtin.regex_replace(':.*$', '') }}
+        verbosity: 0
+      when:
+        - __pve_nfs_server_check is ansible.builtin.defined
+        - (__pve_proxmox_nfs_warn_item['rc'] | ansible.builtin.default(0)) != 0
+
       loop: "{{ __pve_nfs_server_check['results'] | ansible.builtin.default([]) }}"
       # The check task uses "failed_when: false", so every result registers as
       # a success; only the return code tells whether showmount worked.
       loop_control:
         loop_var: "__pve_proxmox_nfs_warn_item"
-      when:
-        - __pve_nfs_server_check is ansible.builtin.defined
-        - (__pve_proxmox_nfs_warn_item['rc'] | ansible.builtin.default(0)) != 0
-
-
     - name: "Storage | NFS | Check current mount status"
       ansible.builtin.command:
-        argv: ["findmnt", "-n", "-o", "SOURCE", "{{ __pve_proxmox_nfs_mount_item['attributes']['storage_properties']['path'] }}"]
+        argv:
+          - "findmnt"
+          - "-n"
+          - "-o"
+          - "SOURCE"
+          - "{{ __pve_proxmox_nfs_mount_item['attributes']['storage_properties']['path'] }}"
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1370,15 +1374,6 @@
       loop_control:
         loop_var: "__pve_proxmox_nfs_mount_item"
       register: __pve_nfs_current_mounts
-      changed_when:
-        - false
-      failed_when:
-        - false
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-
-
     - name: "Storage | NFS | Build mount status dictionary"
       ansible.builtin.set_fact:
         __pve_nfs_mount_status: >-
@@ -1390,13 +1385,12 @@
               }
             })
           }}
-      loop: "{{ __pve_nfs_current_mounts['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_nfs_status_item"
       when:
         - __pve_nfs_current_mounts is ansible.builtin.defined
 
-
+      loop: "{{ __pve_nfs_current_mounts['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_nfs_status_item"
     - name: "Storage | NFS | Mount NFS shares"
       ansible.posix.mount:
         src: "{{ __pve_proxmox_nfs_mount_do_item['attributes']['storage_properties']['src'] }}"
@@ -1405,6 +1399,10 @@
         opts: "{{ __pve_proxmox_nfs_mount_do_item['attributes']['storage_properties']['opts'] | ansible.builtin.default('defaults') }}"
         state: "{{ __pve_proxmox_nfs_mount_do_item['attributes']['storage_properties']['state'] | ansible.builtin.default('mounted') }}"
         backup: false
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1413,14 +1411,21 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_nfs_mount_do_item"
+    - name: "Storage | NFS | Verify mounts are accessible"
+      ansible.builtin.command:
+        argv:
+          - "mountpoint"
+          - "-q"
+          - "{{ __pve_proxmox_nfs_verify_item['attributes']['storage_properties']['path'] }}"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
+        - __pve_proxmox_nfs_verify_item['attributes']['storage_properties']['state'] | ansible.builtin.default('mounted') == 'mounted'
 
-
-    - name: "Storage | NFS | Verify mounts are accessible"
-      ansible.builtin.command:
-        argv: ["mountpoint", "-q", "{{ __pve_proxmox_nfs_verify_item['attributes']['storage_properties']['path'] }}"]
+      changed_when:
+        - false
+      failed_when:
+        - false
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1430,16 +1435,6 @@
       loop_control:
         loop_var: "__pve_proxmox_nfs_verify_item"
       register: __pve_nfs_mount_verify
-      changed_when:
-        - false
-      failed_when:
-        - false
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-        - __pve_proxmox_nfs_verify_item['attributes']['storage_properties']['state'] | ansible.builtin.default('mounted') == 'mounted'
-
-
     - name: "Storage | NFS | Report mount verification results"
       ansible.builtin.debug:
         msg: |
@@ -1452,20 +1447,19 @@
              }}' at {{ __pve_proxmox_nfs_report_item['__pve_proxmox_nfs_verify_item']['attributes']['storage_properties']['path']
              }} is NOT properly mounted
           {% endif %}
-      loop: "{{ __pve_nfs_mount_verify['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_nfs_report_item"
+        verbosity: 0
       when:
         - __pve_nfs_mount_verify is ansible.builtin.defined
 
-
-### Proxmox Storage Manager Configuration
+      ### Proxmox Storage Manager Configuration
+      loop: "{{ __pve_nfs_mount_verify['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_nfs_report_item"
 - name: "Storage | pvesm"
   when:
     - pve_proxmox_sm is ansible.builtin.defined
     - pve_proxmox_sm | ansible.builtin.length > 0
   block:
-
     - name: "Storage | pvesm | Ensure storage configuration file exists"
       ansible.builtin.file:
         path: "/etc/pve/storage.cfg"
@@ -1473,21 +1467,23 @@
         owner: "root"
         group: "www-data"
         # noqa risky-file-permissions
-        modification_time: "preserve"
         access_time: "preserve"
 
-
+        modification_time: "preserve"
     - name: "Storage | pvesm | Get existing storage configurations"
       ansible.builtin.command:
         # sadly, no "--output-format json"
-        argv: ["pvesm", "status", "--enabled", "0"]
-      register: __pve_storage_status
+        argv:
+          - "pvesm"
+          - "status"
+          - "--enabled"
+          - "0"
       changed_when:
         - false
       failed_when:
         - false
 
-
+      register: __pve_storage_status
     - name: "Storage | pvesm | Parse existing storage names"
       ansible.builtin.set_fact:
         __pve_existing_storages: >-
@@ -1499,7 +1495,6 @@
           }}
       when:
         - __pve_storage_status is ansible.builtin.success
-
 
     - name: "Storage | pvesm | Validate all storage types are supported"
       ansible.builtin.assert:
@@ -1515,14 +1510,13 @@
           Proxmox storage '{{ __pve_proxmox_sm_item['name'] }}' is invalid: the type has to
           be 'dir' (requires 'storage_properties.path') or 'zfspool' (requires
           'storage_properties.pool').
-      loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_sm_item"
       when:
         - pve_proxmox_sm is ansible.builtin.defined
         - pve_proxmox_sm | ansible.builtin.length > 0
 
-
+      loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_sm_item"
     - name: "Storage | pvesm | Directory | Create mountpoint directory"
       ansible.builtin.file:
         path: "{{ __pve_proxmox_sm_item['storage_properties']['path'] }}"
@@ -1530,6 +1524,10 @@
         owner: "root"
         group: "root"
         mode: "u=rwx,g=rx,o=rx" # 0755
+      when:
+        - pve_proxmox_sm is ansible.builtin.defined
+        - pve_proxmox_sm | ansible.builtin.length > 0
+
       loop: >-
         {{
           pve_proxmox_sm | ansible.builtin.default([], true)
@@ -1538,11 +1536,6 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_sm_item"
-      when:
-        - pve_proxmox_sm is ansible.builtin.defined
-        - pve_proxmox_sm | ansible.builtin.length > 0
-
-
     - name: "Storage | pvesm | Check if storage already configured"
       ansible.builtin.set_fact:
         __pve_storage_is_configured: >-
@@ -1551,19 +1544,17 @@
               __pve_proxmox_sm_item['name']: __pve_proxmox_sm_item['name'] in (__pve_existing_storages | ansible.builtin.default([]))
             })
           }}
-      loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_sm_item"
       when:
         - pve_proxmox_sm is ansible.builtin.defined
         - pve_proxmox_sm | ansible.builtin.length > 0
 
-
+      loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_sm_item"
     - name: "Storage | pvesm | Read the storage configuration for identity checks"
       ansible.builtin.slurp:
         src: "/etc/pve/storage.cfg"
       register: __pve_storage_cfg_slurp
-
 
     - name: "Storage | pvesm | Parse the existing storage identities"
       ansible.builtin.set_fact:
@@ -1607,15 +1598,14 @@
           Refusing to reconcile settings onto a different storage backend;
           rename the declared storage or remove the existing one.
         quiet: true
-      loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_sm_item"
       when:
         - __pve_storage_is_configured[__pve_proxmox_sm_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
         - __pve_proxmox_sm_item['name'] in (__pve_storage_identities | ansible.builtin.default({}))
 
-
-    - name: 'PVE | Storage | pvesm | Directory | Add directory storage'
+      loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_sm_item"
+    - name: "PVE | Storage | pvesm | Directory | Add directory storage"
       ansible.builtin.command:
         argv: >-
           {{
@@ -1628,6 +1618,14 @@
             + (["--nodes", (__pve_proxmox_sm_item['storage_properties']['nodes'] | ansible.builtin.join(','))]
               if __pve_proxmox_sm_item['storage_properties']['nodes'] is ansible.builtin.defined else [])
           }}
+      when:
+        - pve_proxmox_sm is ansible.builtin.defined
+        - pve_proxmox_sm | ansible.builtin.length > 0
+        - not __pve_storage_is_configured[__pve_proxmox_sm_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+      changed_when:
+        - true
+
+      # FIXME add more options and types from https://pve.proxmox.com/pve-docs/pvesm.1.html
       loop: >-
         {{
           pve_proxmox_sm | ansible.builtin.default([], true)
@@ -1636,15 +1634,6 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_sm_item"
-      when:
-        - pve_proxmox_sm is ansible.builtin.defined
-        - pve_proxmox_sm | ansible.builtin.length > 0
-        - not __pve_storage_is_configured[__pve_proxmox_sm_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-      changed_when:
-        - true
-
-
-    # FIXME add more options and types from https://pve.proxmox.com/pve-docs/pvesm.1.html
     - name: "Storage | pvesm | ZFS Pool | Add ZFS pool storage"
       ansible.builtin.command:
         argv: >-
@@ -1664,6 +1653,17 @@
             + (["--nodes", (__pve_proxmox_sm_item['storage_properties']['nodes'] | ansible.builtin.join(','))]
               if __pve_proxmox_sm_item['storage_properties']['nodes'] is ansible.builtin.defined else [])
           }}
+      when:
+        - pve_proxmox_sm is ansible.builtin.defined
+        - pve_proxmox_sm | ansible.builtin.length > 0
+        - not __pve_storage_is_configured[__pve_proxmox_sm_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+      changed_when:
+        - true
+
+      # "pvesm add" only handles new storage IDs, so property changes on already
+      # configured storages (content, nodes, is_mountpoint, sparse, blocksize)
+      # would silently never be applied. Creation-time properties (type, path,
+      # pool) are immutable in PVE and deliberately not compared.
       loop: >-
         {{
           pve_proxmox_sm | ansible.builtin.default([], true)
@@ -1672,32 +1672,24 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_sm_item"
-      when:
-        - pve_proxmox_sm is ansible.builtin.defined
-        - pve_proxmox_sm | ansible.builtin.length > 0
-        - not __pve_storage_is_configured[__pve_proxmox_sm_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-      changed_when:
-        - true
-
-
-    # "pvesm add" only handles new storage IDs, so property changes on already
-    # configured storages (content, nodes, is_mountpoint, sparse, blocksize)
-    # would silently never be applied. Creation-time properties (type, path,
-    # pool) are immutable in PVE and deliberately not compared.
     - name: "Storage | pvesm | Get the configuration of already configured storages"
       ansible.builtin.command:
-        argv: ["pvesh", "get", "/storage/{{ __pve_proxmox_sm_item['name'] }}", "--output-format", "json"]
+        argv:
+          - "pvesh"
+          - "get"
+          - "/storage/{{ __pve_proxmox_sm_item['name'] }}"
+          - "--output-format"
+          - "json"
+      when:
+        - __pve_storage_is_configured[__pve_proxmox_sm_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+
+      changed_when:
+        - false
       loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
       loop_control:
         loop_var: "__pve_proxmox_sm_item"
         label: "{{ __pve_proxmox_sm_item['name'] }}"
       register: __pve_storage_current
-      changed_when:
-        - false
-      when:
-        - __pve_storage_is_configured[__pve_proxmox_sm_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-
-
     - name: "Storage | pvesm | Update properties of already configured storages"
       ansible.builtin.command:
         argv: "{{ ['pvesm', 'set', __pve_sm_item['name']] + __pve_sm_set_args }}"
@@ -1741,26 +1733,30 @@
                if ((__pve_sm_props['blocksize'] is ansible.builtin.defined)
                    and (__pve_sm_props['blocksize'] != (__pve_sm_current['blocksize'] | ansible.builtin.default('')))) else [])
           }}
-      loop: "{{ __pve_storage_current['results'] | ansible.builtin.default([]) }}"
-      loop_control:
-        loop_var: "__pve_proxmox_sm_update_item"
-        label: "{{ __pve_proxmox_sm_update_item['__pve_proxmox_sm_item']['name'] | ansible.builtin.default('skipped') }}"
       when:
         - not (__pve_proxmox_sm_update_item['skipped'] | ansible.builtin.default(false))
         - (__pve_sm_set_args | ansible.builtin.length) > 0
       changed_when:
         - true
 
-
+      loop: "{{ __pve_storage_current['results'] | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: "__pve_proxmox_sm_update_item"
+        label: "{{ __pve_proxmox_sm_update_item['__pve_proxmox_sm_item']['name'] | ansible.builtin.default('skipped') }}"
     - name: "Storage | pvesm | Verify storage configuration"
       ansible.builtin.command:
-        argv: ["pvesh", "get", "/storage/{{ __pve_proxmox_sm_item['name'] }}", "--output-format", "json"]
+        argv:
+          - "pvesh"
+          - "get"
+          - "/storage/{{ __pve_proxmox_sm_item['name'] }}"
+          - "--output-format"
+          - "json"
+      when:
+        - pve_proxmox_sm is ansible.builtin.defined
+        - pve_proxmox_sm | ansible.builtin.length > 0
+      changed_when:
+        - false
       loop: "{{ pve_proxmox_sm | ansible.builtin.default([], true) }}"
       loop_control:
         loop_var: "__pve_proxmox_sm_item"
       register: __pve_storage_verify
-      changed_when:
-        - false
-      when:
-        - pve_proxmox_sm is ansible.builtin.defined
-        - pve_proxmox_sm | ansible.builtin.length > 0

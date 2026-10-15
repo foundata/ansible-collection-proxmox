@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
-
 - name: "Datacenter | Ensure /etc/pve/datacenter.cfg exists"
   ansible.builtin.file:
     path: "/etc/pve/datacenter.cfg"
@@ -16,26 +15,24 @@
     #   Corosync). Setting the permissions will lead to a module failure:
     #   "[Errno 1] Operation not permitted".
     # mode: "u=rw,g=r,o=r" # 0640
-    modification_time: "preserve"
     access_time: "preserve"
 
-
+    modification_time: "preserve"
 - name: "Datacenter | Backup existing /etc/pve/datacenter.cfg (best effort)"
   ansible.builtin.copy:
     src: "/etc/pve/datacenter.cfg"
     dest: "{{ __pve_tmpdir_backup['path'] }}/datacenter.cfg"
-    remote_src: true
     owner: "root"
     group: "root"
     mode: "u=rw,g=r,o=" # 0640
+    remote_src: true
   when:
     - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
-  failed_when:
-    - false
   changed_when:
     - false
 
-
+  failed_when:
+    - false
 - name: "Datacenter | Render /etc/pve/datacenter.cfg"
   ansible.builtin.template:
     src: "datacenter.cfg.j2"
@@ -50,3 +47,4 @@
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
     tpl_pve_datacentercfg: "{{ pve_proxmox_datacentercfg | ansible.builtin.default({}, true) }}"
+    tpl_managed: "{{ ansible_managed }}"

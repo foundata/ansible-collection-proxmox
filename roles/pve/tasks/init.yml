@@ -4,12 +4,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
-
 - name: "Init | Include role meta data"
   ansible.builtin.include_vars:
     file: "../meta/main.yml"
     name: "__pve_proxmox_meta"
-
 
 - name: "Init | Check Ansible version requirement and fail if unmet"
   ansible.builtin.fail:
@@ -41,12 +39,9 @@
       or distribution facts are missing.
     verbosity: 1
   when:
-    - ansible_facts['os_family'] is not ansible.builtin.defined or
-      ansible_facts['distribution'] is not ansible.builtin.defined or
-      ansible_facts['distribution_version'] is not ansible.builtin.defined or
-      ansible_facts['distribution_major_version'] is not ansible.builtin.defined or
+    - ansible_facts['os_family'] is not ansible.builtin.defined or ansible_facts['distribution'] is not ansible.builtin.defined or
+      ansible_facts['distribution_version'] is not ansible.builtin.defined or ansible_facts['distribution_major_version'] is not ansible.builtin.defined or
       ((__pve_proxmox_supported_platforms | ansible.builtin.length) == 0)
-
 
 - name: "Init | Warn when platform is unsupported"
   ansible.builtin.fail:
@@ -72,7 +67,6 @@
     - (__pve_proxmox_supported_platforms | ansible.builtin.length) > 0
     - (__pve_proxmox_matched_versions | ansible.builtin.length) == 0
   ignore_errors: true # noqa: ignore-errors
-
 
 - name: "Init | Set platform-specific filename list (most to least specific; raw with possible duplicates)"
   ansible.builtin.set_fact:
@@ -138,33 +132,30 @@
   loop_control:
     loop_var: "__pve_proxmox_varsfile_item"
 
-
 ### PVE specific
-
 
 - name: "Init | Create temporary directory for file backups (disaster safeguard)"
   ansible.builtin.tempfile:
     state: "directory"
-    prefix: "ansible_pve_backup_{{ ansible_date_time['epoch'] }}_"
+    prefix: "ansible_pve_backup_{{ ansible_facts['date_time']['epoch'] }}_"
+  when:
+    - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
+
+  changed_when:
+    - false
+  check_mode: false
   register: __pve_tmpdir_backup
   # An ephemeral safeguard directory, not managed configuration state: a new
   # directory per run is by design, so it does not count as a change (the
   # role stays idempotent with backups enabled). It is also created under
   # "--check" (the module would otherwise skip and the later path
   # dereferences fail); the backups themselves still honor check mode.
-  changed_when:
-    - false
-  check_mode: false
-  when:
-    - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
-
-
 - name: "Init | Show temporary directory path"
   ansible.builtin.debug:
     msg: "Backup directory (best-effort for emergency config errors, usually kept until next reboot): {{ __pve_tmpdir_backup['path'] }}"
+    verbosity: 0
   when:
     - pve_proxmox_tmpbackupfiles | ansible.builtin.bool
-
 
 ### Cluster-wide file coordination
 
@@ -180,15 +171,13 @@
     path: "/etc/pve/corosync.conf"
   register: __pve_corosync_conf_stat
 
-
 - name: "Init | Read the corosync cluster configuration (clustered setups)"
   ansible.builtin.slurp:
     src: "/etc/pve/corosync.conf"
-  register: __pve_corosync_conf_raw
   when:
     - __pve_corosync_conf_stat['stat']['exists']
 
-
+  register: __pve_corosync_conf_raw
 - name: "Init | Publish the cluster identity and the cluster-scoped inputs"
   # set_fact on purpose: only facts are visible to the other play hosts via
   # hostvars (role parameters and inventory variables resolved locally are
@@ -211,7 +200,6 @@
       fw_cluster_ipsets: "{{ pve_proxmox_fw_cluster_ipsets }}"
       fw_cluster_securitygroups: "{{ pve_proxmox_fw_cluster_securitygroups }}"
       fw_cluster_rules: "{{ pve_proxmox_fw_cluster_rules }}"
-
 
 # Automatic writer selection needs every host of the play to have published
 # its cluster identity in the previous task. Only the default linear strategy
@@ -241,7 +229,6 @@
     quiet: true
   when:
     - (pve_proxmox_cluster_writer | ansible.builtin.length) == 0
-
 
 - name: "Init | Select the writer of the cluster-wide files"
   # Sorted for determinism, independent of inventory or --limit ordering. A
@@ -277,7 +264,6 @@
   when:
     - (pve_proxmox_cluster_writer | ansible.builtin.length) > 0
 
-
 - name: "Init | Verify the configured writer belongs to this cluster (when its identity is visible)"
   ansible.builtin.assert:
     that:
@@ -293,7 +279,6 @@
     - (pve_proxmox_cluster_writer | ansible.builtin.length) > 0
     - __pve_cluster_writer in hostvars
     - hostvars[__pve_cluster_writer]['__pve_cluster_name'] is ansible.builtin.defined
-
 
 - name: "Init | Verify the cluster-scoped inputs are identical on all nodes of the cluster"
   ansible.builtin.assert:

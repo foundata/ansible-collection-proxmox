@@ -2,10 +2,15 @@
 SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
 SPDX-License-Identifier: GPL-3.0-or-later
 #}
-# {{ ansible_managed }}
-# PVE VM/Container-specific firewall configuration for ID {{ vmid }}
+# {{ tpl_managed }}
+# PVE VM/Container-specific firewall configuration for ID {{ tpl_vmid }}
 # Includes: options, aliases, IP sets, rules
 # Reference: https://pve.proxmox.com/wiki/Firewall
+
+{%- set fw_options = tpl_fw_options | ansible.builtin.default({}, true) -%}
+{%- set fw_aliases = tpl_fw_aliases | ansible.builtin.default([], true) -%}
+{%- set fw_ipsets = tpl_fw_ipsets | ansible.builtin.default([], true) -%}
+{%- set fw_rules = tpl_fw_rules | ansible.builtin.default([], true) -%}
 
 {# VM/Container-specific firewall options #}
 {% include 'firewall/_options_block.j2' %}

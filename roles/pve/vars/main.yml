@@ -23,6 +23,10 @@
 #       - '!min'
 #       - '<subset_name, see parameter doc for details>'
 __pve_proxmox_used_facts:
+  date_time:
+    - "date_time"
+  platform:
+    - "hostname"
   distribution:
     - "distribution"
     - "distribution_major_version"

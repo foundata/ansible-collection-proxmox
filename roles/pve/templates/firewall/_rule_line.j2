@@ -20,6 +20,10 @@ SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
 SPDX-License-Identifier: GPL-3.0-or-later
 -#}
 {%- set rule_parts = [] -%}
+{%- set _ = none -%}
+{%- set alias_pattern = '' -%}
+{%- set ipset_pattern = '' -%}
+{%- set is_valid_ip = false -%}
 
 {#- Handle different action types -#}
 {%- if rule['action'] | ansible.builtin.upper == 'GROUP' -%}
@@ -56,7 +60,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
            (rule['source'] | ansible.builtin.regex_search(alias_pattern)) or
            (rule['source'] | ansible.builtin.regex_search(ipset_pattern))) -%}
 {%-     if not is_valid_ip %}
-      {{- undefined | ansible.builtin.mandatory('ERROR: Invalid source IP address `' ~ rule['source'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') -}}
+      {{- {}['invalid_input'] | ansible.builtin.mandatory(msg='ERROR: Invalid source IP address `' ~ rule['source'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') -}}
 {%-     endif %}
 {%-     set _ = rule_parts.append('-source ' ~ rule['source']) -%}
 {%-   endif -%}
@@ -72,7 +76,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
            (rule['dest'] | ansible.builtin.regex_search(alias_pattern)) or
            (rule['dest'] | ansible.builtin.regex_search(ipset_pattern))) -%}
 {%-     if not is_valid_ip %}
-      {{- undefined | ansible.builtin.mandatory('ERROR: Invalid dest IP address `' ~ rule['dest'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') -}}
+      {{- {}['invalid_input'] | ansible.builtin.mandatory(msg='ERROR: Invalid dest IP address `' ~ rule['dest'] ~ '` - must be a valid IPv4/6 address (with optional CIDR notation), or a defined alias') -}}
 {%-     endif %}
 {%-     set _ = rule_parts.append('-dest ' ~ rule['dest']) -%}
 {%-   endif -%}
