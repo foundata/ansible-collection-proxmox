@@ -1,15 +1,14 @@
+---
 # Check collection role "pve" outcomes: services up and reachable, rendered
 # configuration in place.
 #
 # SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-
 - name: "Molecule | Verify | pve | Gather facts needed for the checks"
   ansible.builtin.setup:
     gather_subset:
       - "network"
-
 
 - name: "Molecule | Verify | pve | Set pve_proxmox_* and __testing_* parameters as facts from __testing_state"
   ansible.builtin.set_fact:
@@ -25,7 +24,6 @@
     # keys only: the values contain the ZFS test passphrases, which must not
     # land in the log (grepping the molecule log for them must stay clean)
     label: "{{ item['key'] }}"
-
 
 - name: "Molecule | Verify | pve | Gather service facts"
   ansible.builtin.service_facts:
@@ -49,12 +47,10 @@
   loop_control:
     loop_var: "__testing_pve_service"
 
-
 - name: "Molecule | Verify | pve | Get information about /etc/pve/local (pmxcfs is mounted and knows the node)"
   ansible.builtin.stat:
     path: "/etc/pve/local"
   register: __testing_pve_pmxcfs_local
-
 
 - name: "Molecule | Verify | pve | Assert /etc/pve/local exists"
   ansible.builtin.assert:
@@ -63,18 +59,16 @@
     fail_msg: "/etc/pve/local does not exist, pmxcfs (pve-cluster) seems broken."
     success_msg: "/etc/pve/local exists, pmxcfs is functional."
 
-
 - name: "Molecule | Verify | pve | Check the web UI answers on https://127.0.0.1:8006"
   ansible.builtin.uri:
     url: "https://127.0.0.1:8006/"
-    validate_certs: false # self-signed certificate on a fresh installation
     return_content: true
+    validate_certs: false # self-signed certificate on a fresh installation
   register: __testing_pve_webui
   retries: 3
   delay: 5
   until:
     - __testing_pve_webui is ansible.builtin.success
-
 
 - name: "Molecule | Verify | pve | Assert the web UI response looks like Proxmox VE"
   ansible.builtin.assert:
@@ -84,24 +78,22 @@
     fail_msg: "The pveproxy answer on port 8006 does not look like the Proxmox VE web UI."
     success_msg: "The Proxmox VE web UI is reachable on port 8006."
 
-
 - name: "Molecule | Verify | pve | Read the rendered configuration files"
   ansible.builtin.slurp:
     src: "{{ item['value'] }}"
-  register: __testing_pve_configs
   loop: >-
     {{
       {
         'interfaces': '/etc/network/interfaces',
         'datacenter': '/etc/pve/datacenter.cfg',
         'cluster_fw': '/etc/pve/firewall/cluster.fw',
-        'host_fw': '/etc/pve/nodes/' ~ ansible_hostname ~ '/host.fw',
+        'host_fw': '/etc/pve/nodes/' ~ ansible_facts['hostname'] ~ '/host.fw',
       } | ansible.builtin.dict2items
     }}
   loop_control:
     label: "{{ item['value'] }}"
 
-
+  register: __testing_pve_configs
 - name: "Molecule | Verify | pve | Assert the rendered configuration files contain the managed values"
   ansible.builtin.assert:
     that:
@@ -146,7 +138,6 @@
     path: "/etc/network/interfaces.d/10-host"
   register: __testing_pve_10host_stat
 
-
 - name: "Molecule | Verify | pve | Assert empty host datasets left /etc/network/interfaces.d/10-host alone"
   ansible.builtin.assert:
     that:
@@ -156,16 +147,14 @@
       pve_proxmox_net_ifaces_host_* datasets are empty.
     success_msg: "Empty host datasets did not render /etc/network/interfaces.d/10-host."
 
-
 - name: "Molecule | Verify | pve | Read the rendered systemd link files (altnames)"
   ansible.builtin.slurp:
     src: "/etc/systemd/network/10-{{ item }}.link"
-  register: __testing_pve_links
   loop:
     - "molecule1"
     - "molecule2"
 
-
+  register: __testing_pve_links
 - name: "Molecule | Verify | pve | Assert both altname link files were rendered"
   ansible.builtin.assert:
     that:
@@ -176,15 +165,19 @@
     fail_msg: "At least one pve_proxmox_net_altnames entry was not rendered (all entries must be processed, not just the first)."
     success_msg: "Both altname link files were rendered."
 
-
 - name: "Molecule | Verify | pve | Query the ZFS pool health (fails if the pool is missing)"
   ansible.builtin.command:
-    argv: ["zpool", "list", "-H", "-o", "health", "moleculepool"]
-  register: __testing_pve_zpool_health
+    argv:
+      - "zpool"
+      - "list"
+      - "-H"
+      - "-o"
+      - "health"
+      - "moleculepool"
   changed_when:
     - false
 
-
+  register: __testing_pve_zpool_health
 - name: "Molecule | Verify | pve | Assert the ZFS mirror pool is healthy"
   ansible.builtin.assert:
     that:
@@ -192,11 +185,16 @@
     fail_msg: "The moleculepool ZFS mirror is not healthy: {{ __testing_pve_zpool_health['stdout'] }}"
     success_msg: "The moleculepool ZFS mirror is online."
 
-
 - name: "Molecule | Verify | pve | Query the encrypted dataset properties"
   ansible.builtin.command:
-    argv: ["zfs", "get", "-H", "-o", "value", "{{ item }}", "moleculepool/secure"]
-  register: __testing_pve_secure_props
+    argv:
+      - "zfs"
+      - "get"
+      - "-H"
+      - "-o"
+      - "value"
+      - "{{ item }}"
+      - "moleculepool/secure"
   changed_when:
     - false
   loop:
@@ -204,7 +202,7 @@
     - "keystatus"
     - "mounted"
 
-
+  register: __testing_pve_secure_props
 - name: "Molecule | Verify | pve | Assert the encrypted dataset is set up and unlocked"
   ansible.builtin.assert:
     that:
@@ -216,18 +214,21 @@
       mounted ({{ __testing_pve_secure_props['results'] | ansible.builtin.map(attribute='stdout') | ansible.builtin.list }}).
     success_msg: "The encrypted dataset is encrypted, unlocked and mounted."
 
-
 - name: "Molecule | Verify | pve | Query the PVE storage manager configuration"
   ansible.builtin.command:
-    argv: ["pvesh", "get", "/storage/{{ item }}", "--output-format", "json"]
-  register: __testing_pve_sm
+    argv:
+      - "pvesh"
+      - "get"
+      - "/storage/{{ item }}"
+      - "--output-format"
+      - "json"
   changed_when:
     - false
   loop:
     - "molecule-guest1"
     - "molecule-assets1"
 
-
+  register: __testing_pve_sm
 - name: "Molecule | Verify | pve | Assert the storages are registered with the expected properties"
   ansible.builtin.assert:
     that:
@@ -244,7 +245,6 @@
     __testing_pve_sm_guest: "{{ __testing_pve_sm['results'][0]['stdout'] | ansible.builtin.from_json }}"
     __testing_pve_sm_assets: "{{ __testing_pve_sm['results'][1]['stdout'] | ansible.builtin.from_json }}"
 
-
 ## Reconciliation of drifted pvesm properties
 #
 # "pvesm add" only handles new storage IDs; the role has to detect and update
@@ -254,24 +254,31 @@
 
 - name: "Molecule | Verify | pve | Drift the content of the directory storage"
   ansible.builtin.command:
-    argv: ["pvesm", "set", "molecule-assets1", "--content", "iso"]
+    argv:
+      - "pvesm"
+      - "set"
+      - "molecule-assets1"
+      - "--content"
+      - "iso"
   changed_when:
     - true
-
 
 - name: "Molecule | Verify | pve | Re-run the foundata.proxmox.pve role"
   ansible.builtin.include_role:
     name: "foundata.proxmox.pve"
 
-
 - name: "Molecule | Verify | pve | Query the drifted storage again"
   ansible.builtin.command:
-    argv: ["pvesh", "get", "/storage/molecule-assets1", "--output-format", "json"]
-  register: __testing_pve_sm_restored
+    argv:
+      - "pvesh"
+      - "get"
+      - "/storage/molecule-assets1"
+      - "--output-format"
+      - "json"
   changed_when:
     - false
 
-
+  register: __testing_pve_sm_restored
 - name: "Molecule | Verify | pve | Assert the drifted property was reconciled"
   ansible.builtin.assert:
     that:
@@ -281,17 +288,20 @@
     fail_msg: "The role did not update the drifted content of the already configured storage."
     success_msg: "The drifted pvesm property was updated back to the declared value."
 
-
 ## NFS storage (mixed ZFS+NFS declaration)
 
 - name: "Molecule | Verify | pve | NFS: query the mount"
   ansible.builtin.command:
-    argv: ["findmnt", "-n", "-o", "SOURCE,FSTYPE", "/mnt/molecule-nfs"]
-  register: __testing_pve_nfs_mount
+    argv:
+      - "findmnt"
+      - "-n"
+      - "-o"
+      - "SOURCE,FSTYPE"
+      - "/mnt/molecule-nfs"
   changed_when:
     - false
 
-
+  register: __testing_pve_nfs_mount
 - name: "Molecule | Verify | pve | NFS: assert the loopback export is mounted"
   ansible.builtin.assert:
     that:
@@ -302,7 +312,6 @@
       ({{ __testing_pve_nfs_mount['stdout'] | ansible.builtin.default('no output') }});
       the mixed ZFS+NFS declaration regressed.
     success_msg: "The NFS item of the mixed declaration is mounted."
-
 
 ## ZFS passphrase rotation
 #
@@ -340,27 +349,30 @@
               - "molecule-wrong-old-passphrase"
               - "molecule-test-passphrase-1"
 
-
 - name: "Molecule | Verify | pve | Lock the rotated dataset again"
   ansible.builtin.command:
-    argv: ["zfs", "{{ item }}", "moleculepool/secure"]
+    argv:
+      - "zfs"
+      - "{{ item }}"
+      - "moleculepool/secure"
   changed_when:
     - true
   loop:
     - "unmount"
     - "unload-key"
 
-
 - name: "Molecule | Verify | pve | Check the old passphrase is rejected after the rotation"
   ansible.builtin.command:
-    argv: ["zfs", "load-key", "-n", "moleculepool/secure"]
+    argv:
+      - "zfs"
+      - "load-key"
+      - "-n"
+      - "moleculepool/secure"
     stdin: "molecule-test-passphrase-1"
-  register: __testing_pve_oldpass_check
   changed_when:
     - false
   failed_when:
     - __testing_pve_oldpass_check['rc'] == 0
-
 
 ## Network validation (negative test)
 #
@@ -368,9 +380,9 @@
 # rejected by the render task's validation before installation: the live file
 # keeps the working configuration and no reload fires.
 
+  register: __testing_pve_oldpass_check
 - name: "Molecule | Verify | pve | Network validation negative test"
   block:
-
     - name: "Molecule | Verify | pve | Render an unparseable network config and expect the validation to abort"
       ansible.builtin.include_role:
         name: "foundata.proxmox.pve"
@@ -390,7 +402,6 @@
           candidate file.
 
   rescue:
-
     - name: "Molecule | Verify | pve | Assert the run aborted at the render task's validation"
       ansible.builtin.assert:
         that:
@@ -413,7 +424,6 @@
         fail_msg: "The rejected candidate reached /etc/network/interfaces."
         success_msg: "The live network configuration kept the working content."
 
-
 ## Firewall validation (negative test)
 #
 # A cluster rule the templates cannot reject (free-form ports) but
@@ -422,7 +432,6 @@
 
 - name: "Molecule | Verify | pve | Firewall validation negative test"
   block:
-
     - name: "Molecule | Verify | pve | Render a firewall rule with an invalid port and expect the validation to abort"
       ansible.builtin.include_role:
         name: "foundata.proxmox.pve"
@@ -442,7 +451,6 @@
           (the PVE firewall would silently skip it).
 
   rescue:
-
     - name: "Molecule | Verify | pve | Assert the run aborted at the firewall validation"
       ansible.builtin.assert:
         that:
@@ -467,18 +475,20 @@
 
     - name: "Molecule | Verify | pve | Query the firewall service state after the rejection"
       ansible.builtin.command:
-        argv: ["systemctl", "is-active", "proxmox-firewall.service"]
-      register: __testing_pve_fw_state
+        argv:
+          - "systemctl"
+          - "is-active"
+          - "proxmox-firewall.service"
       changed_when:
         - false
 
+      register: __testing_pve_fw_state
     - name: "Molecule | Verify | pve | Assert the firewall service is still running after the rejection"
       ansible.builtin.assert:
         that:
           - __testing_pve_fw_state['stdout'] == 'active'
         fail_msg: "The proxmox-firewall service is not active after the rejected configuration."
         success_msg: "The proxmox-firewall service is still running."
-
 
 - name: "Molecule | Verify | pve | Unlock and mount the dataset with the rotated passphrase"
   ansible.builtin.command:
@@ -487,8 +497,14 @@
   changed_when:
     - true
   loop:
-    - argv: ["zfs", "load-key", "moleculepool/secure"]
+    - argv:
+        - "zfs"
+        - "load-key"
+        - "moleculepool/secure"
       stdin: "molecule-test-passphrase-2"
-    - argv: ["zfs", "mount", "moleculepool/secure"]
+    - argv:
+        - "zfs"
+        - "mount"
+        - "moleculepool/secure"
   loop_control:
     label: "{{ item['argv'] | ansible.builtin.join(' ') }}"

@@ -1,19 +1,17 @@
+---
 # Execute the collection role "pve" against all driver-created instances.
 #
 # SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-
 
 - name: "Molecule | Converge | pve | Gather network facts (to determine the NIC enslaved by vmbr0)"
   ansible.builtin.setup:
     gather_subset:
       - "network"
 
-
 - name: "Molecule | Converge | pve | Determine the uplink NIC of the golden image's vmbr0 bridge"
   ansible.builtin.set_fact:
     __testing_pve_uplink_iface: "{{ ansible_facts['vmbr0']['interfaces'] | ansible.builtin.first }}"
-
 
 # A real NFS export served by the VM itself, so the role's nfs storage type
 # can be exercised without external infrastructure.
@@ -23,7 +21,6 @@
       - "nfs-kernel-server"
     state: "present"
 
-
 - name: "Molecule | Converge | pve | Create the NFS export directory"
   ansible.builtin.file:
     path: "/srv/molecule-nfs-export"
@@ -31,7 +28,6 @@
     owner: "root"
     group: "root"
     mode: "u=rwx,g=rx,o=rx" # 0755
-
 
 - name: "Molecule | Converge | pve | Export the directory via NFS"
   ansible.builtin.lineinfile:
@@ -42,15 +38,15 @@
     group: "root"
     mode: "u=rw,g=r,o=r" # 0644
 
-
 # exportfs -ra is idempotent; unconditional re-export keeps this test
 # scaffolding simple (it is not part of the system under test)
 - name: "Molecule | Converge | pve | Apply the NFS exports"
   ansible.builtin.command:
-    argv: ["exportfs", "-ra"]
+    argv:
+      - "exportfs"
+      - "-ra"
   changed_when:
     - false
-
 
 - name: "Molecule | Converge | pve | Store pve_proxmox_* role parameters in __testing_state"
   ansible.builtin.include_tasks:
@@ -211,7 +207,6 @@
               - "iso"
               - "vztmpl"
 
-
 - name: "Molecule | Converge | pve | Set pve_proxmox_* parameters as facts from __testing_state"
   ansible.builtin.set_fact:
     "{{ item['key'] }}": "{{ item['value'] }}"
@@ -226,7 +221,6 @@
     # keys only: the values contain the ZFS test passphrases, which must not
     # land in the log (grepping the molecule log for them must stay clean)
     label: "{{ item['key'] }}"
-
 
 - name: "Molecule | Converge | pve | Include the foundata.proxmox.pve role"
   ansible.builtin.include_role:
