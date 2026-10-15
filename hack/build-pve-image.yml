@@ -34,7 +34,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
-
 - name: "Build PVE image | Install Proxmox VE unattended into a disk image"
   hosts: "localhost"
   connection: "local"
@@ -62,23 +61,19 @@
     build_pve_helper_image: "quay.io/foundata/debian13-itt:latest"
     build_pve_ssh_common_args: "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes"
   tasks:
-
     - name: "Build PVE image | Check whether the image already exists"
       ansible.builtin.stat:
         path: "{{ build_pve_cache_dir }}/{{ build_pve_image_name }}"
       register: __build_pve_existing
 
-
-    - name: "Build PVE image | Skip the build if the image exists (use build_pve_force=true to rebuild)"
+    - name: "Build PVE image | Skip existing image unless forced" # Stop this localhost orchestration play; reuse the golden image.
       ansible.builtin.meta: "end_play"
       when:
         - __build_pve_existing['stat']['exists']
         - not (build_pve_force | ansible.builtin.bool)
 
-
     - name: "Build PVE image | Preflight checks"
       block:
-
         - name: "Build PVE image | Check for required command line tools"
           # The command module is used intentionally: this only probes for the
           # existence of the tools themselves, there is nothing to manage yet.
@@ -100,7 +95,6 @@
             label: "{{ item['cmd'] }}"
           register: __build_pve_tools
 
-
         - name: "Build PVE image | Assert the required command line tools are available"
           ansible.builtin.assert:
             that:
@@ -118,7 +112,6 @@
           ansible.builtin.stat:
             path: "/dev/kvm"
           register: __build_pve_kvm_stat
-
 
         - name: "Build PVE image | Assert /dev/kvm is usable"
           ansible.builtin.assert:
@@ -140,7 +133,6 @@
         - "{{ build_pve_cache_dir }}"
         - "{{ build_pve_work_dir }}"
 
-
     - name: "Build PVE image | Remove a leftover domain of an earlier build (best effort)"
       # The command module is used intentionally: community.libvirt would need
       # the libvirt-python binding which has no pre-built wheels.
@@ -160,7 +152,6 @@
         - "undefine"
       register: __build_pve_cleanup
 
-
     - name: "Build PVE image | Download the Proxmox VE ISO (if not cached)"
       ansible.builtin.get_url:
         url: "{{ build_pve_iso_baseurl }}/proxmox-ve_{{ build_pve_iso_version }}.iso"
@@ -169,7 +160,6 @@
         # upstream checksum file, matched by file name
         checksum: "sha256:{{ build_pve_iso_baseurl }}/SHA256SUMS"
 
-
     - name: "Build PVE image | Generate a throwaway SSH keypair for the build"
       community.crypto.openssh_keypair:
         path: "{{ build_pve_work_dir }}/id_ed25519"
@@ -177,7 +167,6 @@
         comment: "build-pve-image"
         mode: "u=rw,g=,o=" # 0600
       register: __build_pve_keypair
-
 
     - name: "Build PVE image | Create the automatic installation answer file"
       ansible.builtin.copy:
@@ -201,7 +190,6 @@
           disk-list = ["vda"]
         dest: "{{ build_pve_work_dir }}/answer.toml"
         mode: "u=rw,g=,o=" # 0600
-
 
     - name: "Build PVE image | Bake the answer file into the ISO (rootless container)"
       # The command module is used intentionally: the preparation needs the
@@ -235,7 +223,6 @@
             --output /work/proxmox-ve-auto.iso
         creates: "{{ build_pve_work_dir }}/proxmox-ve-auto.iso"
 
-
     - name: "Build PVE image | Create the blank disk image"
       # The command module is used intentionally: there is no suitable Ansible
       # module to create qcow2 images.
@@ -248,7 +235,6 @@
           - "{{ build_pve_work_dir }}/disk.qcow2"
           - "{{ build_pve_disk_size }}"
         creates: "{{ build_pve_work_dir }}/disk.qcow2"
-
 
     - name: "Build PVE image | Create the domain XML for the installation"
       ansible.builtin.copy:
@@ -301,7 +287,6 @@
         dest: "{{ build_pve_work_dir }}/domain-install.xml"
         mode: "u=rw,g=r,o=r" # 0644
 
-
     - name: "Build PVE image | Start the unattended installation"
       # The command module is used intentionally, see above.
       ansible.builtin.command:
@@ -313,7 +298,6 @@
           - "{{ build_pve_work_dir }}/domain-install.xml"
       changed_when:
         - true
-
 
     - name: "Build PVE image | Wait for the installation to finish (up to 45 minutes)"
       # The command module is used intentionally: the installer reboots when it
@@ -334,10 +318,9 @@
       retries: 180
       delay: 15
       until:
-        - ((__build_pve_install_state['stdout'] | ansible.builtin.default('')) is ansible.builtin.search('shut off')) or
-          ((__build_pve_install_state['stderr'] | ansible.builtin.default('')) is ansible.builtin.search('failed to get domain|not found'))
+        - ((__build_pve_install_state['stdout'] | ansible.builtin.default('')) is ansible.builtin.search('shut off')) or ((__build_pve_install_state['stderr'] |
+          ansible.builtin.default('')) is ansible.builtin.search('failed to get domain|not found'))
       register: __build_pve_install_state
-
 
     - name: "Build PVE image | Show the installation console log on failure"
       ansible.builtin.debug:
@@ -345,12 +328,12 @@
           The installation did not finish in time. Inspect
           {{ build_pve_work_dir }}/install-console.log and the VNC console
           (virt-manager, connect to {{ build_pve_libvirt_uri }}).
+        verbosity: 0
       when:
         - (__build_pve_install_state['stdout'] | ansible.builtin.default('')) is not ansible.builtin.search('shut off')
         - (__build_pve_install_state['stderr'] | ansible.builtin.default('')) is not ansible.builtin.search('failed to get domain|not found')
       failed_when:
         - true
-
 
     - name: "Build PVE image | Create the domain XML for the post-processing boot"
       ansible.builtin.copy:
@@ -394,7 +377,6 @@
         dest: "{{ build_pve_work_dir }}/domain-boot.xml"
         mode: "u=rw,g=r,o=r" # 0644
 
-
     - name: "Build PVE image | Boot the installed system"
       # The command module is used intentionally, see above.
       ansible.builtin.command:
@@ -406,7 +388,6 @@
           - "{{ build_pve_work_dir }}/domain-boot.xml"
       changed_when:
         - true
-
 
     - name: "Build PVE image | Wait for SSH of the installed system"
       # The command module is used intentionally: this probes the full SSH
@@ -438,7 +419,6 @@
         - __build_pve_ssh_probe is ansible.builtin.success
       register: __build_pve_ssh_probe
 
-
     - name: "Build PVE image | Add the installed system to the inventory"
       ansible.builtin.add_host:
         name: "build-pve-image"
@@ -454,12 +434,10 @@
       changed_when:
         - false
 
-
 - name: "Build PVE image | Prepare the installed system for Molecule usage"
   hosts: "build_pve"
   gather_facts: false
   tasks:
-
     - name: "Build PVE image | Remove the enterprise repositories (they need a subscription)"
       # A fresh installation ships the enterprise repositories which return
       # "401 Unauthorized" without a subscription and break apt. The
@@ -474,7 +452,6 @@
         - "/etc/apt/sources.list.d/ceph.sources"
         - "/etc/apt/sources.list.d/ceph.list"
 
-
     - name: "Build PVE image | Add the pve-no-subscription repository"
       ansible.builtin.copy:
         content: |
@@ -488,7 +465,6 @@
         group: "root"
         mode: "u=rw,g=r,o=r" # 0644
 
-
     - name: "Build PVE image | Install cloud-init and the QEMU guest agent"
       ansible.builtin.apt:
         name:
@@ -496,7 +472,6 @@
           - "qemu-guest-agent"
         state: "present"
         update_cache: true
-
 
     - name: "Build PVE image | Limit cloud-init to the NoCloud datasource"
       ansible.builtin.copy:
@@ -508,7 +483,6 @@
         owner: "root"
         group: "root"
         mode: "u=rw,g=r,o=r" # 0644
-
 
     - name: "Build PVE image | Keep the hostname (pve-cluster depends on it)"
       # pmxcfs (pve-cluster.service) requires the hostname to resolve via
@@ -524,7 +498,6 @@
         owner: "root"
         group: "root"
         mode: "u=rw,g=r,o=r" # 0644
-
 
     - name: "Build PVE image | Align /etc/hosts with the DHCP address on boot"
       # The installer writes the bake-time DHCP address into /etc/hosts. Other
@@ -550,7 +523,6 @@
         group: "root"
         mode: "u=rwx,g=rx,o=rx" # 0755
 
-
     - name: "Build PVE image | Disable the cloud-init network configuration"
       # Proxmox VE manages the network with ifupdown2 (bridge vmbr0). Letting
       # cloud-init write network configuration would break the bridge setup the
@@ -565,18 +537,16 @@
         group: "root"
         mode: "u=rw,g=r,o=r" # 0644
 
-
     - name: "Build PVE image | Determine the primary network interface"
       ansible.builtin.shell:
-        executable: "/bin/bash"
         cmd: |
           set -u
           set -e -o pipefail
           ip -o link show | awk -F': ' '$2 ~ /^(en|eth)/ {print $2; exit}'
+        executable: "/bin/bash"
       changed_when:
         - false
       register: __build_pve_primary_iface
-
 
     - name: "Build PVE image | Configure vmbr0 to use DHCP"
       # The installer writes the address it got via DHCP as a static
@@ -602,10 +572,8 @@
         group: "root"
         mode: "u=rw,g=r,o=r" # 0644
 
-
     - name: "Build PVE image | Generalize the image (remove instance specific state)"
       ansible.builtin.shell:
-        executable: "/bin/bash"
         cmd: |
           set -u
           set -e -o pipefail
@@ -616,9 +584,9 @@
           touch /etc/machine-id
           # the build key must not stay in the image, Molecule injects its own
           rm -f /root/.ssh/authorized_keys
+        executable: "/bin/bash"
       changed_when:
         - true
-
 
     - name: "Build PVE image | Shut the system down"
       # The command module is used intentionally: the connection is lost during
@@ -632,7 +600,6 @@
           - "now"
       changed_when:
         - true
-
 
 - name: "Build PVE image | Publish the image"
   hosts: "localhost"
@@ -650,7 +617,6 @@
     build_pve_image_name: "pve-{{ build_pve_iso_version | ansible.builtin.regex_replace('-.*$', '') }}.qcow2"
     build_pve_domain: "build-pve-image"
   tasks:
-
     - name: "Build PVE image | Wait for the shutdown to complete"
       # The command module is used intentionally, see above.
       ansible.builtin.command:
@@ -672,7 +638,6 @@
           or ((__build_pve_shutdown_state['stderr'] | ansible.builtin.default('')) is ansible.builtin.search('failed to get domain|not found'))
       register: __build_pve_shutdown_state
 
-
     - name: "Build PVE image | Remove the build domain (best effort)"
       # The command module is used intentionally, see above.
       ansible.builtin.command:
@@ -691,7 +656,6 @@
         - "undefine"
       register: __build_pve_domain_cleanup
 
-
     - name: "Build PVE image | Compact the disk image into the image cache"
       # The command module is used intentionally: there is no Ansible module
       # to convert qcow2 images.
@@ -707,17 +671,16 @@
       changed_when:
         - true
 
-
     - name: "Build PVE image | Remove the build working directory"
       ansible.builtin.file:
         path: "{{ build_pve_work_dir }}"
         state: "absent"
 
-
     - name: "Build PVE image | Show the result"
       ansible.builtin.debug:
         # split() to improve readability for humans
         msg: "{{ __build_pve_result_msg.split('\n') }}"
+        verbosity: 0
       vars:
         __build_pve_result_msg: |-
           The Proxmox VE image is ready:
