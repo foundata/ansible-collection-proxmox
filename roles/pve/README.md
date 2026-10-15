@@ -5,7 +5,8 @@ SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
-The `foundata.proxmox.pve` Ansible role (part of the `foundata.proxmox` Ansible collection).
+The `foundata.proxmox.pve` Ansible role (part of the `foundata.proxmox` Ansible
+collection).
 
 
 
@@ -154,17 +155,24 @@ The `foundata.proxmox.pve` Ansible role (part of the `foundata.proxmox` Ansible 
 Main features:
 
 - **Network Configuration**
-  - Interface alternative names: Assign predictable names to NICs via systemd link files (preserves kernel names, avoids udev conflicts)
-  - Flexible interface definitions: Separate host-specific and shared configurations for bonds, VLANs, bridges, and management interfaces
+  - Interface alternative names: Assign predictable names to NICs via systemd
+    link files (preserves kernel names, avoids udev conflicts)
+  - Flexible interface definitions: Separate host-specific and shared
+    configurations for bonds, VLANs, bridges, and management interfaces
 - **Firewall Management**
-  - Manage datacenter-level options, policies, and rules (`/etc/pve/firewall/cluster.fw`), define reusable address references for cleaner rule management etc. pp.
+  - Manage datacenter-level options, policies, and rules
+    (`/etc/pve/firewall/cluster.fw`), define reusable address references for
+    cleaner rule management etc. pp.
   - nftables support: modern firewall backend
 - **Storage Management**
-  - ZFS: pool creation (Automated pool provisioning with mirror, RAIDZ1/2/3 support and extensive disk validation); Create datasets with optional native encryption (AES-256-GCM), passphrase rotation support
+  - ZFS: pool creation (Automated pool provisioning with mirror, RAIDZ1/2/3
+    support and extensive disk validation); Create datasets with optional native
+    encryption (AES-256-GCM), passphrase rotation support
   - NFS mounts: Network storage integration with reachability checks
   - Register storage backends for use in PVE web UI (`dir`, `zfspool` types)
 - **Operating system configuration**
-  - IOMMU/PCI passthrough: Automatic detection and GRUB configuration for Intel/AMD IOMMU
+  - IOMMU/PCI passthrough: Automatic detection and GRUB configuration for
+    Intel/AMD IOMMU
 
 
 
@@ -337,15 +345,19 @@ Configure Proxmox Virtual Environment Servers (PVE)
 
 It might be useful and faster to only call parts of the role by using tags:
 
-- `pve_proxmox_os`: Manage basic operating system configuration influencing Proxmox Virtual Environment (PVE) (like IOMMU support)
+- `pve_proxmox_os`: Manage basic operating system configuration influencing
+  Proxmox Virtual Environment (PVE) (like IOMMU support)
 - `pve_proxmox_network`: Manage network and network interface configuration.
 - `pve_proxmox_firewall`: Manage firewall configuration.
 - `pve_proxmox_storage`: Manage storage configuration.
-- `pve_proxmox_datacenter`: Manage the Proxmox Virtual Environment (PVE) datacenter configuration
+- `pve_proxmox_datacenter`: Manage the Proxmox Virtual Environment (PVE)
+  datacenter configuration
 
-There are also tags that are generally not intended to be called directly but are included for completeness and to cover edge cases:
+There are also tags that are generally not intended to be called directly but
+are included for completeness and to cover edge cases:
 
-- `pve_proxmox_always`, `always`: Tasks needed by the role itself for internal role setup and the Ansible environment.
+- `pve_proxmox_always`, `always`: Tasks needed by the role itself for internal
+  role setup and the Ansible environment.
 
 
 
@@ -362,28 +374,28 @@ configurations as well as the storage, firewall and datacenter settings.
 
 The following variables can be configured for this role:
 
-| Variable | Type | Required | Default | Description (abstract) |
-|----------|------|----------|---------|------------------------|
-| `pve_proxmox_state` | `str` | No | `"present"` | Determines whether the managed configuration should be applied (`present`) or not.<br><br>`absent` currently only skips all configuration management, nothing gets removed or reverted: a Proxmox VE host stripped of its network, firewall or storage […](#variable-pve_proxmox_state) |
-| `pve_proxmox_tmpbackupfiles` | `bool` | No | `true` | Switch to control whether temporary disaster-safeguard backups of important configuration files should be created before re-writing them via Ansible.<br><br>When set to `true` (which is the default), the role will:<br><br>1. Create a temporary […](#variable-pve_proxmox_tmpbackupfiles) |
-| `pve_proxmox_cluster_writer` | `str` | No | `""` | Inventory hostname of the node that writes the cluster-wide pmxcfs files (`/etc/pve/datacenter.cfg`, `/etc/pve/firewall/cluster.fw`) of its cluster.<br><br>When empty (the default), the role selects the writer automatically: the first play host of […](#variable-pve_proxmox_cluster_writer) |
-| `pve_proxmox_iommu_manage` | `bool` | No | `true` | Switch to control if the role should manage input–output memory management unit (IOMMU) related operating system configuration. IOMMU support is needed for PCI and/or GPU passthrough.<br><br>When set to `true` (which is the default), the role […](#variable-pve_proxmox_iommu_manage) |
-| `pve_proxmox_net_altnames` | `list` | No | `[]` | List of network interface alternative name definitions for systemd link files (`/etc/systemd/network/10-*.link`).<br><br>Instead of renaming kernel network devices, this approach assigns alternative names (altnames). This preserves the original […](#variable-pve_proxmox_net_altnames) |
-| `pve_proxmox_net_ifaces_host_shared` | `dict` | No | `{}` | Network interface definitions for `/etc/network/interfaces.d/10-host` shared across all hosts in the inventory group.<br><br>These interfaces are NOT visible in the PVE web UI and are intended for backend networking configurations. Use this variable […](#variable-pve_proxmox_net_ifaces_host_shared) |
-| `pve_proxmox_net_ifaces_host_specific` | `dict` | No | `{}` | Network interface definitions for `/etc/network/interfaces.d/10-host` specific to individual hosts.<br><br>These interfaces are NOT visible in the PVE web UI and are intended for backend networking configurations. Use this variable for host-specific […](#variable-pve_proxmox_net_ifaces_host_specific) |
-| `pve_proxmox_net_ifaces_workload_shared` | `dict` | No | `{}` | Network interface definitions for `/etc/network/interfaces` shared across all hosts in the inventory group.<br><br>These interfaces ARE visible in the PVE web UI and available for assignment to virtual machines and containers. Use this variable for […](#variable-pve_proxmox_net_ifaces_workload_shared) |
-| `pve_proxmox_net_ifaces_workload_specific` | `dict` | No | `{}` | Network interface definitions for `/etc/network/interfaces` specific to individual hosts.<br><br>These interfaces ARE visible in the PVE web UI and available for assignment to virtual machines and containers. Use this variable for host-specific […](#variable-pve_proxmox_net_ifaces_workload_specific) |
-| `pve_proxmox_fw_cluster_options` | `dict` | No | `{}` | Cluster-wide (datacenter) firewall options applied to all PVE hosts.<br><br>This is a passthrough of original Proxmox VE firewall options. Keys and values are rendered directly into the `[OPTIONS]` section of […](#variable-pve_proxmox_fw_cluster_options) |
-| `pve_proxmox_fw_cluster_aliases` | `list` | No | `[]` | Cluster-wide IP aliases for use in firewall rules.<br><br>Aliases provide speakable, stable names for IP addresses and networks. Once defined, aliases can be referenced in rules, IP sets, and other aliases using the `dc/` syntax.<br><br>Each alias […](#variable-pve_proxmox_fw_cluster_aliases) |
-| `pve_proxmox_fw_cluster_ipsets` | `list` | No | `[]` | Cluster-wide IP sets for use in firewall rules.<br><br>IP sets are reusable collections of IP addresses, networks, and aliases. They simplify rule management by allowing a single rule to match multiple addresses.<br><br>Each IP set generates an […](#variable-pve_proxmox_fw_cluster_ipsets) |
-| `pve_proxmox_fw_cluster_securitygroups` | `list` | No | `[]` | Cluster-wide security groups (reusable rule collections).<br><br>Security groups bundle multiple firewall rules under a single name, allowing them to be applied as a unit to hosts, VMs, or containers. This promotes rule reuse and simplifies […](#variable-pve_proxmox_fw_cluster_securitygroups) |
-| `pve_proxmox_fw_cluster_rules` | `list` | No | `[]` | Cluster-wide firewall rules applied to all PVE hosts.<br><br>Rules define traffic filtering policies. Each rule generates a line in the `[RULES]` section of `/etc/pve/firewall/cluster.fw`.<br><br>Rules can reference aliases (`dc/`), IP sets (`+dc/`), […](#variable-pve_proxmox_fw_cluster_rules) |
-| `pve_proxmox_fw_node_options` | `dict` | No | `{}` | Node-specific firewall options for this PVE host.<br><br>This is a passthrough of original Proxmox VE firewall options. Keys and values are rendered directly into the `[OPTIONS]` section of `/etc/pve/nodes//host.fw`.<br><br>These options only affect […](#variable-pve_proxmox_fw_node_options) |
-| `pve_proxmox_fw_node_rules` | `list` | No | `[]` | Node-specific firewall rules for this PVE host.<br><br>Rules defined here only apply to this specific node, not the entire cluster. Each rule generates a line in the `[RULES]` section of `/etc/pve/nodes//host.fw`.<br><br>The data structure is […](#variable-pve_proxmox_fw_node_rules) |
-| `pve_proxmox_datacentercfg` | `dict` | No | `{}` | Proxmox VE datacenter-wide configuration settings.<br><br>This variable defines cluster-wide defaults rendered to `/etc/pve/datacenter.cfg`. Since this file resides on pmxcfs (the FUSE-backed cluster filesystem synchronized via Corosync), settings […](#variable-pve_proxmox_datacentercfg) |
-| `pve_proxmox_storage` | `list` | No | `[]` | List of storage definitions for the PVE host.<br><br>This variable manages operating system-level storage configuration including ZFS pools, ZFS datasets, and NFS mounts. Each entry defines a storage resource with its type-specific […](#variable-pve_proxmox_storage) |
-| `pve_proxmox_storage_force_cleanup` | `bool` | No | `false` | Allow automatic cleanup of existing data on disks for ZFS pool creation.<br><br>DESTRUCTIVE OPERATION WARNING: When set to `true`, the role will automatically wipe filesystem signatures and ZFS labels from disks that have existing data but whose […](#variable-pve_proxmox_storage_force_cleanup) |
-| `pve_proxmox_sm` | `list` | No | `[]` | Proxmox VE Storage Manager (pvesm) configuration.<br><br>This variable defines storage resources visible in the PVE web UI and available for VM/container disk allocation, backups, ISO storage, and container templates.<br><br>These entries configure […](#variable-pve_proxmox_sm) |
+|                  Variable                  |  Type  | Required |   Default   | Description (abstract) |
+| ------------------------------------------ | ------ | -------- | ----------- | ---------------------- |
+| `pve_proxmox_state`                        | `str`  | No       | `"present"` | Determines whether the managed configuration should be applied (`present`) or not.<br><br>`absent` currently only skips all configuration management, nothing gets removed or reverted: a Proxmox VE host stripped of its network, firewall or storage […](#variable-pve_proxmox_state) |
+| `pve_proxmox_tmpbackupfiles`               | `bool` | No       | `true`      | Switch to control whether temporary disaster-safeguard backups of important configuration files should be created before re-writing them via Ansible.<br><br>When set to `true` (which is the default), the role will:<br><br>1. Create a temporary […](#variable-pve_proxmox_tmpbackupfiles) |
+| `pve_proxmox_cluster_writer`               | `str`  | No       | `""`        | Inventory hostname of the node that writes the cluster-wide pmxcfs files (`/etc/pve/datacenter.cfg`, `/etc/pve/firewall/cluster.fw`) of its cluster.<br><br>When empty (the default), the role selects the writer automatically: the first play host of […](#variable-pve_proxmox_cluster_writer) |
+| `pve_proxmox_iommu_manage`                 | `bool` | No       | `true`      | Switch to control if the role should manage input–output memory management unit (IOMMU) related operating system configuration. IOMMU support is needed for PCI and/or GPU passthrough.<br><br>When set to `true` (which is the default), the role […](#variable-pve_proxmox_iommu_manage) |
+| `pve_proxmox_net_altnames`                 | `list` | No       | `[]`        | List of network interface alternative name definitions for systemd link files (`/etc/systemd/network/10-*.link`).<br><br>Instead of renaming kernel network devices, this approach assigns alternative names (altnames). This preserves the original […](#variable-pve_proxmox_net_altnames) |
+| `pve_proxmox_net_ifaces_host_shared`       | `dict` | No       | `{}`        | Network interface definitions for `/etc/network/interfaces.d/10-host` shared across all hosts in the inventory group.<br><br>These interfaces are NOT visible in the PVE web UI and are intended for backend networking configurations. Use this variable […](#variable-pve_proxmox_net_ifaces_host_shared) |
+| `pve_proxmox_net_ifaces_host_specific`     | `dict` | No       | `{}`        | Network interface definitions for `/etc/network/interfaces.d/10-host` specific to individual hosts.<br><br>These interfaces are NOT visible in the PVE web UI and are intended for backend networking configurations. Use this variable for host-specific […](#variable-pve_proxmox_net_ifaces_host_specific) |
+| `pve_proxmox_net_ifaces_workload_shared`   | `dict` | No       | `{}`        | Network interface definitions for `/etc/network/interfaces` shared across all hosts in the inventory group.<br><br>These interfaces ARE visible in the PVE web UI and available for assignment to virtual machines and containers. Use this variable for […](#variable-pve_proxmox_net_ifaces_workload_shared) |
+| `pve_proxmox_net_ifaces_workload_specific` | `dict` | No       | `{}`        | Network interface definitions for `/etc/network/interfaces` specific to individual hosts.<br><br>These interfaces ARE visible in the PVE web UI and available for assignment to virtual machines and containers. Use this variable for host-specific […](#variable-pve_proxmox_net_ifaces_workload_specific) |
+| `pve_proxmox_fw_cluster_options`           | `dict` | No       | `{}`        | Cluster-wide (datacenter) firewall options applied to all PVE hosts.<br><br>This is a passthrough of original Proxmox VE firewall options. Keys and values are rendered directly into the `[OPTIONS]` section of […](#variable-pve_proxmox_fw_cluster_options) |
+| `pve_proxmox_fw_cluster_aliases`           | `list` | No       | `[]`        | Cluster-wide IP aliases for use in firewall rules.<br><br>Aliases provide speakable, stable names for IP addresses and networks. Once defined, aliases can be referenced in rules, IP sets, and other aliases using the `dc/` syntax.<br><br>Each alias […](#variable-pve_proxmox_fw_cluster_aliases) |
+| `pve_proxmox_fw_cluster_ipsets`            | `list` | No       | `[]`        | Cluster-wide IP sets for use in firewall rules.<br><br>IP sets are reusable collections of IP addresses, networks, and aliases. They simplify rule management by allowing a single rule to match multiple addresses.<br><br>Each IP set generates an […](#variable-pve_proxmox_fw_cluster_ipsets) |
+| `pve_proxmox_fw_cluster_securitygroups`    | `list` | No       | `[]`        | Cluster-wide security groups (reusable rule collections).<br><br>Security groups bundle multiple firewall rules under a single name, allowing them to be applied as a unit to hosts, VMs, or containers. This promotes rule reuse and simplifies […](#variable-pve_proxmox_fw_cluster_securitygroups) |
+| `pve_proxmox_fw_cluster_rules`             | `list` | No       | `[]`        | Cluster-wide firewall rules applied to all PVE hosts.<br><br>Rules define traffic filtering policies. Each rule generates a line in the `[RULES]` section of `/etc/pve/firewall/cluster.fw`.<br><br>Rules can reference aliases (`dc/`), IP sets (`+dc/`), […](#variable-pve_proxmox_fw_cluster_rules) |
+| `pve_proxmox_fw_node_options`              | `dict` | No       | `{}`        | Node-specific firewall options for this PVE host.<br><br>This is a passthrough of original Proxmox VE firewall options. Keys and values are rendered directly into the `[OPTIONS]` section of `/etc/pve/nodes//host.fw`.<br><br>These options only affect […](#variable-pve_proxmox_fw_node_options) |
+| `pve_proxmox_fw_node_rules`                | `list` | No       | `[]`        | Node-specific firewall rules for this PVE host.<br><br>Rules defined here only apply to this specific node, not the entire cluster. Each rule generates a line in the `[RULES]` section of `/etc/pve/nodes//host.fw`.<br><br>The data structure is […](#variable-pve_proxmox_fw_node_rules) |
+| `pve_proxmox_datacentercfg`                | `dict` | No       | `{}`        | Proxmox VE datacenter-wide configuration settings.<br><br>This variable defines cluster-wide defaults rendered to `/etc/pve/datacenter.cfg`. Since this file resides on pmxcfs (the FUSE-backed cluster filesystem synchronized via Corosync), settings […](#variable-pve_proxmox_datacentercfg) |
+| `pve_proxmox_storage`                      | `list` | No       | `[]`        | List of storage definitions for the PVE host.<br><br>This variable manages operating system-level storage configuration including ZFS pools, ZFS datasets, and NFS mounts. Each entry defines a storage resource with its type-specific […](#variable-pve_proxmox_storage) |
+| `pve_proxmox_storage_force_cleanup`        | `bool` | No       | `false`     | Allow automatic cleanup of existing data on disks for ZFS pool creation.<br><br>DESTRUCTIVE OPERATION WARNING: When set to `true`, the role will automatically wipe filesystem signatures and ZFS labels from disks that have existing data but whose […](#variable-pve_proxmox_storage_force_cleanup) |
+| `pve_proxmox_sm`                           | `list` | No       | `[]`        | Proxmox VE Storage Manager (pvesm) configuration.<br><br>This variable defines storage resources visible in the PVE web UI and available for VM/container disk allocation, backups, ISO storage, and container templates.<br><br>These entries configure […](#variable-pve_proxmox_sm) |
 
 ### `pve_proxmox_state`<a id="variable-pve_proxmox_state"></a>
 
@@ -502,9 +514,10 @@ Use `ip -br link show` to display current interface names and their
 altnames after configuration.
 
 References:
-  - https://www.freedesktop.org/software/systemd/man/latest/systemd.link.html
-  - https://manpages.debian.org/trixie/udev/systemd.link.5.en.html
-  - https://pve.proxmox.com/wiki/Network_Configuration#_manual_method
+
+- <https://www.freedesktop.org/software/systemd/man/latest/systemd.link.html>
+- <https://manpages.debian.org/trixie/udev/systemd.link.5.en.html>
+- <https://pve.proxmox.com/wiki/Network_Configuration#_manual_method>
 
 Example:
 
@@ -609,9 +622,10 @@ kernel-assigned name. Multiple altnames can be specified if the
 interface should be reachable under different names.
 
 Naming conventions:
-  - `main1`, `main2`: Primary workload interfaces (bond members)
-  - `admfb`: Admin fallback interface (emergency access)
-  - `sync1`, `sync2`: Corosync cluster communication links
+
+- `main1`, `main2`: Primary workload interfaces (bond members)
+- `admfb`: Admin fallback interface (emergency access)
+- `sync1`, `sync2`: Corosync cluster communication links
 
 The altnames defined here should match the interface names used
 in `network_interfaces_host_specific` and related variables.
@@ -649,7 +663,9 @@ documentation.
 - **Required**: No
 - **Default**: `{}`
 
-#### `pve_proxmox_net_ifaces_host_shared['options_before']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-options_before"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-options_before"></a>
+
+#### `pve_proxmox_net_ifaces_host_shared['options_before']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -676,7 +692,9 @@ generated configuration file.
 - **Required**: No
 - **List Elements**: `dict`
 
-##### `pve_proxmox_net_ifaces_host_shared['sections']['title']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-title"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-title"></a>
+
+##### `pve_proxmox_net_ifaces_host_shared['sections']['title']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -688,20 +706,24 @@ Example output: `### Proxmox VE (PVE) VLAN interfaces`
 - **Type**: `str`
 - **Required**: Yes
 
-##### `pve_proxmox_net_ifaces_host_shared['sections']['comment']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-comment"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-comment"></a>
+
+##### `pve_proxmox_net_ifaces_host_shared['sections']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Optional comment block rendered below the title and above the
 interface definitions.
 
-Each line is automatically prefixed with `# ` in the output.
+Each line is automatically prefixed with `#` in the output.
 Use this for explanatory text about the section's purpose.
 
 - **Type**: `str`
 - **Required**: No
 
-##### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces"></a>
+
+##### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -714,7 +736,9 @@ an `iface` stanza with the specified method and properties.
 - **Required**: Yes
 - **List Elements**: `dict`
 
-###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['name']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-name"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-name"></a>
+
+###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['name']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -725,7 +749,9 @@ Examples: `bond_main.0001`, `br0020`, `main1`
 - **Type**: `str`
 - **Required**: Yes
 
-###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['method']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-method"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-method"></a>
+
+###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['method']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -739,12 +765,13 @@ Common values:
 - `static`: Fixed IP address specified via `iface_properties`.
 - `dhcp`: Obtain address via DHCP client.
 - `loopback`: Loopback interface (typically only for `lo`).
-
 - **Type**: `str`
 - **Required**: Yes
 - **Choices**: `manual`, `static`, `dhcp`, `loopback`
 
-###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['auto']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-auto"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-auto"></a>
+
+###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['auto']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -757,7 +784,9 @@ When `true`, renders an `auto <name>` directive before the
 - **Required**: No
 - **Default**: `true`
 
-###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['comment']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-comment"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-comment"></a>
+
+###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -774,45 +803,52 @@ For short inline comments within the `iface` block, use
 - **Type**: `str`
 - **Required**: No
 
-###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['iface_properties']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-iface_properties"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-sections-sub-interfaces-sub-iface_properties"></a>
+
+###### `pve_proxmox_net_ifaces_host_shared['sections']['interfaces']['iface_properties']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Key-value pairs for interfaces(5) options rendered within
 the `iface` stanza.
 
-All keys are rendered as `    <key> <value>` lines with
+All keys are rendered as `<key> <value>` lines with
 proper indentation, except for the special `comment` key
-which renders as `    # <value>`.
+which renders as `# <value>`.
 
 Common properties by interface type:
 
 Static addressing:
-  - `address`: IP address with CIDR notation (e.g., `10.0.0.1/24`)
-  - `gateway`: Default gateway IP address
+
+- `address`: IP address with CIDR notation (e.g., `10.0.0.1/24`)
+- `gateway`: Default gateway IP address
 
 Bonding:
-  - `bond-slaves`: Space-separated list of member interfaces
-  - `bond-mode`: Bonding mode (e.g., `802.3ad` for LACP)
-  - `bond-miimon`: Link monitoring interval in milliseconds
-  - `bond-lacp-rate`: LACP rate (`slow` or `fast`)
-  - `bond-xmit-hash-policy`: Transmit hash policy
+
+- `bond-slaves`: Space-separated list of member interfaces
+- `bond-mode`: Bonding mode (e.g., `802.3ad` for LACP)
+- `bond-miimon`: Link monitoring interval in milliseconds
+- `bond-lacp-rate`: LACP rate (`slow` or `fast`)
+- `bond-xmit-hash-policy`: Transmit hash policy
 
 Bridging:
-  - `bridge-ports`: Space-separated list of member interfaces
-  - `bridge-stp`: Spanning tree protocol (`on` or `off`)
-  - `bridge-fd`: Forwarding delay in seconds
+
+- `bridge-ports`: Space-separated list of member interfaces
+- `bridge-stp`: Spanning tree protocol (`on` or `off`)
+- `bridge-fd`: Forwarding delay in seconds
 
 General:
-  - `mtu`: Maximum transmission unit size
-  - `comment`: Inline comment within the interface block
 
+- `mtu`: Maximum transmission unit size
+- `comment`: Inline comment within the interface block
 - **Type**: `dict`
 - **Required**: No
 
 
 
-#### `pve_proxmox_net_ifaces_host_shared['options_after']`<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-options_after"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_shared-sub-options_after"></a>
+
+#### `pve_proxmox_net_ifaces_host_shared['options_after']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -889,7 +925,9 @@ pve_proxmox_net_ifaces_host_specific:
 - **Required**: No
 - **Default**: `{}`
 
-#### `pve_proxmox_net_ifaces_host_specific['options_before']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-options_before"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-options_before"></a>
+
+#### `pve_proxmox_net_ifaces_host_specific['options_before']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -916,7 +954,9 @@ generated configuration file.
 - **Required**: No
 - **List Elements**: `dict`
 
-##### `pve_proxmox_net_ifaces_host_specific['sections']['title']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-title"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-title"></a>
+
+##### `pve_proxmox_net_ifaces_host_specific['sections']['title']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -928,20 +968,24 @@ Example output: `### Proxmox VE (PVE) main connection (LACP, trunk)`
 - **Type**: `str`
 - **Required**: Yes
 
-##### `pve_proxmox_net_ifaces_host_specific['sections']['comment']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-comment"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-comment"></a>
+
+##### `pve_proxmox_net_ifaces_host_specific['sections']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Optional comment block rendered below the title and above the
 interface definitions.
 
-Each line is automatically prefixed with `# ` in the output.
+Each line is automatically prefixed with `#` in the output.
 Use this for explanatory text about the section's purpose.
 
 - **Type**: `str`
 - **Required**: No
 
-##### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces"></a>
+
+##### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -954,7 +998,9 @@ an `iface` stanza with the specified method and properties.
 - **Required**: Yes
 - **List Elements**: `dict`
 
-###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['name']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-name"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-name"></a>
+
+###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['name']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -966,7 +1012,9 @@ Examples: `main1`, `main2`, `bond_main`, `bond_main.0020`,
 - **Type**: `str`
 - **Required**: Yes
 
-###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['method']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-method"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-method"></a>
+
+###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['method']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -980,12 +1028,13 @@ Common values:
 - `static`: Fixed IP address specified via `iface_properties`.
 - `dhcp`: Obtain address via DHCP client.
 - `loopback`: Loopback interface (typically only for `lo`).
-
 - **Type**: `str`
 - **Required**: Yes
 - **Choices**: `manual`, `static`, `dhcp`, `loopback`
 
-###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['auto']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-auto"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-auto"></a>
+
+###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['auto']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -998,7 +1047,9 @@ When `true`, renders an `auto <name>` directive before the
 - **Required**: No
 - **Default**: `true`
 
-###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['comment']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-comment"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-comment"></a>
+
+###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1015,16 +1066,18 @@ For short inline comments within the `iface` block, use
 - **Type**: `str`
 - **Required**: No
 
-###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['iface_properties']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-iface_properties"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-sections-sub-interfaces-sub-iface_properties"></a>
+
+###### `pve_proxmox_net_ifaces_host_specific['sections']['interfaces']['iface_properties']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Key-value pairs for interfaces(5) options rendered within
 the `iface` stanza.
 
-All keys are rendered as `    <key> <value>` lines with
+All keys are rendered as `<key> <value>` lines with
 proper indentation, except for the special `comment` key
-which renders as `    # <value>`.
+which renders as `# <value>`.
 
 See `pve_proxmox_net_ifaces_host_shared` for common properties.
 
@@ -1033,7 +1086,9 @@ See `pve_proxmox_net_ifaces_host_shared` for common properties.
 
 
 
-#### `pve_proxmox_net_ifaces_host_specific['options_after']`<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-options_after"></a>
+<a id="variable-pve_proxmox_net_ifaces_host_specific-sub-options_after"></a>
+
+#### `pve_proxmox_net_ifaces_host_specific['options_after']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1082,7 +1137,9 @@ documentation.
 - **Required**: No
 - **Default**: `{}`
 
-#### `pve_proxmox_net_ifaces_workload_shared['options_before']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-options_before"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-options_before"></a>
+
+#### `pve_proxmox_net_ifaces_workload_shared['options_before']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1090,7 +1147,8 @@ Optional lines placed before all sections in the generated file.
 Uses interfaces(5) syntax.
 
 For workload interfaces, this typically includes:
-```
+
+```text
 source /etc/network/interfaces.d/*
 ```
 
@@ -1114,7 +1172,9 @@ generated configuration file.
 - **Required**: No
 - **List Elements**: `dict`
 
-##### `pve_proxmox_net_ifaces_workload_shared['sections']['title']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-title"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-title"></a>
+
+##### `pve_proxmox_net_ifaces_workload_shared['sections']['title']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1126,20 +1186,24 @@ Example output: `### Proxmox VE (PVE) workload bridge interfaces`
 - **Type**: `str`
 - **Required**: Yes
 
-##### `pve_proxmox_net_ifaces_workload_shared['sections']['comment']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-comment"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-comment"></a>
+
+##### `pve_proxmox_net_ifaces_workload_shared['sections']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Optional comment block rendered below the title and above the
 interface definitions.
 
-Each line is automatically prefixed with `# ` in the output.
+Each line is automatically prefixed with `#` in the output.
 Use this for explanatory text about the section's purpose.
 
 - **Type**: `str`
 - **Required**: No
 
-##### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces"></a>
+
+##### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1152,7 +1216,9 @@ an `iface` stanza with the specified method and properties.
 - **Required**: Yes
 - **List Elements**: `dict`
 
-###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['name']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-name"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-name"></a>
+
+###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['name']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1165,7 +1231,9 @@ Examples: `vmbr0001`, `vmbr0020`, `vmbr0254`
 - **Type**: `str`
 - **Required**: Yes
 
-###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['method']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-method"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-method"></a>
+
+###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['method']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1179,12 +1247,13 @@ Common values:
 - `static`: Fixed IP address specified via `iface_properties`.
 - `dhcp`: Obtain address via DHCP client.
 - `loopback`: Loopback interface (typically only for `lo`).
-
 - **Type**: `str`
 - **Required**: Yes
 - **Choices**: `manual`, `static`, `dhcp`, `loopback`
 
-###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['auto']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-auto"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-auto"></a>
+
+###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['auto']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1197,7 +1266,9 @@ When `true`, renders an `auto <name>` directive before the
 - **Required**: No
 - **Default**: `true`
 
-###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['comment']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-comment"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-comment"></a>
+
+###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1214,16 +1285,18 @@ For short inline comments within the `iface` block, use
 - **Type**: `str`
 - **Required**: No
 
-###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['iface_properties']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-iface_properties"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-sections-sub-interfaces-sub-iface_properties"></a>
+
+###### `pve_proxmox_net_ifaces_workload_shared['sections']['interfaces']['iface_properties']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Key-value pairs for interfaces(5) options rendered within
 the `iface` stanza.
 
-All keys are rendered as `    <key> <value>` lines with
+All keys are rendered as `<key> <value>` lines with
 proper indentation, except for the special `comment` key
-which renders as `    # <value>`.
+which renders as `# <value>`.
 
 Common properties for workload bridges:
 
@@ -1240,7 +1313,9 @@ properties.
 
 
 
-#### `pve_proxmox_net_ifaces_workload_shared['options_after']`<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-options_after"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_shared-sub-options_after"></a>
+
+#### `pve_proxmox_net_ifaces_workload_shared['options_after']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1283,7 +1358,9 @@ documentation.
 - **Required**: No
 - **Default**: `{}`
 
-#### `pve_proxmox_net_ifaces_workload_specific['options_before']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-options_before"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-options_before"></a>
+
+#### `pve_proxmox_net_ifaces_workload_specific['options_before']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1296,7 +1373,9 @@ deduplicated during rendering.
 - **Type**: `str`
 - **Required**: No
 
-#### `pve_proxmox_net_ifaces_workload_specific['sections']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections"></a>
+
+#### `pve_proxmox_net_ifaces_workload_specific['sections']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1310,7 +1389,9 @@ generated configuration file.
 - **Required**: No
 - **List Elements**: `dict`
 
-##### `pve_proxmox_net_ifaces_workload_specific['sections']['title']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-title"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-title"></a>
+
+##### `pve_proxmox_net_ifaces_workload_specific['sections']['title']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1322,20 +1403,24 @@ Example output: `### Corosync links`
 - **Type**: `str`
 - **Required**: Yes
 
-##### `pve_proxmox_net_ifaces_workload_specific['sections']['comment']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-comment"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-comment"></a>
+
+##### `pve_proxmox_net_ifaces_workload_specific['sections']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Optional comment block rendered below the title and above the
 interface definitions.
 
-Each line is automatically prefixed with `# ` in the output.
+Each line is automatically prefixed with `#` in the output.
 Use this for explanatory text about the section's purpose.
 
 - **Type**: `str`
 - **Required**: No
 
-##### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces"></a>
+
+##### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1348,7 +1433,9 @@ an `iface` stanza with the specified method and properties.
 - **Required**: Yes
 - **List Elements**: `dict`
 
-###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['name']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-name"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-name"></a>
+
+###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['name']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1359,7 +1446,9 @@ Examples: `sync1`, `sync2` (for Corosync links)
 - **Type**: `str`
 - **Required**: Yes
 
-###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['method']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-method"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-method"></a>
+
+###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['method']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1373,12 +1462,13 @@ Common values:
 - `static`: Fixed IP address specified via `iface_properties`.
 - `dhcp`: Obtain address via DHCP client.
 - `loopback`: Loopback interface (typically only for `lo`).
-
 - **Type**: `str`
 - **Required**: Yes
 - **Choices**: `manual`, `static`, `dhcp`, `loopback`
 
-###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['auto']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-auto"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-auto"></a>
+
+###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['auto']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1391,7 +1481,9 @@ When `true`, renders an `auto <name>` directive before the
 - **Required**: No
 - **Default**: `true`
 
-###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['comment']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-comment"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-comment"></a>
+
+###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1408,16 +1500,18 @@ For short inline comments within the `iface` block, use
 - **Type**: `str`
 - **Required**: No
 
-###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['iface_properties']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-iface_properties"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-sections-sub-interfaces-sub-iface_properties"></a>
+
+###### `pve_proxmox_net_ifaces_workload_specific['sections']['interfaces']['iface_properties']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Key-value pairs for interfaces(5) options rendered within
 the `iface` stanza.
 
-All keys are rendered as `    <key> <value>` lines with
+All keys are rendered as `<key> <value>` lines with
 proper indentation, except for the special `comment` key
-which renders as `    # <value>`.
+which renders as `# <value>`.
 
 See `pve_proxmox_net_ifaces_host_shared` for common properties.
 
@@ -1426,7 +1520,9 @@ See `pve_proxmox_net_ifaces_host_shared` for common properties.
 
 
 
-#### `pve_proxmox_net_ifaces_workload_specific['options_after']`<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-options_after"></a>
+<a id="variable-pve_proxmox_net_ifaces_workload_specific-sub-options_after"></a>
+
+#### `pve_proxmox_net_ifaces_workload_specific['options_after']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1476,9 +1572,10 @@ Common options:
   `enable`, `rate`, `burst` keys)
 
 Reference:
-  https://pve.proxmox.com/wiki/Firewall#pve_firewall_cluster_wide_setup
+  <https://pve.proxmox.com/wiki/Firewall#pve_firewall_cluster_wide_setup>
 
 Example:
+
 ```yaml
 pve_proxmox_fw_cluster_options:
   enable: 1
@@ -1512,9 +1609,10 @@ Each alias generates a line in the `[ALIASES]` section of
 `/etc/pve/firewall/cluster.fw`.
 
 Reference:
-  https://pve.proxmox.com/wiki/Firewall#pve_firewall_ip_aliases
+  <https://pve.proxmox.com/wiki/Firewall#pve_firewall_ip_aliases>
 
 Example:
+
 ```yaml
 pve_proxmox_fw_cluster_aliases:
   - name: "gateway-main"
@@ -1560,11 +1658,11 @@ IP address or network in IPv4 or IPv6 format.
 Supports CIDR notation for networks (e.g., `10.0.0.0/24`).
 
 Examples:
-  - `10.1.1.2` (single host)
-  - `10.1.2.0/24` (network)
-  - `2001:db8::1` (IPv6 host)
-  - `2001:db8::/32` (IPv6 network)
 
+- `10.1.1.2` (single host)
+- `10.1.2.0/24` (network)
+- `2001:db8::1` (IPv6 host)
+- `2001:db8::/32` (IPv6 network)
 - **Type**: `str`
 - **Required**: Yes
 
@@ -1598,9 +1696,10 @@ Reference IP sets in rules using the `+dc/<ipset_name>` syntax
 (note the `+` prefix).
 
 Reference:
-  https://pve.proxmox.com/wiki/Firewall#pve_firewall_ip_sets
+  <https://pve.proxmox.com/wiki/Firewall#pve_firewall_ip_sets>
 
 Example:
+
 ```yaml
 pve_proxmox_fw_cluster_ipsets:
   - name: "trusted_networks"
@@ -1669,17 +1768,19 @@ List of IP addresses, networks, or alias references in this set.
 IP address, network (CIDR), or alias reference.
 
 Supported formats:
-  - IPv4 address: `10.1.20.110`
-  - IPv4 network: `10.1.20.0/24`
-  - IPv6 address: `2001:db8::1`
-  - IPv6 network: `2001:db8::/32`
-  - Cluster alias: `dc/<alias_name>`
-  - Guest alias: `guest/<alias_name>`
 
+- IPv4 address: `10.1.20.110`
+- IPv4 network: `10.1.20.0/24`
+- IPv6 address: `2001:db8::1`
+- IPv6 network: `2001:db8::/32`
+- Cluster alias: `dc/<alias_name>`
+- Guest alias: `guest/<alias_name>`
 - **Type**: `str`
 - **Required**: Yes
 
-##### `pve_proxmox_fw_cluster_ipsets['entries']['comment']`<a id="variable-pve_proxmox_fw_cluster_ipsets-sub-entries-sub-comment"></a>
+<a id="variable-pve_proxmox_fw_cluster_ipsets-sub-entries-sub-comment"></a>
+
+##### `pve_proxmox_fw_cluster_ipsets['entries']['comment']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1690,7 +1791,9 @@ Rendered as a comment after the entry.
 - **Type**: `str`
 - **Required**: No
 
-##### `pve_proxmox_fw_cluster_ipsets['entries']['nomatch']`<a id="variable-pve_proxmox_fw_cluster_ipsets-sub-entries-sub-nomatch"></a>
+<a id="variable-pve_proxmox_fw_cluster_ipsets-sub-entries-sub-nomatch"></a>
+
+##### `pve_proxmox_fw_cluster_ipsets['entries']['nomatch']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -1701,6 +1804,7 @@ meaning traffic matching this entry will NOT match the IP set.
 Useful for creating exceptions within a broader network range.
 
 Example: Allow `10.0.0.0/24` except `10.0.0.1`:
+
 ```yaml
 entries:
   - ip: "10.0.0.0/24"
@@ -1711,7 +1815,6 @@ entries:
 - **Type**: `bool`
 - **Required**: No
 - **Default**: `false`
-
 
 
 
@@ -1732,9 +1835,10 @@ Reference security groups in the `[RULES]` section using:
 `GROUP <group_name>`
 
 Reference:
-  https://pve.proxmox.com/wiki/Firewall#pve_firewall_security_groups
+  <https://pve.proxmox.com/wiki/Firewall#pve_firewall_security_groups>
 
 Example:
+
 ```yaml
 pve_proxmox_fw_cluster_securitygroups:
   - name: "allow_web_out"
@@ -1812,9 +1916,10 @@ Rules can reference aliases (`dc/<name>`), IP sets (`+dc/<name>`),
 security groups (`GROUP <name>`), and PVE macros (`MACRO(ACTION)`).
 
 Reference:
-  https://pve.proxmox.com/wiki/Firewall#_firewall_rules
+  <https://pve.proxmox.com/wiki/Firewall#_firewall_rules>
 
 Example:
+
 ```yaml
 pve_proxmox_fw_cluster_rules:
   # Apply a security group
@@ -1851,7 +1956,6 @@ Required for all rules except `GROUP` actions.
 
 - `IN`: Incoming traffic (towards the host/VM)
 - `OUT`: Outgoing traffic (from the host/VM)
-
 - **Type**: `str`
 - **Required**: No
 - **Choices**: `IN`, `OUT`
@@ -1875,7 +1979,7 @@ PVE provides many predefined macros for common services. Macros
 automatically set the appropriate protocol and port.
 
 Reference:
-  https://pve.proxmox.com/wiki/Firewall#_standard_macros
+  <https://pve.proxmox.com/wiki/Firewall#_standard_macros>
 
 - **Type**: `str`
 - **Required**: Yes
@@ -1927,11 +2031,11 @@ Example: `vmbr0`, `eth0`
 Source address filter.
 
 Supported formats:
-  - IPv4/IPv6 address: `10.0.0.1`, `2001:db8::1`
-  - Network (CIDR): `10.0.0.0/24`
-  - Alias reference: `dc/<alias_name>`
-  - IP set reference: `+dc/<ipset_name>` (note the `+` prefix)
 
+- IPv4/IPv6 address: `10.0.0.1`, `2001:db8::1`
+- Network (CIDR): `10.0.0.0/24`
+- Alias reference: `dc/<alias_name>`
+- IP set reference: `+dc/<ipset_name>` (note the `+` prefix)
 - **Type**: `str`
 - **Required**: No
 
@@ -1955,11 +2059,11 @@ Examples: `22`, `80,443`, `1024:65535`
 Destination address filter.
 
 Supported formats (same as `source`):
-  - IPv4/IPv6 address: `10.0.0.1`, `2001:db8::1`
-  - Network (CIDR): `10.0.0.0/24`
-  - Alias reference: `dc/<alias_name>`
-  - IP set reference: `+dc/<ipset_name>` (note the `+` prefix)
 
+- IPv4/IPv6 address: `10.0.0.1`, `2001:db8::1`
+- Network (CIDR): `10.0.0.0/24`
+- Alias reference: `dc/<alias_name>`
+- IP set reference: `+dc/<ipset_name>` (note the `+` prefix)
 - **Type**: `str`
 - **Required**: No
 
@@ -2042,9 +2146,10 @@ Common options:
 - `tcpflags`: Enable TCP flag checks (`0` or `1`)
 
 Reference:
-  https://pve.proxmox.com/wiki/Firewall#pve_firewall_host_specific_configuration
+  <https://pve.proxmox.com/wiki/Firewall#pve_firewall_host_specific_configuration>
 
 Example:
+
 ```yaml
 pve_proxmox_fw_node_options:
   nftables: 1
@@ -2074,9 +2179,10 @@ Rules can reference cluster-wide aliases (`dc/<name>`) and IP sets
 (`+dc/<name>`), as well as security groups.
 
 Reference:
-  https://pve.proxmox.com/wiki/Firewall#_firewall_rules
+  <https://pve.proxmox.com/wiki/Firewall#_firewall_rules>
 
 Example:
+
 ```yaml
 pve_proxmox_fw_node_rules:
   # Allow ICMP from monitoring server
@@ -2109,7 +2215,6 @@ Required for all rules except `GROUP` actions.
 
 - `IN`: Incoming traffic (towards the host)
 - `OUT`: Outgoing traffic (from the host)
-
 - **Type**: `str`
 - **Required**: No
 - **Choices**: `IN`, `OUT`
@@ -2244,16 +2349,17 @@ are part of the play, only one deterministically selected node
 writes the file and the role fails if this value differs between
 the nodes of the cluster (define it in `group_vars`).
 
-This is a passthrough of original Proxmox VE datacenter options. Keys
-and values are rendered directly as `key: value` lines into
-/etc/pve/datacenter.cfg. Nested dictionaries are automatically converted to the PVE
-`key=value,key2=value2` format.
+This is a passthrough of original Proxmox VE datacenter options. Keys and values
+are rendered directly as `key: value` lines into /etc/pve/datacenter.cfg. Nested
+dictionaries are automatically converted to the PVE `key=value,key2=value2`
+format.
 
 Reference:
-  https://pve.proxmox.com/wiki/Manual:_datacenter.cfg
-  https://pve.proxmox.com/pve-docs/datacenter.cfg.5.html
+  <https://pve.proxmox.com/wiki/Manual:_datacenter.cfg>
+  <https://pve.proxmox.com/pve-docs/datacenter.cfg.5.html>
 
 Example:
+
 ```yaml
 pve_proxmox_datacentercfg:
   language: "en"
@@ -2291,6 +2397,7 @@ Supported storage types:
 - `nfs`: NFS network mount
 
 The role performs extensive validation before creating storage:
+
 - Verifies disk existence and accessibility
 - Checks for existing data on disks (safety check)
 - Validates vdev disk counts match RAID requirements
@@ -2301,6 +2408,7 @@ Set `storage_force_cleanup: true` to allow automatic disk wiping
 (DESTRUCTIVE - use with extreme caution).
 
 Example:
+
 ```yaml
 pve_proxmox_storage:
   # ZFS mirror pool on SSDs
@@ -2354,10 +2462,10 @@ For ZFS datasets: The full dataset path (e.g., `pool1/vms`)
 For NFS: A descriptive identifier (e.g., `nfs-backup`)
 
 ZFS naming rules:
-  - Must start with a letter
-  - Can contain alphanumeric characters, underscores, hyphens
-  - Dataset names use `/` to denote hierarchy
 
+- Must start with a letter
+- Can contain alphanumeric characters, underscores, hyphens
+- Dataset names use `/` to denote hierarchy
 - **Type**: `str`
 - **Required**: Yes
 
@@ -2370,7 +2478,6 @@ Storage type identifier.
 - `zpool`: Create a new ZFS storage pool from raw disks
 - `zfs_dataset`: Create a ZFS dataset within an existing pool
 - `nfs`: Mount an NFS export from a network server
-
 - **Type**: `str`
 - **Required**: Yes
 - **Choices**: `zpool`, `zfs_dataset`, `nfs`
@@ -2414,6 +2521,7 @@ Multiple vdevs can be combined for additional capacity (striped
 across vdevs).
 
 Example:
+
 ```yaml
 vdevs:
   - type: "mirror"
@@ -2426,7 +2534,9 @@ vdevs:
 - **Required**: No
 - **List Elements**: `dict`
 
-###### `pve_proxmox_storage['attributes']['vdevs']['type']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-vdevs-sub-type"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-vdevs-sub-type"></a>
+
+###### `pve_proxmox_storage['attributes']['vdevs']['type']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2443,17 +2553,19 @@ Vdev RAID type.
   requires 4+ disks)
 
 Disk count requirements:
-  - `stripe`: exactly 1 disk
-  - `mirror`: at least 2 disks
-  - `raidz1`: at least 2 disks
-  - `raidz2`: at least 3 disks
-  - `raidz3`: at least 4 disks
 
+- `stripe`: exactly 1 disk
+- `mirror`: at least 2 disks
+- `raidz1`: at least 2 disks
+- `raidz2`: at least 3 disks
+- `raidz3`: at least 4 disks
 - **Type**: `str`
 - **Required**: Yes
 - **Choices**: `stripe`, `mirror`, `raidz1`, `raidz2`, `raidz3`
 
-###### `pve_proxmox_storage['attributes']['vdevs']['disks']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-vdevs-sub-disks"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-vdevs-sub-disks"></a>
+
+###### `pve_proxmox_storage['attributes']['vdevs']['disks']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2463,12 +2575,14 @@ Always use persistent device paths from `/dev/disk/by-id/`
 to ensure consistent identification across reboots.
 
 The role validates that:
-  - All disks exist on the system
-  - Disks don't contain existing data (unless
-    `storage_force_cleanup: true`)
-  - Disks aren't already part of a different pool
+
+- All disks exist on the system
+- Disks don't contain existing data (unless
+  `storage_force_cleanup: true`)
+- Disks aren't already part of a different pool
 
 Example:
+
 ```yaml
 disks:
   - "/dev/disk/by-id/scsi-SATA_Samsung_SSD_123"
@@ -2480,7 +2594,9 @@ disks:
 - **List Elements**: `str`
 
 
-##### `pve_proxmox_storage['attributes']['pool_properties']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-pool_properties"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-pool_properties"></a>
+
+##### `pve_proxmox_storage['attributes']['pool_properties']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2490,15 +2606,17 @@ These are pool-level properties set at creation time. This is
 a passthrough of original ZFS pool properties.
 
 Common properties:
-  - `ashift`: Sector size exponent (9=512B, 12=4K, 13=8K).
-    Use `12` for modern drives with 4K sectors.
-  - `autoexpand`: Auto-expand pool when larger disks added
-    (`on`/`off`)
-  - `autoreplace`: Auto-replace failed disks (`on`/`off`)
-  - `failmode`: Behavior on write failure
-    (`wait`/`continue`/`panic`)
+
+- `ashift`: Sector size exponent (9=512B, 12=4K, 13=8K).
+  Use `12` for modern drives with 4K sectors.
+- `autoexpand`: Auto-expand pool when larger disks added
+  (`on`/`off`)
+- `autoreplace`: Auto-replace failed disks (`on`/`off`)
+- `failmode`: Behavior on write failure
+  (`wait`/`continue`/`panic`)
 
 Example:
+
 ```yaml
 pool_properties:
   ashift: "12"
@@ -2508,7 +2626,9 @@ pool_properties:
 - **Type**: `dict`
 - **Required**: No
 
-##### `pve_proxmox_storage['attributes']['filesystem_properties']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-filesystem_properties"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-filesystem_properties"></a>
+
+##### `pve_proxmox_storage['attributes']['filesystem_properties']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2527,7 +2647,9 @@ descriptions.
 - **Type**: `dict`
 - **Required**: No
 
-##### `pve_proxmox_storage['attributes']['zfs_properties']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-zfs_properties"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-zfs_properties"></a>
+
+##### `pve_proxmox_storage['attributes']['zfs_properties']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2540,32 +2662,35 @@ of original ZFS dataset properties.
 Common properties:
 
 Storage behavior:
-  - `mountpoint`: Where to mount the dataset (e.g., `/mnt/data`)
-    Use `none` for unmounted datasets (e.g., zvol parents)
-  - `compression`: Compression algorithm (`on`, `off`, `lz4`,
-    `zstd`, `gzip-N`)
-  - `atime`: Update access time on read (`on`/`off`). Disable
-    for performance.
-  - `recordsize`: Maximum block size (`128K` default, `1M` for
-    large files)
-  - `quota`: Maximum size limit (e.g., `100G`)
-  - `reservation`: Guaranteed minimum space (e.g., `50G`)
+
+- `mountpoint`: Where to mount the dataset (e.g., `/mnt/data`)
+  Use `none` for unmounted datasets (e.g., zvol parents)
+- `compression`: Compression algorithm (`on`, `off`, `lz4`,
+  `zstd`, `gzip-N`)
+- `atime`: Update access time on read (`on`/`off`). Disable
+  for performance.
+- `recordsize`: Maximum block size (`128K` default, `1M` for
+  large files)
+- `quota`: Maximum size limit (e.g., `100G`)
+- `reservation`: Guaranteed minimum space (e.g., `50G`)
 
 Metadata handling:
-  - `xattr`: Extended attribute handling (`on`, `off`, `sa`).
-    Use `sa` (system attribute) for performance.
-  - `acltype`: ACL type (`off`, `posix`, `nfsv4`)
-  - `dnodesize`: Dnode size (`legacy`, `auto`, `1k`-`16k`)
+
+- `xattr`: Extended attribute handling (`on`, `off`, `sa`).
+  Use `sa` (system attribute) for performance.
+- `acltype`: ACL type (`off`, `posix`, `nfsv4`)
+- `dnodesize`: Dnode size (`legacy`, `auto`, `1k`-`16k`)
 
 Encryption (native ZFS encryption):
-  - `encryption`: Encryption algorithm (`aes-256-gcm`
-    recommended)
-  - `keyformat`: Key format (`passphrase`, `raw`, `hex`)
-  - `keylocation`: Key source (`prompt`, `file:///path/to/key`)
-  - `passphrase`: The encryption passphrase (for
-    `keylocation: prompt`)
-  - `passphrase_old`: Previous passphrase(s) for key rotation
-    (string or list)
+
+- `encryption`: Encryption algorithm (`aes-256-gcm`
+  recommended)
+- `keyformat`: Key format (`passphrase`, `raw`, `hex`)
+- `keylocation`: Key source (`prompt`, `file:///path/to/key`)
+- `passphrase`: The encryption passphrase (for
+  `keylocation: prompt`)
+- `passphrase_old`: Previous passphrase(s) for key rotation
+  (string or list)
 
 Note: `passphrase` and `passphrase_old` are special keys
 handled by the role and not passed directly to ZFS. Because
@@ -2574,6 +2699,7 @@ of them, the whole dictionary is treated as sensitive
 argument-validation output.
 
 Example (encrypted dataset):
+
 ```yaml
 zfs_properties:
   mountpoint: "/mnt/secure-data"
@@ -2590,6 +2716,7 @@ zfs_properties:
 ```
 
 Example (high-performance dataset):
+
 ```yaml
 zfs_properties:
   mountpoint: "/mnt/vms"
@@ -2604,7 +2731,9 @@ zfs_properties:
 - **Required**: No
 - **Sensitive**: Yes (`no_log`, values are masked in logs)
 
-##### `pve_proxmox_storage['attributes']['storage_properties']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties"></a>
+
+##### `pve_proxmox_storage['attributes']['storage_properties']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2616,7 +2745,9 @@ reachability before attempting to mount.
 - **Type**: `dict`
 - **Required**: No
 
-###### `pve_proxmox_storage['attributes']['storage_properties']['src']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties-sub-src"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties-sub-src"></a>
+
+###### `pve_proxmox_storage['attributes']['storage_properties']['src']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2629,7 +2760,9 @@ Example: `nas.example.com:/exports/backup`
 - **Type**: `str`
 - **Required**: Yes
 
-###### `pve_proxmox_storage['attributes']['storage_properties']['path']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties-sub-path"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties-sub-path"></a>
+
+###### `pve_proxmox_storage['attributes']['storage_properties']['path']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2642,7 +2775,9 @@ Example: `/mnt/nfs-backup`
 - **Type**: `str`
 - **Required**: Yes
 
-###### `pve_proxmox_storage['attributes']['storage_properties']['opts']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties-sub-opts"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties-sub-opts"></a>
+
+###### `pve_proxmox_storage['attributes']['storage_properties']['opts']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2650,12 +2785,13 @@ NFS mount options. This is a passthrough of the original
 mount options.
 
 Common options:
-  - `defaults`: Standard mount options
-  - `noatime`: Don't update access times (performance)
-  - `nfsvers=4`: Force NFSv4
-  - `soft`: Return errors on timeout (vs. `hard`)
-  - `timeo=N`: Timeout in deciseconds
-  - `retrans=N`: Number of retries
+
+- `defaults`: Standard mount options
+- `noatime`: Don't update access times (performance)
+- `nfsvers=4`: Force NFSv4
+- `soft`: Return errors on timeout (vs. `hard`)
+- `timeo=N`: Timeout in deciseconds
+- `retrans=N`: Number of retries
 
 Example: `defaults,noatime,nfsvers=4`
 
@@ -2663,7 +2799,9 @@ Example: `defaults,noatime,nfsvers=4`
 - **Required**: No
 - **Default**: `"defaults"`
 
-###### `pve_proxmox_storage['attributes']['storage_properties']['state']`<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties-sub-state"></a>
+<a id="variable-pve_proxmox_storage-sub-attributes-sub-storage_properties-sub-state"></a>
+
+###### `pve_proxmox_storage['attributes']['storage_properties']['state']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
@@ -2673,13 +2811,10 @@ Desired mount state.
 - `present`: Add to fstab but don't mount
 - `unmounted`: Unmount but keep in fstab
 - `absent`: Unmount and remove from fstab
-
 - **Type**: `str`
 - **Required**: No
 - **Default**: `"mounted"`
 - **Choices**: `mounted`, `present`, `unmounted`, `absent`
-
-
 
 
 
@@ -2699,17 +2834,20 @@ with detailed instructions if it encounters disks with existing data,
 allowing you to manually verify and clean the disks.
 
 Use cases for enabling:
-  - Fresh installations where disks are known to be empty or
-    recyclable
-  - Automated provisioning where disk contents are irrelevant
-  - Rebuilding pools after intentional destruction
+
+- Fresh installations where disks are known to be empty or
+  recyclable
+- Automated provisioning where disk contents are irrelevant
+- Rebuilding pools after intentional destruction
 
 The role will NEVER automatically clean disks that:
-  - Belong to a different existing ZFS pool (requires manual
-    intervention)
-  - Are part of an existing pool that matches the configuration
+
+- Belong to a different existing ZFS pool (requires manual
+  intervention)
+- Are part of an existing pool that matches the configuration
 
 Example:
+
 ```yaml
 # Enable automatic disk cleanup (DANGEROUS)
 pve_proxmox_storage_force_cleanup: true
@@ -2743,6 +2881,7 @@ Supported storage types:
 - `zfspool`: ZFS pool/dataset storage (for zvols and datasets)
 
 Where:
+
 - `nodename|shared`: Node-local or cluster-shared storage
 - `guest`: VM/container disk storage (usually encrypted)
 - `assets`: ISOs, templates, snippets (usually not encrypted)
@@ -2750,6 +2889,7 @@ Where:
 - `N`: Priority index (lower = preferred for workload type)
 
 Example:
+
 ```yaml
 pve_proxmox_sm:
   # ZFS storage for VMs/containers
@@ -2806,10 +2946,10 @@ the storage in VM/container configurations and backup jobs.
 Naming convention: `<node|shared>-<purpose><index>`
 
 Examples:
-  - `pve1-guest1`: Primary guest storage on node pve1
-  - `pve1-backup1`: Backup storage on node pve1
-  - `shared-assets1`: Shared asset storage (cluster-wide)
 
+- `pve1-guest1`: Primary guest storage on node pve1
+- `pve1-backup1`: Backup storage on node pve1
+- `shared-assets1`: Shared asset storage (cluster-wide)
 - **Type**: `str`
 - **Required**: Yes
 
@@ -2866,11 +3006,13 @@ Available content types:
 - `snippets`: Configuration snippets (hookscripts, cloud-init)
 
 Typical combinations:
-  - Guest storage: `[images, rootdir]`
-  - Asset storage: `[iso, vztmpl, snippets]`
-  - Backup storage: `[backup]`
+
+- Guest storage: `[images, rootdir]`
+- Asset storage: `[iso, vztmpl, snippets]`
+- Backup storage: `[backup]`
 
 Example:
+
 ```yaml
 content:
   - "images"
@@ -2895,6 +3037,7 @@ If omitted, the storage is available on all cluster nodes
 (appropriate for shared/network storage).
 
 Example:
+
 ```yaml
 nodes:
   - "pve1"
@@ -2905,26 +3048,30 @@ nodes:
 - **Required**: No
 - **List Elements**: `str`
 
-##### `pve_proxmox_sm['storage_properties']['is_mountpoint']`<a id="variable-pve_proxmox_sm-sub-storage_properties-sub-is_mountpoint"></a>
+<a id="variable-pve_proxmox_sm-sub-storage_properties-sub-is_mountpoint"></a>
+
+##### `pve_proxmox_sm['storage_properties']['is_mountpoint']`
 
 [*⇑ Back to ToC ⇑*](#toc)
 
 Indicates the storage path is an external mountpoint.
 
 When `true`, PVE will:
-  - Check that the path is actually mounted before use
-  - Prevent operations if the mountpoint is not available
-  - Display appropriate warnings in the UI
+
+- Check that the path is actually mounted before use
+- Prevent operations if the mountpoint is not available
+- Display appropriate warnings in the UI
 
 Set to `true` for:
-  - NFS/CIFS mounts
-  - ZFS datasets with dedicated mountpoints
-  - Any storage on a separately mounted filesystem
+
+- NFS/CIFS mounts
+- ZFS datasets with dedicated mountpoints
+- Any storage on a separately mounted filesystem
 
 Set to `false` (or omit) for:
-  - Subdirectories on the root filesystem
-  - Paths that are always available
 
+- Subdirectories on the root filesystem
+- Paths that are always available
 - **Type**: `bool`
 - **Required**: No
 - **Default**: `false`
@@ -2969,14 +3116,16 @@ Example: `pool123/vms` or `tank/proxmox/guests`
 Enable thin provisioning for ZFS zvols (for `type: zfspool`).
 
 When `true`:
-  - Zvols only consume space for written data
-  - VM disks appear full-sized but use less actual space
-  - Risk of overcommitment if total allocated exceeds pool
+
+- Zvols only consume space for written data
+- VM disks appear full-sized but use less actual space
+- Risk of overcommitment if total allocated exceeds pool
 
 When `false`:
-  - Zvols pre-allocate their full size immediately
-  - Guaranteed space availability
-  - No overcommitment risk
+
+- Zvols pre-allocate their full size immediately
+- Guaranteed space availability
+- No overcommitment risk
 
 Thin provisioning is generally recommended for efficiency but
 requires monitoring pool usage to avoid space exhaustion.
@@ -3009,8 +3158,6 @@ Example: `16k`
 
 
 
-
-
 <!-- ANSIBLE DOCSMITH MAIN END -->
 
 
@@ -3022,7 +3169,8 @@ See `dependencies` in [`meta/main.yml`](./meta/main.yml).
 
 ## Compatibility<a id="compatibility"></a>
 
-See `min_ansible_version` in [`meta/main.yml`](./meta/main.yml) and `__pve_proxmox_supported_platforms` in [`vars/main.yml`](./vars/main.yml).
+See `min_ansible_version` in [`meta/main.yml`](./meta/main.yml) and
+`__pve_proxmox_supported_platforms` in [`vars/main.yml`](./vars/main.yml).
 
 
 
