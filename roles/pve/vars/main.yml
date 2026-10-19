@@ -58,7 +58,7 @@ __pve_proxmox_supported_platforms:
       - "13"
 
 
-# List of package names to be installed when run_proxmox_state is
+# List of package names to be installed when pve_proxmox_state is
 # set to "present".
 # See https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_13_Trixie
 __pve_proxmox_packages_install:
@@ -69,7 +69,7 @@ __pve_proxmox_packages_install:
   - "chrony"
 
 
-# List of package names to be uninstalled when run_proxmox_state is
+# List of package names to be uninstalled when pve_proxmox_state is
 # set to "absent". This variable is useful when __pve_proxmox_packages_install
 # contains packages that are required for the managed software to function but
 # should not be removed during uninstallation, as doing so could break other
