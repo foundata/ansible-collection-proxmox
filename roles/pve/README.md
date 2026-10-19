@@ -365,7 +365,7 @@ are included for completeness and to cover edge cases:
 
 ## Role variables<a id="variables"></a>
 
-Main entry point for the foundata.proxmox.run role
+Main entry point for the foundata.proxmox.pve role.
 
 Configures Proxmox Virtual Environment (PVE) hosts:
 
