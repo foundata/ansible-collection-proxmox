@@ -343,7 +343,7 @@ Configure Proxmox Virtual Environment Servers (PVE)
 
 ## Supported tags<a id="tags"></a>
 
-It might be useful and faster to only call parts of the role by using tags:
+Run parts of the role with `--tags`:
 
 - `pve_proxmox_os`: Manage basic operating system configuration influencing
   Proxmox Virtual Environment (PVE) (like IOMMU support)
@@ -353,11 +353,9 @@ It might be useful and faster to only call parts of the role by using tags:
 - `pve_proxmox_datacenter`: Manage the Proxmox Virtual Environment (PVE)
   datacenter configuration
 
-There are also tags that are generally not intended to be called directly but
-are included for completeness and to cover edge cases:
-
-- `pve_proxmox_always`, `always`: Tasks needed by the role itself for internal
-  role setup and the Ansible environment.
+The init tasks check the environment and prepare the role. They carry the tags
+`pve_proxmox_always` and `always`, so they run with any `--tags` selection; do
+not skip them.
 
 
 
