@@ -1510,8 +1510,6 @@
         - __pve_proxmox_keymount_item['stdout'] | ansible.builtin.default('unavailable') == 'unavailable'
       changed_when:
         - true
-      failed_when:
-        - false
 
       loop: "{{ __pve_zfs_dataset_keystatus['results'] | ansible.builtin.default([]) }}"
       loop_control:

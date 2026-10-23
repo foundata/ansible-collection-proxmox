@@ -1,0 +1,5 @@
+---
+bugfixes:
+  - >-
+    pve role - propagate failures when mounting encrypted datasets after loading
+    their keys instead of reporting success and continuing after failed activation.

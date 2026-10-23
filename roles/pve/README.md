@@ -3197,3 +3197,7 @@ malformed, skipped or incomplete observations do not establish absence. An
 absent child also requires an independently observed imported pool root before
 creation. This is namespace verification, not authorization to prepare media,
 administer an operating-system pool, or overwrite existing data.
+
+If a requested mount after loading an encryption key fails, the role stops
+instead of ignoring the error. This does not add mountpoint-identity
+verification or reconciliation of already-loaded but unmounted datasets.
