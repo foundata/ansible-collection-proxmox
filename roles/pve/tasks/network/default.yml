@@ -43,14 +43,14 @@
     owner: "root"
     group: "root"
     mode: "u=rw,g=r,o=r" # 0644
-    # Warning-tolerant on purpose: ifupdown2's parser exits non-zero for mere
-    # warnings too (e.g. "bridge-fd 0", the standard PVE bridge setting, is
-    # flagged as out of the documented range although it applies fine), so
-    # only "error:" lines (parse failures) reject the candidate file.
     validate: >-
       /bin/bash -c '__pve_out="$(/usr/sbin/ifup --all --syntax-check --interfaces %s 2>&1)";
+      __pve_rc=$?;
       printf "%%s\n" "${__pve_out}";
-      ! grep -q -e "^error:" -e "^Traceback" <<< "${__pve_out}"'
+      [[ ${__pve_rc} -eq 0 || ${__pve_rc} -eq 1 ]] || exit 1;
+      if [[ -z "${__pve_out}" ]]; then [[ ${__pve_rc} -eq 0 ]]; else
+      grep -Ev "^warning: [[:alnum:]_.:-]+: bridge-fd: value of out range \"0\": valid attribute range: 2-255$"
+      <<< "${__pve_out}"; [[ $? -eq 1 ]]; fi'
   vars:
     tpl_interface_datasets:
       # Pass (and/or adjust) Ansible inventory group_vars / host_vars
@@ -98,14 +98,14 @@
     owner: "root"
     group: "root"
     mode: "u=rw,g=r,o=r" # 0644
-    # Warning-tolerant on purpose: ifupdown2's parser exits non-zero for mere
-    # warnings too (e.g. "bridge-fd 0", the standard PVE bridge setting, is
-    # flagged as out of the documented range although it applies fine), so
-    # only "error:" lines (parse failures) reject the candidate file.
     validate: >-
       /bin/bash -c '__pve_out="$(/usr/sbin/ifup --all --syntax-check --interfaces %s 2>&1)";
+      __pve_rc=$?;
       printf "%%s\n" "${__pve_out}";
-      ! grep -q -e "^error:" -e "^Traceback" <<< "${__pve_out}"'
+      [[ ${__pve_rc} -eq 0 || ${__pve_rc} -eq 1 ]] || exit 1;
+      if [[ -z "${__pve_out}" ]]; then [[ ${__pve_rc} -eq 0 ]]; else
+      grep -Ev "^warning: [[:alnum:]_.:-]+: bridge-fd: value of out range \"0\": valid attribute range: 2-255$"
+      <<< "${__pve_out}"; [[ $? -eq 1 ]]; fi'
   vars:
     # Pass (and/or adjust) Ansible inventory group_vars / host_vars
     tpl_interface_datasets:

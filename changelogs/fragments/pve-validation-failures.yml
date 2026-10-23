@@ -1,0 +1,3 @@
+---
+bugfixes:
+  - "pve role - reject missing or failed network validators and unknown diagnostics while retaining the specific bridge-fd zero warning."
