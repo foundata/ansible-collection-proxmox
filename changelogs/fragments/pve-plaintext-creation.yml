@@ -1,0 +1,7 @@
+---
+bugfixes:
+  - >-
+    pve role - route new datasets with explicit encryption=off through ordinary
+    creation while preserving that property, instead of selecting an encrypted
+    creation task that requires key credentials. Reject contradictory key
+    properties or passphrases with encryption=off before storage changes.

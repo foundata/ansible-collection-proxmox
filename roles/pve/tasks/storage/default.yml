@@ -44,12 +44,21 @@
         or (__pve_proxmox_storage_item['attributes']['zfs_properties']['encryption'] == 'off')
         or ((__pve_proxmox_storage_item['attributes']['zfs_properties']['keylocation'] | ansible.builtin.default('prompt')) != 'prompt')
         or (pve_proxmox_storage[__pve_storage_validate_index]['attributes']['zfs_properties']['passphrase'] is ansible.builtin.defined)
+      - >-
+        (__pve_proxmox_storage_item['type'] != 'zfs_dataset')
+        or ((__pve_proxmox_storage_item['attributes']['zfs_properties']['encryption'] | ansible.builtin.default('')) != 'off')
+        or ((pve_proxmox_storage[__pve_storage_validate_index]['attributes']['zfs_properties']['keyformat'] is not ansible.builtin.defined)
+            and (pve_proxmox_storage[__pve_storage_validate_index]['attributes']['zfs_properties']['keylocation'] is not ansible.builtin.defined)
+            and (pve_proxmox_storage[__pve_storage_validate_index]['attributes']['zfs_properties']['pbkdf2iters'] is not ansible.builtin.defined)
+            and (pve_proxmox_storage[__pve_storage_validate_index]['attributes']['zfs_properties']['passphrase'] is not ansible.builtin.defined)
+            and (pve_proxmox_storage[__pve_storage_validate_index]['attributes']['zfs_properties']['passphrase_old'] is not ansible.builtin.defined))
     fail_msg: |
       Storage item '{{ __pve_proxmox_storage_item['name'] }}' is invalid. The type has to be one of
       'zpool', 'zfs_dataset' or 'nfs'; a 'zpool' item needs a non-empty
       'attributes.vdevs' list, an 'nfs' item needs 'storage_properties.src'
       and 'storage_properties.path', and an encrypted 'zfs_dataset' with
-      keylocation 'prompt' needs a 'passphrase'.
+      keylocation 'prompt' needs a 'passphrase'. An explicit encryption 'off'
+      declaration cannot include keyformat, keylocation, pbkdf2iters, passphrase or passphrase_old.
     quiet: true
   when:
     - pve_proxmox_storage is ansible.builtin.defined
@@ -1125,6 +1134,7 @@
         - pve_proxmox_storage | ansible.builtin.length > 0
         - not __pve_zfs_dataset_exists[__pve_proxmox_dataset_enc_prompt_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
         - __pve_proxmox_dataset_enc_prompt_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
+        - __pve_proxmox_dataset_enc_prompt_item['attributes']['zfs_properties']['encryption'] != 'off'
         - __pve_proxmox_dataset_enc_prompt_item['attributes']['zfs_properties']['keylocation'] | ansible.builtin.default('prompt') == 'prompt'
       changed_when:
         - true
@@ -1160,6 +1170,7 @@
         - pve_proxmox_storage | ansible.builtin.length > 0
         - not __pve_zfs_dataset_exists[__pve_proxmox_dataset_enc_key_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
         - __pve_proxmox_dataset_enc_key_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
+        - __pve_proxmox_dataset_enc_key_item['attributes']['zfs_properties']['encryption'] != 'off'
         - __pve_proxmox_dataset_enc_key_item['attributes']['zfs_properties']['keylocation'] is ansible.builtin.defined
         - __pve_proxmox_dataset_enc_key_item['attributes']['zfs_properties']['keylocation'] != 'prompt'
       changed_when:
@@ -1205,7 +1216,9 @@
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
         - not __pve_zfs_dataset_exists[__pve_proxmox_dataset_plain_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-        - __pve_proxmox_dataset_plain_item['attributes']['zfs_properties']['encryption'] is not ansible.builtin.defined
+        - >-
+          (__pve_proxmox_dataset_plain_item['attributes']['zfs_properties']['encryption'] is not ansible.builtin.defined)
+          or (__pve_proxmox_dataset_plain_item['attributes']['zfs_properties']['encryption'] == 'off')
 
       loop: >-
         {{
