@@ -43,6 +43,18 @@ imports, module documentation and role loading/syntax, then runs available
 unit tests from a separate fixture directory against that installation.
 Role deployment behavior remains covered by Molecule.
 
+Focused task regressions run without a Proxmox host. They execute selected role
+tasks against synthetic observations and harmless command fixtures:
+
+```sh
+python -m pytest tests/regression -q
+```
+
+Set `PVE_TEST_COLLECTION` to an installed collection directory to exercise its
+role files instead of the checkout, and `PVE_TEST_ANSIBLE_PLAYBOOK` to select an
+existing controller executable. These checks do not qualify native ZFS, cluster
+filesystem, network activation or effective firewall behavior.
+
 To check the exact archive retained for a release:
 
 ```sh

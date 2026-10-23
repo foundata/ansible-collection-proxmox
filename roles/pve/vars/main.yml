@@ -98,7 +98,7 @@ __pve_proxmox_paths_removal: []
 # output through loop item labels, skipped-item lines or registered results.
 # Only the few tasks that actually need the secret (encrypted dataset
 # creation, key loading, key rotation) iterate pve_proxmox_storage itself and
-# every one of them is protected by no_log or a sanitized loop label.
+# every one of them is protected by no_log.
 __pve_storage_sanitized: >-
   {%- set __ns = namespace(items=[]) -%}
   {%- for __item in (pve_proxmox_storage | ansible.builtin.default([], true)) -%}

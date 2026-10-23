@@ -1130,15 +1130,13 @@
         - false
       loop: >-
         {{
-          pve_proxmox_storage | ansible.builtin.default([], true)
+          __pve_storage_sanitized
           | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
           | ansible.builtin.list
         }}
       loop_control:
         loop_var: "__pve_proxmox_keystatus_item"
-        # The loop keeps the full items on purpose (the load-key tasks below
-        # read the passphrase from the registered results); the label must
-        # not print them.
+        index_var: "__pve_zfs_dataset_index"
         label: "{{ __pve_proxmox_keystatus_item['name'] }}"
       register: __pve_zfs_dataset_keystatus
     - name: "Storage | ZFS | zfs_dataset | Load encryption keys for volumes with prompt-based passphrase"
@@ -1151,7 +1149,13 @@
           - "zfs"
           - "load-key"
           - "{{ __pve_proxmox_keyload_prompt_item['__pve_proxmox_keystatus_item']['name'] }}"
-        stdin: "{{ __pve_proxmox_keyload_prompt_item['__pve_proxmox_keystatus_item']['attributes']['zfs_properties']['passphrase'] }}"
+        stdin: >-
+          {{
+            (pve_proxmox_storage
+             | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
+             | ansible.builtin.list)[__pve_proxmox_keyload_prompt_item['__pve_zfs_dataset_index']]
+              ['attributes']['zfs_properties']['passphrase']
+          }}
       when:
         - __pve_zfs_dataset_keystatus is ansible.builtin.defined
         - not __pve_proxmox_keyload_prompt_item['skipped'] | ansible.builtin.default(false)
@@ -1380,7 +1384,7 @@
           {{
             __pve_nfs_mount_status | ansible.builtin.default({}) | ansible.builtin.combine({
               __pve_proxmox_nfs_status_item['__pve_proxmox_nfs_mount_item']['name']: {
-                'is_mounted': __pve_proxmox_nfs_status_item is ansible.builtin.success | ansible.builtin.bool,
+                'is_mounted': (__pve_proxmox_nfs_status_item['rc'] | ansible.builtin.default(1)) == 0,
                 'current_source': __pve_proxmox_nfs_status_item['stdout'] | ansible.builtin.default('') | ansible.builtin.trim
               }
             })
@@ -1438,10 +1442,10 @@
     - name: "Storage | NFS | Report mount verification results"
       ansible.builtin.debug:
         msg: |
-          {% if __pve_proxmox_nfs_report_item is ansible.builtin.success %}
+          {% if (__pve_proxmox_nfs_report_item['rc'] | ansible.builtin.default(1)) == 0 %}
           ✓ NFS mount '{{ __pve_proxmox_nfs_report_item['__pve_proxmox_nfs_verify_item']['name']
              }}' at {{ __pve_proxmox_nfs_report_item['__pve_proxmox_nfs_verify_item']['attributes']['storage_properties']['path']
-             }} is mounted and accessible
+             }} is a mountpoint; server accessibility was not checked
           {% else %}
           ✗ NFS mount '{{ __pve_proxmox_nfs_report_item['__pve_proxmox_nfs_verify_item']['name']
              }}' at {{ __pve_proxmox_nfs_report_item['__pve_proxmox_nfs_verify_item']['attributes']['storage_properties']['path']
@@ -1450,6 +1454,7 @@
         verbosity: 0
       when:
         - __pve_nfs_mount_verify is ansible.builtin.defined
+        - not (__pve_proxmox_nfs_report_item['skipped'] | ansible.builtin.default(false))
 
       ### Proxmox Storage Manager Configuration
       loop: "{{ __pve_nfs_mount_verify['results'] | ansible.builtin.default([]) }}"
