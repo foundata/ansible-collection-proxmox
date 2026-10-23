@@ -51,7 +51,8 @@ def run_play(directory, tasks, variables=None, check=False, expected_failure=Non
         actions = {key for key in task if key.startswith("ansible.builtin.")}
         assert len(actions) == 1 and actions <= allowed, actions
         if "ansible.builtin.command" in task:
-            assert task["ansible.builtin.command"]["argv"][0] == "/usr/bin/printf"
+            argv = task["ansible.builtin.command"]["argv"]
+            assert argv[0] == "/usr/bin/printf" or argv == ["/usr/bin/sha256sum"]
         for action in ("ansible.builtin.slurp", "ansible.builtin.stat"):
             if action in task:
                 field = "src" if action.endswith("slurp") else "path"

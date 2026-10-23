@@ -3174,4 +3174,15 @@ See `min_ansible_version` in [`meta/main.yml`](./meta/main.yml) and
 
 ## External requirements<a id="requirements"></a>
 
-There are no special requirements not covered by Ansible itself.
+Run this role against an existing Proxmox VE installation. Depending on the
+selected configuration, it invokes the installed PVE storage and firewall
+tools, ifupdown2, OpenZFS utilities and filesystem tools. Ansible alone does not
+provide these managed-node dependencies.
+
+Passphrase rotation requires the declared dataset itself to be an encryption
+root with observed `keyformat=passphrase` and `keylocation=prompt`. The role
+refuses file-key and inherited-root rotation, ambiguous multiline credentials,
+and indeterminate native verification results. Empty previous-candidate lists
+retain their no-rotation behavior. Rotation is not transactional with earlier
+ordinary property updates; it does not provide a general key-file or ancestor
+management workflow.

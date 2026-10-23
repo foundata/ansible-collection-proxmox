@@ -1,0 +1,14 @@
+---
+security_fixes:
+  - >-
+    pve role - stop rotation on indeterminate credential verification instead of
+    treating every native failure as an incorrect key; only the exact C-locale
+    incorrect-key result permits trying previous credentials.
+  - >-
+    pve role - require freshly observed prompt-based passphrase keys on the
+    declared encryption root before rotation, refusing file-key and inherited-root
+    rotation rather than verifying the wrong credential.
+  - >-
+    pve role - pass current and previous ZFS rotation credentials through module
+    stdin instead of task environment variables that can appear in remote shell
+    process arguments; reject line breaks and NUL bytes before framing credentials.

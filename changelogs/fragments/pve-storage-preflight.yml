@@ -1,0 +1,6 @@
+---
+bugfixes:
+  - "pve role - reset storage discovery maps on each invocation instead of reusing previous disks and resource state."
+  - "pve role - reject existing dataset encryption mismatches before dataset changes; accept the native encryption=on alias for encrypted ciphers."
+  - "pve role - stop on failed or malformed key-status reads before loading keys, including read-only discovery in check mode."
+  - "pve role - skip key-status loading and encryption notices for existing datasets explicitly declared with encryption=off."

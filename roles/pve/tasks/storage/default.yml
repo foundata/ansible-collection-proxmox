@@ -5,6 +5,21 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ---
+- name: "Storage | Reset invocation-local discovery state"
+  ansible.builtin.set_fact:
+    __pve_zpool_all_disks: {}
+    __pve_disk_check_list: []
+    __pve_pool_exists: {}
+    __pve_storage_pool_data_status: {}
+    __pve_zpool_status_devices: {}
+    __pve_zpool_device_map: {}
+    __pve_zpool_actual_devices: {}
+    __pve_zpool_missing_devices: {}
+    __pve_storage_wrong_pool_devices: {}
+    __pve_zfs_dataset_exists: {}
+    __pve_nfs_mount_status: {}
+    __pve_storage_is_configured: {}
+
 # All declared storage items are validated up front: the supported type set
 # spans the ZFS and NFS sections (a mixed declaration is legitimate and used
 # to be wrongly rejected by a type check inside the ZFS section), and the
@@ -838,6 +853,97 @@
       loop: "{{ __pve_zfs_dataset_facts['results'] | ansible.builtin.default([]) }}"
       loop_control:
         loop_var: "__pve_proxmox_dataset_map_item"
+    - name: "Storage | ZFS | zfs_dataset | Check encryption status of existing volumes"
+      ansible.builtin.command:
+        argv:
+          - "zfs"
+          - "get"
+          - "-H"
+          - "-o"
+          - "value"
+          - "encryption"
+          - "{{ __pve_proxmox_dataset_enc_item['name'] }}"
+      when:
+        - pve_proxmox_storage is ansible.builtin.defined
+        - pve_proxmox_storage | ansible.builtin.length > 0
+        - __pve_zfs_dataset_exists[__pve_proxmox_dataset_enc_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+        - __pve_proxmox_dataset_enc_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
+      changed_when:
+        - false
+      check_mode: false
+      loop: >-
+        {{
+          __pve_storage_sanitized
+          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
+          | ansible.builtin.list
+        }}
+      loop_control:
+        loop_var: "__pve_proxmox_dataset_enc_item"
+      register: __pve_zfs_dataset_encryption_check
+
+    - name: "Storage | ZFS | zfs_dataset | Validate existing dataset encryption"
+      ansible.builtin.assert:
+        that:
+          - >-
+            __pve_zfs_encryption_actual in
+            ['off', 'aes-128-ccm', 'aes-192-ccm', 'aes-256-ccm', 'aes-128-gcm', 'aes-192-gcm', 'aes-256-gcm']
+          - >-
+            (__pve_zfs_encryption_actual == __pve_zfs_encryption_desired)
+            or ((__pve_zfs_encryption_desired == 'on')
+                and (__pve_zfs_encryption_actual in
+                  ['aes-128-ccm', 'aes-192-ccm', 'aes-256-ccm', 'aes-128-gcm', 'aes-192-gcm', 'aes-256-gcm']))
+        fail_msg: >-
+          Existing dataset encryption does not match the declaration for
+          '{{ __pve_proxmox_encryption_verify_item['__pve_proxmox_dataset_enc_item']['name'] }}'.
+          Refusing dataset changes; encryption cannot be converted in place.
+        quiet: true
+      vars:
+        __pve_zfs_encryption_actual: "{{ __pve_proxmox_encryption_verify_item['stdout'] | ansible.builtin.default('') }}"
+        __pve_zfs_encryption_desired: >-
+          {{ __pve_proxmox_encryption_verify_item['__pve_proxmox_dataset_enc_item']['attributes']['zfs_properties']['encryption'] }}
+      when:
+        - not (__pve_proxmox_encryption_verify_item['skipped'] | ansible.builtin.default(false))
+      loop: "{{ __pve_zfs_dataset_encryption_check['results'] }}"
+      loop_control:
+        loop_var: "__pve_proxmox_encryption_verify_item"
+        label: "{{ __pve_proxmox_encryption_verify_item['__pve_proxmox_dataset_enc_item']['name'] }}"
+
+    - name: "Storage | ZFS | zfs_dataset | Validate rotation passphrase framing"
+      ansible.builtin.assert:
+        that:
+          - >-
+            (__pve_zfs_rotation_keys | ansible.builtin.select('ansible.builtin.string') | ansible.builtin.length)
+            == (__pve_zfs_rotation_keys | ansible.builtin.length)
+          - >-
+            (__pve_zfs_rotation_keys | ansible.builtin.select('ansible.builtin.search', __pve_zfs_forbidden_key_chars)
+             | ansible.builtin.length) == 0
+        fail_msg: "ZFS rotation passphrases must be single-line strings without NUL bytes."
+        quiet: true
+      vars:
+        __pve_zfs_rotation_old_raw: "{{ __pve_proxmox_passphrase_validate_item['attributes']['zfs_properties']['passphrase_old'] }}"
+        __pve_zfs_rotation_keys: >-
+          {{
+            [__pve_proxmox_passphrase_validate_item['attributes']['zfs_properties']['passphrase']]
+            + ([__pve_zfs_rotation_old_raw] if (__pve_zfs_rotation_old_raw is ansible.builtin.string)
+               else (__pve_zfs_rotation_old_raw | ansible.builtin.default([], true)))
+          }}
+        __pve_zfs_forbidden_key_chars: "[\\r\\n\\x00]"
+      when:
+        - __pve_zfs_dataset_exists[__pve_proxmox_passphrase_validate_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
+        - __pve_proxmox_passphrase_validate_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
+        - __pve_proxmox_passphrase_validate_item['attributes']['zfs_properties']['passphrase'] is ansible.builtin.defined
+        - __pve_proxmox_passphrase_validate_item['attributes']['zfs_properties']['passphrase_old'] is ansible.builtin.defined
+        - __pve_proxmox_passphrase_validate_item['attributes']['zfs_properties']['passphrase_old'] is not ansible.builtin.none
+      loop: >-
+        {{
+          pve_proxmox_storage | ansible.builtin.default([], true)
+          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
+          | ansible.builtin.list
+        }}
+      loop_control:
+        loop_var: "__pve_proxmox_passphrase_validate_item"
+      no_log: true
+
     - name: "Storage | ZFS | zfs_dataset | Create encrypted ZFS volumes with prompt-based passphrase"
       # community.general.zfs cannot handle keylocation "prompt". The
       # passphrase is passed via stdin on purpose (zfs reads the key from
@@ -978,62 +1084,83 @@
         }}
       loop_control:
         loop_var: "__pve_proxmox_dataset_update_item"
-    - name: "Storage | ZFS | zfs_dataset | Check encryption status of existing volumes"
-      ansible.builtin.command:
-        argv:
-          - "zfs"
-          - "get"
-          - "-H"
-          - "-o"
-          - "value"
-          - "encryption"
-          - "{{ __pve_proxmox_dataset_enc_item['name'] }}"
-      when:
-        - pve_proxmox_storage is ansible.builtin.defined
-        - pve_proxmox_storage | ansible.builtin.length > 0
-        - __pve_zfs_dataset_exists[__pve_proxmox_dataset_enc_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
-        - __pve_proxmox_dataset_enc_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
-
-      changed_when:
-        - false
-      failed_when:
-        - false
-      loop: >-
-        {{
-          __pve_storage_sanitized
-          | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
-          | ansible.builtin.list
-        }}
-      loop_control:
-        loop_var: "__pve_proxmox_dataset_enc_item"
-      register: __pve_zfs_dataset_encryption_check
     - name: "Storage | ZFS | zfs_dataset | Manage encryption key changes"
-      # The dataset name and the passphrases are passed via the environment on
-      # purpose: embedded in the command text they would be world-readable in
-      # the process list (/proc/<pid>/cmdline) of the host while the command
-      # runs (the environment is only readable for the process owner and root).
       ansible.builtin.shell:
         cmd: |
+          set +x
+          set +a
           set -u # Fail on unset vars
           set -o pipefail # Fail if any pipe cmd fail
+
+          unset __PVE_ZFS_PASS_NEW __PVE_ZFS_PASSES_OLD __pve_pass __pve_old_pass_working
+          case "${__PVE_ZFS_DATASET}" in
+            ''|-*|*$'\r'*|*$'\n'*)
+              printf '%s\n' "ERROR - Invalid dataset identity; refusing rotation" >&2
+              exit 1
+              ;;
+          esac
+          IFS= read -r __PVE_ZFS_PASS_NEW || exit 1
+          __PVE_ZFS_PASSES_OLD="$(cat)" || exit 1
 
           # If no old passphrases provided: nothing to do
           if [ -z "${__PVE_ZFS_PASSES_OLD}" ]; then
             exit 0
           fi
 
+          if ! __pve_keyformat="$(zfs get -H -o value keyformat "${__PVE_ZFS_DATASET}" 2>/dev/null)" \
+            || ! __pve_keylocation="$(zfs get -H -o value keylocation "${__PVE_ZFS_DATASET}" 2>/dev/null)" \
+            || ! __pve_encryptionroot="$(zfs get -H -o value encryptionroot "${__PVE_ZFS_DATASET}" 2>/dev/null)"; then
+            printf '%s\n' "ERROR - Cannot verify encryption properties before rotation" >&2
+            exit 1
+          fi
+          if [ "${__pve_keyformat}" != 'passphrase' ] \
+            || [ "${__pve_keylocation}" != 'prompt' ] \
+            || [ "${__pve_encryptionroot}" != "${__PVE_ZFS_DATASET}" ]; then
+            printf '%s\n' "ERROR - Rotation requires a declared encryption root with prompt-based passphrase keys" >&2
+            exit 1
+          fi
+
+          __pve_verify_passphrase() {
+            local __pve_key_check_output __pve_key_check_status __pve_invalid_key_output
+            __pve_key_check_output="$(zfs load-key -n -L prompt "${__PVE_ZFS_DATASET}" 2>&1)"
+            __pve_key_check_status=$?
+            if [ "${__pve_key_check_status}" -eq 0 ] \
+              && [ "${__pve_key_check_output}" = '1 / 1 key(s) successfully verified' ]; then
+              return 0
+            fi
+            __pve_invalid_key_output="$(printf "Key load error: Incorrect key provided for '%s'.\n0 / 1 key(s) successfully verified" \
+              "${__PVE_ZFS_DATASET}")"
+            if [ "${__pve_key_check_status}" -eq 255 ] \
+              && [ "${__pve_key_check_output}" = "${__pve_invalid_key_output}" ]; then
+              return 1
+            fi
+            return 2
+          }
+
           # If new passphrase is already set: nothing to do
-          if printf '%s\n' "${__PVE_ZFS_PASS_NEW}" | zfs load-key -n "${__PVE_ZFS_DATASET}" 2>/dev/null; then
+          printf '%s\n' "${__PVE_ZFS_PASS_NEW}" | __pve_verify_passphrase
+          __pve_key_check_status=$?
+          if [ "${__pve_key_check_status}" -eq 0 ]; then
             exit 0
+          fi
+          if [ "${__pve_key_check_status}" -ne 1 ]; then
+            printf '%s\n' "ERROR - Current passphrase verification is indeterminate; refusing rotation" >&2
+            exit 1
           fi
 
           # Try to verify each old passphrase with -n (test mode)
           __pve_old_pass_working=""
           while IFS= read -r __pve_pass; do
             [ -n "${__pve_pass}" ] || continue
-            if printf '%s\n' "${__pve_pass}" | zfs load-key -n "${__PVE_ZFS_DATASET}" 2>/dev/null; then
+            printf '%s\n' "${__pve_pass}" | __pve_verify_passphrase
+            __pve_key_check_status=$?
+            if [ "${__pve_key_check_status}" -eq 0 ]; then
               __pve_old_pass_working="${__pve_pass}"
               break
+            fi
+            if [ "${__pve_key_check_status}" -ne 1 ]; then
+              printf '%s\n' "ERROR - Previous passphrase verification is indeterminate; refusing rotation" >&2
+              exit 1
             fi
           done <<< "${__PVE_ZFS_PASSES_OLD}"
           unset __pve_pass
@@ -1045,20 +1172,20 @@
           fi
 
           # Try to load the key with old passphrase (providing the old one is a prerequisite for changing it)
-          __pve_load_key_error=$(printf '%s\n' "${__pve_old_pass_working}" | zfs load-key "${__PVE_ZFS_DATASET}" 2>&1)
+          __pve_load_key_error=$(printf '%s\n' "${__pve_old_pass_working}" | zfs load-key -L prompt "${__PVE_ZFS_DATASET}" 2>&1)
           __pve_load_key_status=$?
           if [ ${__pve_load_key_status} -ne 0 ]; then
-            # Check if the error is because the key is already loaded (which is fine)
-            if ! printf '%s\n' "${__pve_load_key_error}" | grep -q -i "key already loaded"; then
-              printf '%s\n' "ERROR - Failed to load key for '${__PVE_ZFS_DATASET}': ${__pve_load_key_error}" >&2
+            if [ "${__pve_load_key_status}" -ne 255 ] \
+              || [ "${__pve_load_key_error}" != "Key load error: Key already loaded for '${__PVE_ZFS_DATASET}'." ]; then
+              printf '%s\n' "ERROR - Failed to load verified key; refusing rotation" >&2
               exit 1
             fi
           fi
 
           # Change the passphrase
-          if printf '%s\n%s\n%s\n' "${__PVE_ZFS_PASS_NEW}" "${__PVE_ZFS_PASS_NEW}" | zfs change-key "${__PVE_ZFS_DATASET}" 2>&1; then
+          if printf '%s\n' "${__PVE_ZFS_PASS_NEW}" | zfs change-key "${__PVE_ZFS_DATASET}" 2>&1; then
             # Verify the new passphrase was set correctly
-            if printf '%s\n' "${__PVE_ZFS_PASS_NEW}" | zfs load-key -n "${__PVE_ZFS_DATASET}" 2>/dev/null; then
+            if printf '%s\n' "${__PVE_ZFS_PASS_NEW}" | __pve_verify_passphrase; then
               printf '%s\n' "SUCCESS - Passphrase for '${__PVE_ZFS_DATASET}' changed and verified"
               exit 0
             else
@@ -1070,21 +1197,20 @@
             exit 1
           fi
         executable: "/bin/bash"
+        stdin: >-
+          {{
+            ([__pve_proxmox_passphrase_item['attributes']['zfs_properties']['passphrase']]
+             + ([__pve_zfs_passes_old_raw] if (__pve_zfs_passes_old_raw is ansible.builtin.string)
+                else (__pve_zfs_passes_old_raw | ansible.builtin.default([], true))))
+            | ansible.builtin.join(__pve_zfs_newline)
+          }}
       vars:
         __pve_zfs_passes_old_raw: "{{ __pve_proxmox_passphrase_item['attributes']['zfs_properties']['passphrase_old'] | ansible.builtin.default('') }}"
         # YAML (not Jinja) escape processing yields the real newline character.
         __pve_zfs_newline: "\n"
       environment:
         __PVE_ZFS_DATASET: "{{ __pve_proxmox_passphrase_item['name'] }}"
-        __PVE_ZFS_PASS_NEW: "{{ __pve_proxmox_passphrase_item['attributes']['zfs_properties']['passphrase'] }}"
-        # Newline-joined (a passphrase cannot contain a newline); empty when
-        # no old passphrases are given.
-        __PVE_ZFS_PASSES_OLD: >-
-          {{
-            ([__pve_zfs_passes_old_raw] if (__pve_zfs_passes_old_raw is ansible.builtin.string)
-             else (__pve_zfs_passes_old_raw | ansible.builtin.default([], true)))
-            | ansible.builtin.join(__pve_zfs_newline)
-          }}
+        LC_ALL: "C"
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -1123,11 +1249,11 @@
         - pve_proxmox_storage | ansible.builtin.length > 0
         - __pve_zfs_dataset_exists[__pve_proxmox_keystatus_item['name']] | ansible.builtin.default(false) | ansible.builtin.bool
         - __pve_proxmox_keystatus_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
+        - __pve_proxmox_keystatus_item['attributes']['zfs_properties']['encryption'] != 'off'
 
       changed_when:
         - false
-      failed_when:
-        - false
+      check_mode: false
       loop: >-
         {{
           __pve_storage_sanitized
@@ -1139,6 +1265,20 @@
         index_var: "__pve_zfs_dataset_index"
         label: "{{ __pve_proxmox_keystatus_item['name'] }}"
       register: __pve_zfs_dataset_keystatus
+
+    - name: "Storage | ZFS | zfs_dataset | Validate encryption key status"
+      ansible.builtin.assert:
+        that:
+          - __pve_proxmox_keystatus_verify_item['stdout'] in ['available', 'unavailable']
+        fail_msg: "Cannot verify ZFS key availability; refusing to load keys."
+        quiet: true
+      when:
+        - not (__pve_proxmox_keystatus_verify_item['skipped'] | ansible.builtin.default(false))
+      loop: "{{ __pve_zfs_dataset_keystatus['results'] }}"
+      loop_control:
+        loop_var: "__pve_proxmox_keystatus_verify_item"
+        label: "{{ __pve_proxmox_keystatus_verify_item['__pve_proxmox_keystatus_item']['name'] }}"
+
     - name: "Storage | ZFS | zfs_dataset | Load encryption keys for volumes with prompt-based passphrase"
       # The passphrase is passed via stdin on purpose (zfs reads the key from
       # stdin when it is not a TTY): embedded in the command text it would be
@@ -1246,6 +1386,7 @@
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
         - __pve_proxmox_dataset_notice_item['attributes']['zfs_properties']['encryption'] is ansible.builtin.defined
+        - __pve_proxmox_dataset_notice_item['attributes']['zfs_properties']['encryption'] != 'off'
 
       #### NFS Configuration
       loop: >-

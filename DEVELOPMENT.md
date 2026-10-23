@@ -43,8 +43,10 @@ imports, module documentation and role loading/syntax, then runs available
 unit tests from a separate fixture directory against that installation.
 Role deployment behavior remains covered by Molecule.
 
-Focused task regressions run without a Proxmox host. They execute selected role
-tasks against synthetic observations and harmless command fixtures:
+Focused task regressions run separately from `runtime-check` and require pytest,
+PyYAML and an existing supported Ansible controller. They run without a Proxmox
+host, using selected role tasks, synthetic observations and harmless command
+fixtures:
 
 ```sh
 python -m pytest tests/regression -q
@@ -54,6 +56,20 @@ Set `PVE_TEST_COLLECTION` to an installed collection directory to exercise its
 role files instead of the checkout, and `PVE_TEST_ANSIBLE_PLAYBOOK` to select an
 existing controller executable. These checks do not qualify native ZFS, cluster
 filesystem, network activation or effective firewall behavior.
+
+To run the same regressions against an already installed archive, use its exact
+collection directory; the harness reads role files there without falling back to
+the checkout:
+
+```sh
+PVE_TEST_COLLECTION=/path/to/collections/ansible_collections/foundata/proxmox \
+  python -m pytest tests/regression -q
+```
+
+The rotation tests execute the delivered static script against a private fake
+`zfs` executable, not the host's ZFS tools. Native storage and reboot
+qualification still require a disposable VM. Keep test temporary paths short
+enough for local controller socket paths, especially with ansible-core 2.21.
 
 To check the exact archive retained for a release:
 
