@@ -1,0 +1,9 @@
+---
+bugfixes:
+  - >-
+    pve role - use bounded exact-name dataset discovery with strict native result
+    validation instead of treating failed or empty facts as absence; require an
+    independently observed imported pool root before creating an absent child.
+  - >-
+    pve role - validate dataset selectors before native operations and allow
+    existing encryption=off declarations through the passphrase-presence check.

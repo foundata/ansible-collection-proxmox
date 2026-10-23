@@ -41,6 +41,7 @@
       - >-
         (__pve_proxmox_storage_item['type'] != 'zfs_dataset')
         or (__pve_proxmox_storage_item['attributes']['zfs_properties']['encryption'] is not ansible.builtin.defined)
+        or (__pve_proxmox_storage_item['attributes']['zfs_properties']['encryption'] == 'off')
         or ((__pve_proxmox_storage_item['attributes']['zfs_properties']['keylocation'] | ansible.builtin.default('prompt')) != 'prompt')
         or (pve_proxmox_storage[__pve_storage_validate_index]['attributes']['zfs_properties']['passphrase'] is ansible.builtin.defined)
     fail_msg: |
@@ -59,6 +60,28 @@
   loop_control:
     loop_var: "__pve_proxmox_storage_item"
     index_var: "__pve_storage_validate_index"
+- name: "Storage | Validate ZFS dataset selectors"
+  ansible.builtin.assert:
+    that:
+      - __pve_zfs_selector_item['name'] is ansible.builtin.string
+      - (__pve_zfs_selector_item['name'] | ansible.builtin.length) <= 255
+      - __pve_zfs_selector_item['name'] is ansible.builtin.match(__pve_zfs_dataset_name_pattern)
+      - "'.' not in __pve_zfs_selector_item['name'].split('/')"
+      - "'..' not in __pve_zfs_selector_item['name'].split('/')"
+      - __pve_zfs_selector_item['name'].split('/')[0] not in ['mirror', 'raidz', 'draid']
+    fail_msg: "ZFS dataset selector must be an exact filesystem or volume name."
+    quiet: true
+  vars:
+    __pve_zfs_dataset_name_pattern: "\\A[A-Za-z][A-Za-z0-9_.: -]*(/[A-Za-z0-9_.: %-]+)*\\Z"
+  loop: >-
+    {{
+      __pve_storage_sanitized
+      | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
+      | ansible.builtin.list
+    }}
+  loop_control:
+    loop_var: "__pve_zfs_selector_item"
+    label: "{{ __pve_zfs_selector_item['name'] }}"
 - name: "Storage | ZFS"
   when:
     - pve_proxmox_storage is ansible.builtin.defined
@@ -817,9 +840,23 @@
       loop_control:
         loop_var: "__pve_proxmox_pool_update_item"
     - name: "Storage | ZFS | zfs_dataset | Gather existing ZFS datasets"
-      community.general.zfs_facts:
-        name: "{{ __pve_proxmox_dataset_facts_item['name'] }}"
-        type: "all"
+      ansible.builtin.command:
+        argv:
+          - "zfs"
+          - "list"
+          - "-H"
+          - "-p"
+          - "-o"
+          - "name,type"
+          - "-t"
+          - "filesystem,volume"
+          - "--"
+          - "{{ __pve_proxmox_dataset_facts_item['name'] }}"
+        expand_argument_vars: false
+        strip_empty_ends: false
+      environment:
+        LC_ALL: "C"
+      check_mode: false
       when:
         - pve_proxmox_storage is ansible.builtin.defined
         - pve_proxmox_storage | ansible.builtin.length > 0
@@ -837,18 +874,136 @@
       loop_control:
         loop_var: "__pve_proxmox_dataset_facts_item"
       register: __pve_zfs_dataset_facts
+
+    - name: "Storage | ZFS | zfs_dataset | Validate dataset discovery coverage"
+      ansible.builtin.assert:
+        that:
+          - __pve_zfs_dataset_facts['results'] is ansible.builtin.sequence
+          - __pve_zfs_dataset_facts['results'] is not ansible.builtin.string
+          - __pve_zfs_dataset_facts['results'] is not ansible.builtin.mapping
+          - >-
+            (__pve_zfs_dataset_facts['results']
+             | ansible.builtin.map(attribute='__pve_proxmox_dataset_facts_item.name') | ansible.builtin.list)
+            == (__pve_storage_sanitized
+                | ansible.builtin.selectattr('type', 'ansible.builtin.equalto', 'zfs_dataset')
+                | ansible.builtin.map(attribute='name') | ansible.builtin.list)
+        fail_msg: "Incomplete ZFS dataset discovery; refusing dataset changes."
+        quiet: true
+
+    - name: "Storage | ZFS | zfs_dataset | Validate dataset discovery results"
+      ansible.builtin.assert:
+        that:
+          - not (__pve_zfs_discovery_item['skipped'] | ansible.builtin.default(false))
+          - __pve_zfs_discovery_item['rc'] is ansible.builtin.integer
+          - __pve_zfs_discovery_item['stdout'] is ansible.builtin.string
+          - __pve_zfs_discovery_item['stderr'] is ansible.builtin.string
+          - >-
+            ((__pve_zfs_discovery_item['rc'] == 0)
+             and (__pve_zfs_discovery_item['stderr'] == '')
+             and (__pve_zfs_discovery_item['stdout'] in
+                  [__pve_zfs_discovery_name ~ __pve_zfs_discovery_tab ~ 'filesystem' ~ __pve_zfs_discovery_newline,
+                   __pve_zfs_discovery_name ~ __pve_zfs_discovery_tab ~ 'volume' ~ __pve_zfs_discovery_newline]))
+            or ((__pve_zfs_discovery_item['rc'] == 1)
+                and (__pve_zfs_discovery_item['stdout'] == '')
+                and (__pve_zfs_discovery_item['stderr'] ==
+                     ("cannot open '" ~ __pve_zfs_discovery_name ~ "': dataset does not exist" ~ __pve_zfs_discovery_newline)))
+        fail_msg: "Cannot establish ZFS dataset presence; refusing dataset changes."
+        quiet: true
+      vars:
+        __pve_zfs_discovery_name: "{{ __pve_zfs_discovery_item['__pve_proxmox_dataset_facts_item']['name'] }}"
+        __pve_zfs_discovery_tab: "{{ '%c' | ansible.builtin.format(9) }}"
+        __pve_zfs_discovery_newline: "\n"
+      loop: "{{ __pve_zfs_dataset_facts['results'] }}"
+      loop_control:
+        loop_var: "__pve_zfs_discovery_item"
+        label: "{{ __pve_zfs_discovery_item['__pve_proxmox_dataset_facts_item']['name'] }}"
+
+    - name: "Storage | ZFS | zfs_dataset | Verify imported root for absent datasets"
+      ansible.builtin.command:
+        argv:
+          - "zfs"
+          - "list"
+          - "-H"
+          - "-p"
+          - "-o"
+          - "name,type"
+          - "-t"
+          - "filesystem,volume"
+          - "--"
+          - "{{ __pve_zfs_root_probe_item['__pve_proxmox_dataset_facts_item']['name'].split('/')[0] }}"
+        expand_argument_vars: false
+        strip_empty_ends: false
+      environment:
+        LC_ALL: "C"
+      check_mode: false
+      when:
+        - not (__pve_zfs_root_probe_item['skipped'] | ansible.builtin.default(false))
+        - __pve_zfs_root_probe_item['rc'] == 1
+      changed_when:
+        - false
+      failed_when:
+        - false
+      loop: "{{ __pve_zfs_dataset_facts['results'] }}"
+      loop_control:
+        loop_var: "__pve_zfs_root_probe_item"
+        label: "{{ __pve_zfs_root_probe_item['__pve_proxmox_dataset_facts_item']['name'] }}"
+      register: __pve_zfs_dataset_roots
+
+    - name: "Storage | ZFS | zfs_dataset | Validate imported root discovery coverage"
+      ansible.builtin.assert:
+        that:
+          - __pve_zfs_dataset_roots['results'] is ansible.builtin.sequence
+          - __pve_zfs_dataset_roots['results'] is not ansible.builtin.string
+          - __pve_zfs_dataset_roots['results'] is not ansible.builtin.mapping
+          - >-
+            (__pve_zfs_dataset_roots['results']
+             | ansible.builtin.map(attribute='__pve_zfs_root_probe_item.__pve_proxmox_dataset_facts_item.name') | ansible.builtin.list)
+            == (__pve_zfs_dataset_facts['results']
+                | ansible.builtin.map(attribute='__pve_proxmox_dataset_facts_item.name') | ansible.builtin.list)
+          - >-
+            (__pve_zfs_dataset_roots['results']
+             | ansible.builtin.map(attribute='__pve_zfs_root_probe_item.rc') | ansible.builtin.list)
+            == (__pve_zfs_dataset_facts['results'] | ansible.builtin.map(attribute='rc') | ansible.builtin.list)
+        fail_msg: "Incomplete imported-root discovery; refusing dataset creation."
+        quiet: true
+
+    - name: "Storage | ZFS | zfs_dataset | Validate imported dataset roots"
+      ansible.builtin.assert:
+        that:
+          - __pve_zfs_root_result_item['__pve_zfs_root_probe_item']['rc'] is ansible.builtin.integer
+          - __pve_zfs_root_result_item['__pve_zfs_root_probe_item']['rc'] in [0, 1]
+          - >-
+            ((__pve_zfs_root_result_item['__pve_zfs_root_probe_item']['rc'] == 0)
+             and (__pve_zfs_root_result_item['skipped'] | ansible.builtin.default(false)))
+            or ((__pve_zfs_root_result_item['__pve_zfs_root_probe_item']['rc'] == 1)
+                and not (__pve_zfs_root_result_item['skipped'] | ansible.builtin.default(false))
+                and (__pve_zfs_root_result_item['rc'] is ansible.builtin.integer)
+                and (__pve_zfs_root_result_item['stdout'] is ansible.builtin.string)
+                and (__pve_zfs_root_result_item['stderr'] is ansible.builtin.string)
+                and (__pve_zfs_root_result_item['rc'] == 0)
+                and (__pve_zfs_root_result_item['stderr'] == '')
+                and (__pve_zfs_root_result_item['stdout'] == (__pve_zfs_root_name ~ __pve_zfs_root_suffix)))
+        fail_msg: "Cannot verify the imported pool root; refusing dataset creation."
+        quiet: true
+      vars:
+        __pve_zfs_root_name: "{{ __pve_zfs_root_result_item['__pve_zfs_root_probe_item']['__pve_proxmox_dataset_facts_item']['name'].split('/')[0] }}"
+        __pve_zfs_root_suffix: "{{ '%cfilesystem%c' | ansible.builtin.format(9, 10) }}"
+      loop: "{{ __pve_zfs_dataset_roots['results'] }}"
+      loop_control:
+        loop_var: "__pve_zfs_root_result_item"
+        label: "{{ __pve_zfs_root_result_item['__pve_zfs_root_probe_item']['__pve_proxmox_dataset_facts_item']['name'] }}"
+
     - name: "Storage | ZFS | zfs_dataset | Build zfs_dataset existence map"
       ansible.builtin.set_fact:
         __pve_zfs_dataset_exists: >-
           {{
             __pve_zfs_dataset_exists | ansible.builtin.default({}) | ansible.builtin.combine({
-              __pve_proxmox_dataset_map_item['__pve_proxmox_dataset_facts_item']['name']: __pve_proxmox_dataset_map_item is ansible.builtin.success and
-                (__pve_proxmox_dataset_map_item['ansible_facts']['ansible_zfs_datasets']
-                 | ansible.builtin.default([]) | ansible.builtin.length > 0)
+              __pve_proxmox_dataset_map_item['__pve_proxmox_dataset_facts_item']['name']: (__pve_proxmox_dataset_map_item['rc'] == 0)
             })
           }}
       when:
         - __pve_zfs_dataset_facts is ansible.builtin.defined
+        - not (__pve_proxmox_dataset_map_item['skipped'] | ansible.builtin.default(false))
 
       loop: "{{ __pve_zfs_dataset_facts['results'] | ansible.builtin.default([]) }}"
       loop_control:

@@ -3186,3 +3186,9 @@ and indeterminate native verification results. Empty previous-candidate lists
 retain their no-rotation behavior. Rotation is not transactional with earlier
 ordinary property updates; it does not provide a general key-file or ancestor
 management workflow.
+
+Dataset discovery uses exact names and complete native results. Failed,
+malformed, skipped or incomplete observations do not establish absence. An
+absent child also requires an independently observed imported pool root before
+creation. This is namespace verification, not authorization to prepare media,
+administer an operating-system pool, or overwrite existing data.
