@@ -30,14 +30,15 @@
     # candidate file) and restores these contents if the managed files carry
     # parse problems.
     verbosity: 0
-- name: "Firewall | Capture the current managed configuration files (for the validation rollback)"
-  ansible.builtin.slurp:
-    src: "{{ __pve_proxmox_fw_capture_item }}"
+- name: "Firewall | Inspect the current managed configuration files"
+  ansible.builtin.stat:
+    path: "{{ __pve_proxmox_fw_capture_item }}"
+    get_checksum: false
   vars:
     __pve_fw_managed_files: >-
       {{
-        ['/etc/pve/firewall/cluster.fw',
-         '/etc/pve/nodes/' ~ ansible_facts['hostname'] ~ '/host.fw']
+        (['/etc/pve/firewall/cluster.fw'] if inventory_hostname == __pve_cluster_writer else [])
+        + ['/etc/pve/nodes/' ~ ansible_facts['hostname'] ~ '/host.fw']
         + (pve_proxmox_managed_vms | ansible.builtin.default([], true)
            | ansible.builtin.map(attribute='vmid')
            | ansible.builtin.map('ansible.builtin.string')
@@ -47,13 +48,21 @@
       }}
 
 
-  failed_when:
-    - false
   loop: "{{ __pve_fw_managed_files }}"
   loop_control:
     loop_var: "__pve_proxmox_fw_capture_item"
+  register: __pve_fw_file_status
+
+- name: "Firewall | Capture the current managed configuration files (for the validation rollback)"
+  ansible.builtin.slurp:
+    src: "{{ __pve_proxmox_fw_capture_item }}"
+  when:
+    - __pve_fw_file_status['results'][__pve_fw_capture_index]['stat']['exists']
+  loop: "{{ __pve_fw_file_status['results'] | ansible.builtin.map(attribute='__pve_proxmox_fw_capture_item') | ansible.builtin.list }}"
+  loop_control:
+    loop_var: "__pve_proxmox_fw_capture_item"
+    index_var: "__pve_fw_capture_index"
   register: __pve_fw_previous
-  # tolerate files that do not exist yet (removed again on rollback)
 - name: "Firewall | Cluster/Datacenter | Ensure needed directories exist"
   ansible.builtin.file:
     path: "{{ __pve_proxmox_fw_cluster_dir_item }}"
@@ -247,7 +256,6 @@
       - "compile"
   changed_when:
     - false
-  # the exit code is useless (0 even for parse problems); judged below
   failed_when:
     - false
 
@@ -256,6 +264,10 @@
   ansible.builtin.set_fact:
     __pve_fw_compile_problems: >-
       {%- set __pve_problems = [] -%}
+      {%- if not (__pve_fw_compile['skipped'] | ansible.builtin.default(false))
+             and (__pve_fw_compile['rc'] | ansible.builtin.default(1)) != 0 -%}
+      {%-   set _ = __pve_problems.append('pve-firewall compile failed; configuration could not be validated') -%}
+      {%- endif -%}
       {%- for __pve_line in ((__pve_fw_compile['stdout_lines'] | ansible.builtin.default([]))
                              + (__pve_fw_compile['stderr_lines'] | ansible.builtin.default([]))) -%}
       {%-   for __pve_path in (__pve_fw_previous['results'] | ansible.builtin.map(attribute='__pve_proxmox_fw_capture_item') | ansible.builtin.list) -%}
@@ -302,8 +314,7 @@
   ansible.builtin.fail:
     msg: >-
       Refusing to keep the rendered firewall configuration: "pve-firewall compile"
-      reports parse problems in the managed files and the PVE firewall would
-      silently skip these entries, changing the effective policy
+      failed or reports parse problems in the managed files
       ({{ __pve_fw_compile_problems | ansible.builtin.join('; ') }}).
       The previous file contents were restored.
   when:
