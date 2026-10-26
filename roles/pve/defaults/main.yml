@@ -1581,6 +1581,12 @@ pve_proxmox_datacentercfg: {}
 #         - `passphrase_old`: Previous passphrase(s) for key rotation (string or
 #           list)
 #
+#         Use the quoted value `encryption: "off"` to request an unencrypted
+#         dataset explicitly. The role preserves this property during creation;
+#         omitting it does not express the same intent. An explicit `"off"`
+#         declaration must not include `keyformat`, `keylocation`,
+#         `pbkdf2iters`, `passphrase` or `passphrase_old`.
+#
 #         Note: `passphrase` and `passphrase_old` are special keys handled by
 #         the role and not passed directly to ZFS. Because of them, the whole
 #         dictionary is treated as sensitive (`no_log`): its values do not show
