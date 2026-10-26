@@ -1,3 +1,6 @@
 ---
 bugfixes:
-  - "pve role - treat failed firewall validation as a rollback condition, capture cluster policy only on its selected writer, and refuse unreadable rollback sources instead of treating them as absent."
+  - >-
+    pve role - treat failed firewall validation as a rollback condition, capture
+    cluster policy only on its selected writer, and refuse unreadable rollback
+    sources instead of treating them as absent.

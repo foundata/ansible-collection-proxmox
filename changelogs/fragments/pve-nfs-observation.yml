@@ -1,3 +1,6 @@
 ---
 bugfixes:
-  - "pve role - derive observed NFS mount status from command return codes, skip skipped verification results, and stop describing a mountpoint check as proof of server accessibility."
+  - >-
+    pve role - derive observed NFS mount status from command return codes, skip
+    skipped verification results, and stop describing a mountpoint check as
+    proof of server accessibility.
