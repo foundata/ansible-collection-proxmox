@@ -13,6 +13,7 @@ argument_specs:
   # foundata.proxmox/roles/pve/tasks/main.yml entry point
   main:
     short_description: "Main entry point for the foundata.proxmox.pve role."
+    version_added: "1.0.0"
     description: |
       Configures Proxmox Virtual Environment (PVE) hosts:
 
