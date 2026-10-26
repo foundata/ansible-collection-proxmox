@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: foundata GmbH <https://foundata.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Run selected role tasks without native storage, network or firewall operations."""
 
 from __future__ import annotations
