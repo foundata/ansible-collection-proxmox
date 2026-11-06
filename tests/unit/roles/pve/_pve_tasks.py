@@ -13,7 +13,7 @@ from pathlib import Path
 
 import yaml
 
-COLLECTION = Path(os.environ.get("PVE_TEST_COLLECTION", Path(__file__).parents[2]))
+COLLECTION = Path(os.environ.get("PVE_TEST_COLLECTION", Path(__file__).parents[4]))
 ROLE = COLLECTION / "roles/pve"
 
 

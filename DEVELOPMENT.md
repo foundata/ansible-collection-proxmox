@@ -43,13 +43,14 @@ imports, module documentation and role loading/syntax, then runs available
 unit tests from a separate fixture directory against that installation.
 Role deployment behavior remains covered by Molecule.
 
-Focused task regressions run separately from `runtime-check` and require pytest,
-PyYAML and an existing supported Ansible controller. They run without a Proxmox
-host, using selected role tasks, synthetic observations and harmless command
-fixtures:
+Focused task regressions below `tests/unit/roles/pve/` run as part of
+`runtime-check`, against the built archive. They need no Proxmox host, using
+selected role tasks, synthetic observations and harmless command fixtures. To
+run them on their own, which requires pytest, PyYAML and an existing supported
+Ansible controller:
 
 ```sh
-python -m pytest tests/regression -q
+python -m pytest tests/unit/roles/pve -q
 ```
 
 Set `PVE_TEST_COLLECTION` to an installed collection directory to exercise its
@@ -63,7 +64,7 @@ the checkout:
 
 ```sh
 PVE_TEST_COLLECTION=/path/to/collections/ansible_collections/foundata/proxmox \
-  python -m pytest tests/regression -q
+  python -m pytest tests/unit/roles/pve -q
 ```
 
 The rotation tests execute the delivered static script against a private fake
