@@ -1,6 +1,87 @@
 ---
 ancestor: null
 releases:
+  1.3.0:
+    changes:
+      bugfixes:
+        - Check the minimum ansible-core version before gathering role facts so unsupported
+          versions fail with the intended diagnostic.
+        - Limit automatic fact gathering to each role's declared subsets while retaining
+          missing-fact recovery and reuse of cached facts.
+        - 'The declared ansible-core minimum is corrected from 2.16 to 2.19. The roles
+          write Jinja''s own filters and tests as ``ansible.builtin.<name>``, which
+          ansible-core resolves from 2.19 only; on 2.16 to 2.18 every run failed at
+          the first such expression, so no working installation is affected.
+
+          '
+        - pve role - Gather the hostname and timestamp facts used by configuration
+          and backup tasks explicitly, without relying on injected fact variables.
+        - pve role - Pass managed guest firewall options, aliases, IP sets and rules
+          into the configuration template instead of leaving its section inputs unset.
+        - pve role - Read existing ZFS pools from the registered module result so
+          disabling fact injection does not misclassify existing pools as missing.
+        - pve role - Reject invalid template inputs without depending on an ambient
+          undefined variable, and identify invalid network interfaces in diagnostics.
+        - pve role - derive observed NFS mount status from command return codes, skip
+          skipped verification results, and stop describing a mountpoint check as
+          proof of server accessibility.
+        - pve role - propagate failures when mounting encrypted datasets after loading
+          their keys instead of reporting success and continuing after failed activation.
+        - pve role - reject existing dataset encryption mismatches before dataset
+          changes; accept the native encryption=on alias for encrypted ciphers.
+        - pve role - reject missing or failed network validators and unknown diagnostics
+          while retaining the specific bridge-fd zero warning.
+        - pve role - reset storage discovery maps on each invocation instead of reusing
+          previous disks and resource state.
+        - pve role - route new datasets with explicit encryption=off through ordinary
+          creation while preserving that property, instead of selecting an encrypted
+          creation task that requires key credentials. Reject contradictory key properties
+          or passphrases with encryption=off before storage changes.
+        - pve role - skip key-status loading and encryption notices for existing datasets
+          explicitly declared with encryption=off.
+        - pve role - stop on failed or malformed key-status reads before loading keys,
+          including read-only discovery in check mode.
+        - pve role - treat failed firewall validation as a rollback condition, capture
+          cluster policy only on its selected writer, and refuse unreadable rollback
+          sources instead of treating them as absent.
+        - pve role - use bounded exact-name dataset discovery with strict native result
+          validation instead of treating failed or empty facts as absence; require
+          an independently observed imported pool root before creating an absent child.
+        - pve role - validate dataset selectors before native operations and allow
+          existing encryption=off declarations through the passphrase-presence check.
+      minor_changes:
+        - pve role - Add pve_proxmox_update_grub, pve_proxmox_reload_network and pve_proxmox_restart_firewall
+          handler topics. Retain the previous update grub, reload network, restart
+          pve-firewall and reload pve-firewall topics as migration aliases until version
+          2.0.0.
+      security_fixes:
+        - pve role - exclude current and previous ZFS passphrases from key-status
+          loop results and verbose callbacks; resolve prompt credentials only within
+          the protected key-loading task.
+        - pve role - pass current and previous ZFS rotation credentials through module
+          stdin instead of task environment variables that can appear in remote shell
+          process arguments; reject line breaks and NUL bytes before framing credentials.
+        - pve role - require freshly observed prompt-based passphrase keys on the
+          declared encryption root before rotation, refusing file-key and inherited-root
+          rotation rather than verifying the wrong credential.
+        - pve role - stop rotation on indeterminate credential verification instead
+          of treating every native failure as an incorrect key; only the exact C-locale
+          incorrect-key result permits trying previous credentials.
+    fragments:
+      - ansible-core-floor-2.19.yml
+      - ansible-version-guard.yml
+      - bounded-role-facts.yml
+      - lint-interfaces.yml
+      - pve-dataset-discovery.yml
+      - pve-firewall-rollback.yml
+      - pve-mount-failure.yml
+      - pve-nfs-observation.yml
+      - pve-plaintext-creation.yml
+      - pve-rotation-stdin.yml
+      - pve-secret-free-key-status.yml
+      - pve-storage-preflight.yml
+      - pve-validation-failures.yml
+    release_date: '2026-11-07'
   1.2.0:
     changes:
       minor_changes:
